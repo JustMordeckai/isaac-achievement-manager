@@ -251,7 +251,8 @@ select {
 
 /* Zone principale */
 .main {
-  max-width: 1100px;
+  /* 1100px de contenu, comme l'en-tête, plus les 16px de marge de chaque côté. */
+  max-width: 1132px;
   margin: 0 auto;
   padding: 20px 16px 48px;
 }
