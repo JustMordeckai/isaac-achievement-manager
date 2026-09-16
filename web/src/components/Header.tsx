@@ -29,9 +29,7 @@ export function Header(props: HeaderProps) {
   return (
     <header className="header">
       <div className="header__top">
-        <h1 className="brand">
-          Isaac <span>Achievement Manager</span>
-        </h1>
+        <h1 className="brand">Isaac Achievement Manager</h1>
         <nav className="tabs" aria-label="Sections">
           {TABS.map((t) => (
             <button

@@ -125,7 +125,7 @@ export function Achievements({ achievements, filter, onFilterChange }: Achieveme
 
       {visible.length > limit && (
         <button type="button" className="btn load-more" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
-          Afficher plus ({visible.length - limit} restants)
+          Afficher plus ({visible.length - limit} {visible.length - limit === 1 ? 'restant' : 'restants'})
         </button>
       )}
     </div>

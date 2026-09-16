@@ -85,6 +85,12 @@ describe('Achievements', () => {
     expect(screen.queryByRole('button', { name: /Afficher plus/ })).not.toBeInTheDocument();
   });
 
+  it('affiche le singulier quand il ne reste qu’un succès à afficher', () => {
+    const many = Array.from({ length: 101 }, (_, i) => makeAchievement(i + 1));
+    render(<Harness list={many} />);
+    expect(screen.getByRole('button', { name: 'Afficher plus (1 restant)' })).toBeInTheDocument();
+  });
+
   it('indique une liste vide', () => {
     render(<Harness initial={{ ...DEFAULT_FILTER, search: 'introuvable' }} />);
     expect(screen.getByText('Aucun succès ne correspond à ces filtres.')).toBeInTheDocument();

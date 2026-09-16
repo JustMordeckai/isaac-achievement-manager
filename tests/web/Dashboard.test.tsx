@@ -84,7 +84,23 @@ describe('Dashboard', () => {
     expect(screen.getByRole('button', { name: 'Voir le succès manquant' })).toBeInTheDocument();
   });
 
-  it('affiche le singulier pour un seul désyncs restant', () => {
+  it('affiche le singulier et masque le bouton quand il n’y a aucun manquant', () => {
+    render(<Dashboard summary={makeSummary({ unlocked: 641, total: 641 })} onShowAchievements={vi.fn()} />);
+    expect(screen.getByText('100,0 %, 0 manquant')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /manquant/ })).not.toBeInTheDocument();
+  });
+
+  it('masque le bouton « Voir dans la liste » sans écart sauvegarde/Steam', () => {
+    const onShow = vi.fn();
+    const desyncs: Desync[] = [{ id: 343, name: 'Flooded Caves', kind: 'profileAhead' }];
+    render(<Dashboard summary={makeSummary({ desyncs })} onShowAchievements={onShow} />);
+    expect(
+      screen.getByRole('heading', { name: 'Sur le profil en ligne, pas encore dans le cache local (1)' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Voir dans la liste' })).not.toBeInTheDocument();
+  });
+
+  it('affiche le singulier pour un seul écart non affiché', () => {
     const desyncs: Desync[] = Array.from({ length: 11 }, (_, i) => ({ id: i + 1, name: `Succès ${i + 1}`, kind: 'steamOnly' }));
     render(<Dashboard summary={makeSummary({ desyncs })} onShowAchievements={vi.fn()} />);
     expect(screen.getByText('#10 Succès 10')).toBeInTheDocument();

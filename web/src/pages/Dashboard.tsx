@@ -59,15 +59,17 @@ export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
         </p>
         <ProgressBar value={summary.unlocked} max={summary.total} label="Progression globale" />
         <p className="hero__meta">
-          {percent(summary.unlocked, summary.total)}, {missing} {missing === 1 ? 'manquant' : 'manquants'}
+          {percent(summary.unlocked, summary.total)}, {missing} {missing <= 1 ? 'manquant' : 'manquants'}
         </p>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => onShowAchievements({ status: 'missing', dlc: 'all', onlyDesync: false })}
-        >
-          {missing === 1 ? 'Voir le succès manquant' : `Voir les ${missing} succès manquants`}
-        </button>
+        {missing > 0 && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => onShowAchievements({ status: 'missing', dlc: 'all', onlyDesync: false })}
+          >
+            {missing === 1 ? 'Voir le succès manquant' : `Voir les ${missing} succès manquants`}
+          </button>
+        )}
       </section>
 
       <section className="card" aria-labelledby="dlc-title">
@@ -124,13 +126,15 @@ export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
                 Steam qui y manquent.
               </p>
             )}
-            <button
-              type="button"
-              className="btn"
-              onClick={() => onShowAchievements({ status: 'all', dlc: 'all', onlyDesync: true })}
-            >
-              Voir dans la liste
-            </button>
+            {summary.desyncs.some((d) => d.kind === 'saveOnly' || d.kind === 'steamOnly') && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => onShowAchievements({ status: 'all', dlc: 'all', onlyDesync: true })}
+              >
+                Voir dans la liste
+              </button>
+            )}
           </>
         )}
       </section>
