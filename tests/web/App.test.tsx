@@ -128,4 +128,19 @@ describe('App', () => {
     expect(mock.mock.calls.some(([input]) => String(input) === '/api/shutdown')).toBe(false);
     expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
   });
+
+  it('affiche une erreur si l’arrêt échoue et garde le tableau de bord', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubFetch({
+      'GET /api/progress': () => makeSummary(),
+      'GET /api/achievements': () => ACHIEVEMENTS,
+      'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403),
+    });
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Progression' });
+    await user.click(screen.getByRole('button', { name: 'Arrêter' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Arrêt impossible');
+    expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+  });
 });

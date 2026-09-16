@@ -105,6 +105,7 @@ select {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
@@ -294,11 +295,6 @@ select {
   font-size: 0.9rem;
 }
 
-.banner--error,
-.error-panel {
-  border-color: var(--danger);
-}
-
 .banner {
   margin: 0 0 16px;
   padding: 10px 14px;
@@ -306,8 +302,14 @@ select {
   border-radius: 10px;
 }
 
+.banner--error,
+.error-panel {
+  border-color: var(--danger);
+}
+
 .error-panel__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
