@@ -32,7 +32,16 @@ npm run build
 - Arrêt : bouton « Arrêter » dans l'interface, ou `npm run stop`.
 - Journal du serveur lancé par le `.vbs` : `data/server.log`.
 
-L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement dans `data/` (icônes en cache, journal, réglages).
+L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement les icônes en cache et le journal dans `data/`, et lit `data/settings.json` si l'utilisateur l'a créé.
+
+## Dépannage
+
+Si le double-clic sur `Isaac Manager.vbs` ne fait rien :
+
+- vérifier `node --version` (Node 26 ou plus, et présent dans le PATH) ;
+- vérifier que `npm install` et `npm run build` ont bien été faits ;
+- lire `data/server.log` ;
+- lancer `npm start` dans un terminal pour voir l'erreur directement.
 
 ## Réglages
 
