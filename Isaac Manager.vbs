@@ -16,4 +16,4 @@ End If
 
 If Not fso.FolderExists(root & "\data") Then fso.CreateFolder(root & "\data")
 
-shell.Run "cmd /c node server\index.ts --open >> data\server.log 2>&1", 0, False
+shell.Run "node server\index.ts --open --log", 0, False

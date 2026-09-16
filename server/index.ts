@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { format } from 'node:util';
 import express from 'express';
 import { APP_NAME, createApp } from './app.ts';
 import { detectSteamEnv, loadSettings } from './config.ts';
@@ -13,6 +14,20 @@ import { createProfileClient } from './sources/steam-profile.ts';
 const args = new Set(process.argv.slice(2));
 const dev = args.has('--dev');
 const shouldOpen = args.has('--open');
+
+if (args.has('--log')) {
+  // Écrit chaque ligne dans data/server.log via un appendFileSync par appel : contrairement à une
+  // redirection shell (>>), aucun descripteur de fichier n'est gardé ouvert, donc un second lancement
+  // du .vbs pendant que le serveur tourne peut aussi écrire dans ce fichier (pas de conflit de partage
+  // Windows).
+  mkdirSync(DATA_DIR, { recursive: true });
+  const logFile = path.join(DATA_DIR, 'server.log');
+  const write = (...parts: unknown[]): void => {
+    appendFileSync(logFile, `${format(...parts)}\n`);
+  };
+  console.log = write;
+  console.error = write;
+}
 
 const settings = loadSettings(DATA_DIR);
 const env = detectSteamEnv({ extraAccountIds: settings.accountId !== null ? [settings.accountId] : [] });
