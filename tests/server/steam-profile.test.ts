@@ -168,7 +168,7 @@ describe('createProfileClient', () => {
   it('refuse une entrée illisible sans appeler Steam', async () => {
     const f = fakeFetch(() => xml(PROFILE_XML));
     const client = createProfileClient({ fetch: f.fn });
-    await expect(client.resolve('pas un profil !')).rejects.toMatchObject({ kind: 'invalid' });
+    await expect(client.resolve('pas un profil !')).rejects.toMatchObject({ kind: 'input' });
     expect(f.calls).toHaveLength(0);
   });
 });

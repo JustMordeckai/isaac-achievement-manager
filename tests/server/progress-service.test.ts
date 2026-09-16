@@ -149,6 +149,36 @@ describe('createProgressService', () => {
     expect(summary.sources.steamCache.state).toBe('absent');
   });
 
+  it('partage un chargement en cours entre deux appels identiques', async () => {
+    const profiles = fakeProfiles();
+    const progress = service(profiles);
+    const first = progress.get('me', null);
+    const second = progress.get('me', null);
+    expect(second).toBe(first);
+    expect(progress.get('me', 2)).not.toBe(first);
+    await Promise.all([first, second]);
+    expect(profiles.getStats).toHaveBeenCalledTimes(2);
+    await progress.get('me', null);
+    expect(profiles.getStats).toHaveBeenCalledTimes(3);
+  });
+
+  it('libère un chargement en échec pour le prochain appel', async () => {
+    const getStats = vi.fn(async () => STATS);
+    getStats.mockRejectedValueOnce(new ProfileError('network', 'Steam injoignable : boom'));
+    const progress = service(fakeProfiles({ getStats }));
+    await expect(progress.get(OTHER_ID64, null)).rejects.toMatchObject({ status: 502 });
+    const { summary } = await progress.get(OTHER_ID64, null);
+    expect(summary.unlocked).toBe(125);
+  });
+
+  it('expose les définitions du schéma local', async () => {
+    const defs = await service().definitions();
+    expect(defs).toHaveLength(641);
+    expect(defs?.[0]).toMatchObject({ id: 1, name: 'Magdalene' });
+    rmSync(path.join(steam, 'appcache', 'stats', 'UserGameStatsSchema_250900.bin'));
+    expect(await service().definitions()).toBeNull();
+  });
+
   it('répond 404 pour "me" sans Steam, mais sert un joueur distant', async () => {
     const noSteam = createProgressService({
       env: { steamPath: null, activeAccountId: null, accounts: [] },
@@ -159,5 +189,6 @@ describe('createProgressService', () => {
     const { summary } = await noSteam.get(OTHER_ID64, null);
     expect(summary.unlocked).toBe(125);
     expect(summary.accounts).toEqual([]);
+    expect(await noSteam.definitions()).toBeNull();
   });
 });

@@ -151,6 +151,8 @@ describe('loadSettings', () => {
   it('ignore les valeurs invalides et un JSON illisible', () => {
     write(JSON.stringify({ port: 'x', accountId: -4 }));
     expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
+    write(JSON.stringify({ port: 70000, accountId: 2 ** 32 }));
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
     write('{');
     expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
     write('null');

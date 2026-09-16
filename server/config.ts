@@ -112,6 +112,10 @@ export function loadSettings(dataDir: string): Settings {
   const { port, accountId } = raw as Record<string, unknown>;
   return {
     port: Number.isInteger(port) && (port as number) > 0 && (port as number) < 65536 ? (port as number) : DEFAULT_SETTINGS.port,
-    accountId: Number.isInteger(accountId) && (accountId as number) > 0 ? (accountId as number) : null,
+    // Un id de compte Steam tient sur 32 bits : au-delà, le SteamID64 calculé serait faux.
+    accountId:
+      Number.isInteger(accountId) && (accountId as number) > 0 && (accountId as number) <= 0xffffffff
+        ? (accountId as number)
+        : null,
   };
 }

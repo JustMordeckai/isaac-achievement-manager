@@ -164,6 +164,16 @@ describe('API', () => {
     expect(await res.json()).toEqual({ error: 'Profil Steam introuvable' });
   });
 
+  it('répond 400 à une saisie de profil non reconnue', async () => {
+    const resolve = vi.fn(async () => {
+      throw new ProfileError('input', 'Entrée non reconnue');
+    });
+    const base = await start({ profiles: { getStats: vi.fn(), resolve } });
+    const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('pas un profil !')}`);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Entrée non reconnue' });
+  });
+
   it('sert les icônes', async () => {
     const get = vi.fn(async () => new Uint8Array([0xff, 0xd8]));
     const base = await start({ icons: { get } });

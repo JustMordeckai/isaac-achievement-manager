@@ -8,7 +8,7 @@ import { ProfileError, type ProfileClient } from './sources/steam-profile.ts';
 export const APP_NAME = 'isaac-achievement-manager';
 
 export interface AppDeps {
-  progress: ProgressService;
+  progress: Pick<ProgressService, 'get'>;
   profiles: ProfileClient;
   icons: IconCache;
   /** Appelé une fois la réponse de POST /api/shutdown envoyée. */

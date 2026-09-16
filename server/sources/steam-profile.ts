@@ -1,7 +1,8 @@
 import type { ResolvedProfile } from '../../shared/types.ts';
 import { APP_ID, isSteamId64 } from '../steam.ts';
 
-export type ProfileErrorKind = 'notFound' | 'private' | 'invalid' | 'network';
+/** `input` : saisie non reconnue ; `invalid` : réponse de Steam inattendue. */
+export type ProfileErrorKind = 'input' | 'notFound' | 'private' | 'invalid' | 'network';
 
 export class ProfileError extends Error {
   kind: ProfileErrorKind;
@@ -182,7 +183,7 @@ export function createProfileClient(options: ProfileClientOptions = {}): Profile
     async resolve(input) {
       const parsed = parseProfileInput(input);
       if (!parsed) {
-        throw new ProfileError('invalid', 'Entrée non reconnue : SteamID64, URL de profil ou pseudo personnalisé attendu');
+        throw new ProfileError('input', 'Entrée non reconnue : SteamID64, URL de profil ou pseudo personnalisé attendu');
       }
       const target = parsed.kind === 'id64' ? `profiles/${parsed.value}` : `id/${encodeURIComponent(parsed.value)}`;
       return cached(`profile:${target}`, async () => parseProfileXml(await getXml(`${STEAM_COMMUNITY}/${target}/?xml=1`)));

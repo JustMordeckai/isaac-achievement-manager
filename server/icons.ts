@@ -1,5 +1,6 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { writeFileAtomic } from './fs-atomic.ts';
 import { HttpError } from './http-error.ts';
 import { APP_ID } from './steam.ts';
 
@@ -27,9 +28,13 @@ export function createIconCache(dir: string, doFetch: typeof fetch = fetch): Ico
       throw new HttpError(502, `Steam injoignable : ${error instanceof Error ? error.message : String(error)}`);
     }
     if (!response.ok) throw new HttpError(502, `Icône indisponible chez Steam (HTTP ${response.status})`);
+    // Une page d'erreur servie en 200 ne doit pas être gardée 7 jours comme icône.
+    if (!(response.headers.get('content-type') ?? '').startsWith('image/')) {
+      throw new HttpError(502, 'Réponse inattendue de Steam : ce n’est pas une image');
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
-    await mkdir(dir, { recursive: true });
-    await writeFile(target, bytes);
+    // Écriture atomique : un arrêt pendant le téléchargement ne laisse pas d'icône tronquée.
+    await writeFileAtomic(target, bytes);
     return bytes;
   }
 

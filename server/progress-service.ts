@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import type { LocalAccount, ProgressSummary } from '../shared/types.ts';
+import type { AchievementDef, LocalAccount, ProgressSummary } from '../shared/types.ts';
 import { chooseAccount, steamPaths, type SteamAccount, type SteamEnv } from './config.ts';
 import { HttpError } from './http-error.ts';
 import { mergeProgress, type MergedProgress, type SourceResult } from './sources/progress.ts';
@@ -9,8 +9,13 @@ import { ProfileError, type ProfileClient, type ProfileErrorKind, type ProfileSt
 import { isSteamId64 } from './steam.ts';
 
 export interface ProgressService {
-  /** `profile` vaut "me" ou un SteamID64 ; `slot` force un slot de sauvegarde (1 à 3). */
+  /**
+   * `profile` vaut "me" ou un SteamID64 ; `slot` force un slot de sauvegarde (1 à 3).
+   * Deux appels simultanés avec les mêmes paramètres partagent le même chargement.
+   */
   get(profile: string, slot: number | null): Promise<MergedProgress>;
+  /** Définitions du schéma Steam local, null s'il est indisponible. */
+  definitions(): Promise<AchievementDef[] | null>;
 }
 
 export interface ProgressServiceOptions {
@@ -19,7 +24,13 @@ export interface ProgressServiceOptions {
   profiles: ProfileClient;
 }
 
-const PROFILE_ERROR_STATUS: Record<ProfileErrorKind, number> = { notFound: 404, private: 403, invalid: 502, network: 502 };
+const PROFILE_ERROR_STATUS: Record<ProfileErrorKind, number> = {
+  input: 400,
+  notFound: 404,
+  private: 403,
+  invalid: 502,
+  network: 502,
+};
 
 export function profileErrorToHttp(error: ProfileError): HttpError {
   return new HttpError(PROFILE_ERROR_STATUS[error.kind], error.message);
@@ -115,55 +126,69 @@ export function createProgressService({ env, forcedAccountId, profiles }: Progre
     }
   }
 
-  return {
-    async get(profile, slot) {
-      let account: SteamAccount | null;
-      let steamId64: string;
-      if (profile === 'me') {
-        account = chooseAccount(env, forcedAccountId);
-        if (!account) {
-          throw new HttpError(404, 'Aucun compte Steam local avec des données Isaac : choisis un autre joueur');
-        }
-        steamId64 = account.steamId64;
-      } else if (isSteamId64(profile)) {
-        steamId64 = profile;
-        account = env.accounts.find((a) => a.steamId64 === profile && a.hasIsaacData) ?? null;
-      } else {
-        throw new HttpError(400, 'Paramètre profile invalide : "me" ou un SteamID64 attendu');
+  async function load(profile: string, slot: number | null): Promise<MergedProgress> {
+    let account: SteamAccount | null;
+    let steamId64: string;
+    if (profile === 'me') {
+      account = chooseAccount(env, forcedAccountId);
+      if (!account) {
+        throw new HttpError(404, 'Aucun compte Steam local avec des données Isaac : choisis un autre joueur');
       }
+      steamId64 = account.steamId64;
+    } else if (isSteamId64(profile)) {
+      steamId64 = profile;
+      account = env.accounts.find((a) => a.steamId64 === profile && a.hasIsaacData) ?? null;
+    } else {
+      throw new HttpError(400, 'Paramètre profile invalide : "me" ou un SteamID64 attendu');
+    }
 
-      const schema = await loadSchema();
-      const defs = schema.data?.map((entry) => entry.def) ?? null;
+    const schema = await loadSchema();
+    const defs = schema.data?.map((entry) => entry.def) ?? null;
 
-      if (!account || !paths) {
-        if (slot !== null) throw new HttpError(400, 'Le choix du slot est réservé aux comptes locaux');
-        const [online, name] = await Promise.all([loadOnline(steamId64, false), resolveName(steamId64)]);
-        const remote = absent<never>('Joueur distant : pas de fichiers locaux');
-        return mergeProgress({
-          profile: { steamId64, name, isLocal: false },
-          defs,
-          steamCache: remote,
-          save: remote,
-          saveSlots: null,
-          online,
-          accounts,
-        });
-      }
-
-      const [steamCache, save, online] = await Promise.all([
-        loadSteamCache(account, schema),
-        loadSave(account, slot),
-        loadOnline(steamId64, true),
-      ]);
+    if (!account || !paths) {
+      if (slot !== null) throw new HttpError(400, 'Le choix du slot est réservé aux comptes locaux');
+      const [online, name] = await Promise.all([loadOnline(steamId64, false), resolveName(steamId64)]);
+      const remote = absent<never>('Joueur distant : pas de fichiers locaux');
       return mergeProgress({
-        profile: { steamId64, name: account.personaName, isLocal: true },
+        profile: { steamId64, name, isLocal: false },
         defs,
-        steamCache,
-        save: save.result,
-        saveSlots: save.slots,
+        steamCache: remote,
+        save: remote,
+        saveSlots: null,
         online,
         accounts,
       });
+    }
+
+    const [steamCache, save, online] = await Promise.all([
+      loadSteamCache(account, schema),
+      loadSave(account, slot),
+      loadOnline(steamId64, true),
+    ]);
+    return mergeProgress({
+      profile: { steamId64, name: account.personaName, isLocal: true },
+      defs,
+      steamCache,
+      save: save.result,
+      saveSlots: save.slots,
+      online,
+      accounts,
+    });
+  }
+
+  const inFlight = new Map<string, Promise<MergedProgress>>();
+
+  return {
+    get(profile, slot) {
+      const key = `${profile}|${slot ?? ''}`;
+      const pending = inFlight.get(key);
+      if (pending) return pending;
+      const promise = load(profile, slot).finally(() => inFlight.delete(key));
+      inFlight.set(key, promise);
+      return promise;
+    },
+    async definitions() {
+      return (await loadSchema()).data?.map((entry) => entry.def) ?? null;
     },
   };
 }
