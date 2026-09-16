@@ -1,0 +1,23 @@
+"users"
+{
+	"76561198083722517"
+	{
+		"AccountName"		"redacted"
+		"PersonaName"		"Player"
+		"RememberPassword"		"1"
+		"WantsOfflineMode"		"0"
+		"SkipOfflineModeWarning"		"0"
+		"AutoLogin"		"1"
+		"Timestamp"		"1789551543"
+	}
+	"76561198194833618"
+	{
+		"AccountName"		"redacted"
+		"PersonaName"		"Second Player"
+		"RememberPassword"		"1"
+		"WantsOfflineMode"		"0"
+		"SkipOfflineModeWarning"		"0"
+		"AutoLogin"		"0"
+		"Timestamp"		"1730151425"
+	}
+}
