@@ -12,12 +12,12 @@ describe('parseSaveFile', () => {
 
   it('lit exactement les 4 blocs connus puis s’arrête', () => {
     expect(save.chunks).toEqual([
-      { type: 1, offset: 32, byteLength: 642, count: 642 },
-      { type: 2, offset: 686, byteLength: 2092, count: 523 },
-      { type: 3, offset: 2790, byteLength: 56, count: 14 },
-      { type: 4, offset: 2858, byteLength: 2932, count: 733 },
+      { type: 1, offset: 32, count: 642, byteLength: 642, declaredSize: 642 },
+      { type: 2, offset: 686, count: 523, byteLength: 2092, declaredSize: 2092 },
+      { type: 3, offset: 2790, count: 14, byteLength: 56, declaredSize: 56 },
+      { type: 4, offset: 2858, count: 733, byteLength: 733, declaredSize: 2932 },
     ]);
-    expect(save.tailOffset).toBe(5790);
+    expect(save.tailOffset).toBe(3591);
   });
 
   it('lit les secrets débloqués', () => {
@@ -33,10 +33,13 @@ describe('parseSaveFile', () => {
     expect(save.counters.slice(0, 5)).toEqual([0, 16, 10812, 183, 0]);
   });
 
-  it('lit un slot vide', () => {
-    const empty = parseSaveFile(fixture('rep+persistentgamedata2.dat'));
+  it('lit un slot vide réel (4068 octets)', () => {
+    const buf = fixture('rep+persistentgamedata2.dat');
+    expect(buf.length).toBe(4068);
+    const empty = parseSaveFile(buf);
     expect(empty.secrets.size).toBe(0);
     expect(empty.chunks.map((c) => c.type)).toEqual([1, 2, 3, 4]);
+    expect(empty.tailOffset).toBe(3591);
   });
 
   it('refuse un en-tête inconnu', () => {
@@ -50,6 +53,7 @@ describe('parseSaveFile', () => {
   it('refuse un bloc tronqué ou absent', () => {
     expect(() => parseSaveFile(fixture(SLOT1).subarray(0, 1000))).toThrow(/Bloc 2 tronqué/);
     expect(() => parseSaveFile(fixture(SLOT1).subarray(0, 2846))).toThrow(/Bloc 4 absent/);
+    expect(() => parseSaveFile(fixture(SLOT1).subarray(0, 3000))).toThrow(/Bloc 4 tronqué/);
   });
 
   it('refuse un bloc du mauvais type', () => {
