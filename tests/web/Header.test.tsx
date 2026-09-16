@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
@@ -143,5 +143,38 @@ describe('ProfilePicker', () => {
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.click(screen.getByRole('button', { name: 'Annuler' }));
     expect(screen.getByLabelText('Profil')).toHaveValue('me');
+  });
+
+  it('ignore une résolution qui arrive après l’annulation', async () => {
+    const user = userEvent.setup();
+    let resolveFetch: (value: unknown) => void = () => {};
+    const pending = new Promise<unknown>((resolve) => {
+      resolveFetch = resolve;
+    });
+    stubFetch({ 'GET /api/profile/resolve': () => pending });
+    const onChange = vi.fn();
+    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={onChange} />);
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
+    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    await user.click(screen.getByRole('button', { name: 'Annuler' }));
+    await act(async () => {
+      resolveFetch({ steamId64: '76561198000000001', name: 'Ami' });
+      await pending;
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole('option', { name: 'Ami' })).not.toBeInTheDocument();
+    expect(localStorage.getItem(RECENT_PROFILES_KEY)).toBeNull();
+  });
+
+  it('vide le champ de saisie en rouvrant après une annulation', async () => {
+    const user = userEvent.setup();
+    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'texte perdu');
+    await user.click(screen.getByRole('button', { name: 'Annuler' }));
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    expect(screen.getByLabelText('SteamID64, URL de profil ou pseudo')).toHaveValue('');
   });
 });

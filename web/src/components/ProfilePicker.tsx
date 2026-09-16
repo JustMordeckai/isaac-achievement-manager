@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { LocalAccount } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { loadRecentProfiles, rememberProfile, type SavedProfile } from '../recent-profiles.ts';
@@ -20,6 +20,8 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Incrémenté à chaque annulation ou nouvelle sélection, pour ignorer une résolution obsolète. */
+  const requestId = useRef(0);
 
   const otherLocals = accounts.length > 1 ? accounts : [];
   const recentOthers = recent.filter((r) => !otherLocals.some((a) => a.steamId64 === r.steamId64));
@@ -27,6 +29,7 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
   const meLabel = profile === 'me' && currentName ? `Mon profil (${currentName})` : 'Mon profil';
 
   function select(value: string) {
+    requestId.current += 1;
     if (value === OTHER) {
       setEditing(true);
       setError(null);
@@ -36,19 +39,30 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
     onChange(value);
   }
 
+  function cancel() {
+    requestId.current += 1;
+    setEditing(false);
+    setError(null);
+    setInput('');
+    setBusy(false);
+  }
+
   async function submit() {
+    const id = ++requestId.current;
     setBusy(true);
     setError(null);
     try {
       const resolved = await api.resolveProfile(input);
+      if (requestId.current !== id) return;
       setRecent(rememberProfile(resolved));
       setEditing(false);
       setInput('');
       onChange(resolved.steamId64);
     } catch (e) {
+      if (requestId.current !== id) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      if (requestId.current === id) setBusy(false);
     }
   }
 
@@ -93,14 +107,7 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
           <button className="btn btn--primary" type="submit" disabled={busy}>
             {busy ? 'Recherche…' : 'Charger'}
           </button>
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              setEditing(false);
-              setError(null);
-            }}
-          >
+          <button className="btn" type="button" onClick={cancel}>
             Annuler
           </button>
           {error && (
