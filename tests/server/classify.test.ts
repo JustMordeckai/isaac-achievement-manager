@@ -52,6 +52,11 @@ describe('classifyHow', () => {
     expect(how(41)).toEqual({ kind: 'boss', bosses: ['???', 'The Lamb'] });
   });
 
+  it('découpe une liste de boss comme une liste de fins', () => {
+    expect(classifyHow('Defeat Hush/Delirium')).toEqual({ kind: 'boss', bosses: ['Hush', 'Delirium'] });
+    expect(classifyHow('Defeat Mom, Mom’s Heart and Satan')).toEqual({ kind: 'boss', bosses: ['Mom', 'Mom’s Heart', 'Satan'] });
+  });
+
   it('range le reste en misc', () => {
     for (const id of [1, 27, 77, 157, 164, 328, 404, 547, 636]) expect(how(id), `#${id}`).toEqual({ kind: 'misc' });
   });

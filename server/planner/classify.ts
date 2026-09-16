@@ -29,11 +29,16 @@ function characterId(name: string): CharacterId {
   return character.id;
 }
 
-function endingsOf(list: string): EndingId[] | null {
-  const parts = list
+/** Découpe une liste de noms sur les virgules, « and », « or » et « / ». */
+function splitList(list: string): string[] {
+  return list
     .split(/\s*,\s*(?:and\s+|or\s+)?|\s+and\s+|\s+or\s+|\s*\/\s*/)
     .map((part) => part.trim())
     .filter(Boolean);
+}
+
+function endingsOf(list: string): EndingId[] | null {
+  const parts = splitList(list);
   const ids: EndingId[] = [];
   for (const part of parts) {
     const ending = endingByName(part);
@@ -75,10 +80,7 @@ export function classifyHow(condition: string): How {
 
   const boss = /^Defeat (.+)$/i.exec(text);
   if (boss && !BOSS_EXCLUDED.test(boss[1])) {
-    const bosses = boss[1]
-      .split(/\s*,\s*(?:and\s+|or\s+)?|\s+and\s+|\s+or\s+/)
-      .map((part) => part.trim())
-      .filter(Boolean);
+    const bosses = splitList(boss[1]);
     return { kind: 'boss', bosses };
   }
 
