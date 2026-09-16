@@ -11,13 +11,13 @@ const row = (id: number): WikiAchievementRow => {
 };
 
 describe('parseAchievementsPage', () => {
-  it('lit les 640 fiches, ids 1 a 640 sans doublon, sans modele inconnu', () => {
+  it('lit les 640 fiches, ids 1 à 640 sans doublon, sans modèle inconnu', () => {
     expect(rows).toHaveLength(640);
     expect(rows.map((r) => r.id)).toEqual(Array.from({ length: 640 }, (_, i) => i + 1));
     expect(unknown.size).toBe(0);
   });
 
-  it('extrait les champs d une fiche simple', () => {
+  it('extrait les champs d’une fiche simple', () => {
     expect(row(3)).toEqual({
       id: 3,
       wikiName: 'Judas',
@@ -30,7 +30,7 @@ describe('parseAchievementsPage', () => {
     });
   });
 
-  it('distingue le nom wiki du nom affiche', () => {
+  it('distingue le nom wiki du nom affiché', () => {
     expect(row(160)).toMatchObject({
       wikiName: 'Suicide King 2',
       displayName: 'Suicide King',
@@ -39,13 +39,13 @@ describe('parseAchievementsPage', () => {
     });
   });
 
-  it('separe l ancre du lien et prend le nom affiche quand il n y a pas de lien', () => {
+  it('sépare l’ancre du lien et prend le nom affiché quand il n’y a pas de lien', () => {
     expect(row(347)).toMatchObject({ link: 'The Binding of Isaac: Afterbirth †', linkFragment: 'Bosses' });
     expect(row(328)).toMatchObject({ link: 'Hearts', linkFragment: 'Scared_Heart' });
     expect(row(41)).toMatchObject({ link: 'Golden God!', linkFragment: null });
   });
 
-  it('lit l id PC quand le champ contient aussi l id PS4', () => {
+  it('lit l’id PC quand le champ contient aussi l’id PS4', () => {
     expect(row(349)).toMatchObject({ wikiName: 'Black Hole', condition: 'Defeat 20 Portals', conditionLinks: ['Portal'] });
   });
 
@@ -56,14 +56,14 @@ describe('parseAchievementsPage', () => {
     );
   });
 
-  it('retire les commentaires HTML et garde les liens de categorie affiches', () => {
+  it('retire les commentaires HTML et garde les liens de catégorie affichés', () => {
     expect(row(324).condition).toBe(
       "Collect every entry in the Bestiary (bugged v190 - Mobs that don't exist in the bestiary are being counted. This allows Sin Collector to be unlocked without a complete bestiary)",
     );
     expect(row(35).condition).toBe('Obtain three Yes Mother? items in one run');
   });
 
-  it('conserve les pages liees de la condition', () => {
+  it('conserve les pages liées de la condition', () => {
     expect(row(27)).toMatchObject({
       condition: "Defeat Mom, Mom's Heart, or It Lives! using The Bible",
       conditionLinks: ['Mom', "Mom's Heart", 'It Lives!'],
