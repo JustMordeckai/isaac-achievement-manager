@@ -1,0 +1,257 @@
+== Common Achievement Guides ==
+Consult the specific character's page for tips on unlocking a specific [[Characters|character]], as well as tips on playing that character. Each [[completion mark|completion mark's]] page has additional tips for the specific encounter.
+
+For completing or unlocking a [[challenge]], refer to the challenge's specific page.
+
+Tips for filling the [[Donation Machine]] and [[Greed Donation Machine]] are on those pages.
+
+Most other achievements involve doing a basic task repeatedly or having a lucky combination of items, and will be gained with natural play.
+
+== Super Meat Boy & Super Bandage Girl ==
+''See [[Unlocking Super Meat Boy & Super Bandage Girl]].''
+
+== {{dlc+|a+}} Lachryphagy ==
+[[Lachryphagy]] is unlocked by obtaining 10 Tears Up Items/Pills in one run. In normal gameplay this can be extremely rare, and is most often earned accidentally by obtaining this many items by chance. The following are some strategies for obtaining the achievement:
+* Each item collected counts towards the Achievement. Dropping a tears up an item will not count against the total. Progress towards the achievement is only tied to items and pills, and is not directly tied to the actual tears stat. As such, reaching the tear cap or collecting Tears Down pills or items will not count against the achievement.
+* {{C|Lazarus}} starts with a pill, so restarting repeatedly until they have a Tears Up pill ensures that the pill type will be available during the run. From there, prioritizing {{I|Mom's Bottle Of Pills}}, {{I|Placebo}} and {{I|PHD}} will allow them to generate more of these pills. This can be much easier to do in [[Greed mode]], as you can often reroll the shop items until you find these, as well as repeatedly buy pills until another Tears Up one appears.
+* {{C|Tainted Cain}} can craft items that count towards the achievement.
+* Obtaining a large number of items, then repeatedly rerolling them such as by using {{I|D4}} can allow Isaac to get more Tears Up items. Losing a Tears Up item this way will not count against the achievement.
+* {{dlc|r}} A [[Golden Pill]] can be used if Tears Up is not a part of the current run's Pill pool, where when used repeatedly can grant many Tears Up bonuses, but this is very luck-based.
+* Many Tears Up items come from the Item Room and Boss Room pools. {{I|The Pact}} and {{I|Dark Prince's Crown}} can be found in the Devil Deal and Curse Room Pools, whilst {{I|Act of Contrition}} can only be found in the Angel Pool, and {{I|Odd Mushroom (Thin)}} is the only item in the Secret Room Pool that counts towards the achievement. This means collecting as many boss room drops as possible is preferred, but in general going after all item pools is a good idea. The odds of getting tears up items from boss drops can be increased by using {{p|IV - The Emperor?}} successfully, and {{I|Pandora's Box}} on specific floors.
+
+Only items internally tagged [[Item Tags tearsup|tearsup]], as well as any Tears Up pills, will count towards unlocking Lachryphagy. This includes the following items.{{Item Tags table | tag =tearsup | is_activated =false | invert = | collapsed = }} Note that no active items count towards unlocking Lachryphagy.
+
+The following items do not count towards unlocking Lachryphagy, despite increasing tears:
+
+* {{I|Rosary}}
+* {{I|SMB Super Fan}}
+* {{i|Tractor Beam}}
+* {{I|divorce papers}}
+* {{I|Sausage}}
+
+{{dlc-}}
+
+== Obscure Challenge Achievements ==
+These achievements involve performing a specific task without prompting.
+
+; {{dlc|a+}} 5 Nights at Mom's: Get a 5-win streak, using a different character for each win.
+
+Win Streaks count all types of ending including Greed mode. 
+Intentionally beating [[Isaac (Boss)]] or [[Satan]] without the item to continue to chapter 6 counts as a win.
+Beating [[Mom's Heart]] (before unlocking [[It Lives]]) counts as a win. If enough characters have been unlocked, consider going for this achievement early on in a new save file.
+Resetting the run in any way will break the streak. An exception to this is if the player exits their current run and starts a [[challenge]], then starts a normal run again. As challenges aren't part of the win streaks, but still replace the currently saved run, this allows to start a new run without the last, now deleted run, counting as a loss. This may be used to select another character or reset for better Items.
+* In Repentance, this achievement is bugged in various ways:
+** Because the game use a 32-bit architecture and there's 41 characters, the game will count one of the first 9 characters as two wins. That means if in your streak you play once with a character from Isaac to Lazarus, you will get the achievement with 4 wins. If you play with two characters from Isaac to Lazarus, you will get the achievement with 3 wins. Since the game uses a 64-bit architecture on consoles, this bug is PC-only.
+** Using normal [[Characters]] to get a win and then using its tainted counterpart won't work, only one of them will work for obtaining the achievement.
+*** On top of that, due to overflowing, some tainted characters share the same bitmask with some normal characters. The game resets the achievement streak counter if two runs are done with characters with the same bitmask. {{c|Tainted Lilith}} has the same bitmask than {{c|Isaac}}. Here are the pairs of characters that have the same bitmask : Tainted Keeper and Magdalene, Tainted Apollyon and Cain, Tainted Forgotten and Lazarus, Tainted Bethany and ???, Tainted Jacob and Eve, Tainted Dead Lazarus and Samson, Tainted Jacob in Lost form and Azazel. If you did a run with Isaac or Lilith, do not finish a run with Tainted Lilith or the counter will reset. Not confirmed yet but by the same logic as the bug above, this one is likely pc only too.
+** The achievement does not unlock in Co-op Repentance even if the five wins were done with different characters for each player.
+
+; {{dlc|a+}} ZIP!: Defeat The Lamb in under 20 minutes.
+
+The Dark Room can be quickly reached by hitting the [[Sacrifice Room]] spikes 12 times. Consider using {{C|Azazel}} for quickly clearing floors, Isaac with {{I|The D6}} for maximizing chances of a [[Breaking Run|winning item combination]], or {{C|Magdalene}} for a large source of hearts to sacrifice.
+
+; {{dlc|a+}} It's the Key: Defeat The Lamb without taking hearts, coins, and bombs through an entire run.
+This challenge is only concerned with picking up hearts, coins, and bombs off the ground. Items that directly increase your inventory such as {{p|2 of Clubs}} will not break the run.
+Be very careful around items that spawn pickups onto the ground, and chests.
+An alternative source of explosions such as {{I|Bob's Rotten Head}} is valuable in a run where bombs are rare.
+{{C|Magdalene}} is the only character with a certain source of healing, and is recommended for attempting this run with minimal difficulty. This can also be played as a slightly more challenging normal run for {{C|The Lost}} for more experienced players.
+{{dlc|r}} {{c|Tainted Cain}} is also a good choice, since his {{i|Bag of Crafting}} can be used to grab pickups without any downside. The challenge will only be lost if Cain himself grabs any hearts, coins, or bombs. The special seed G0NES00N can also be entered prior to beginning the run. It will not disable achievements, and has the effect of making pickups disappear after a certain time, avoiding situations where a pickup is blocking the only way forward.
+
+== No Damage Achievements ==
+No Damage achievements are some of the most difficult [[achievements]] in the game. There are five of these achievements included in Rebirth, with 4 new achievements with similar objectives added in Afterbirth † with Booster Pack 5. The achievements are as follows:
+
+<table-progress-tracking table-id="1" unique-column-index="1">
+{| class="wikitable"
+ ! Objective
+ ! Achievements
+ |-
+ | Beat [[chapter 1]] without taking damage.
+ | 
+* {{a|Basement Boy}}
+* {{a|Sprinkler}}
+ |-
+ | Beat [[chapter 2]] without taking damage.
+ |
+* {{a|Spelunker Boy}}
+* {{a|Telekinesis}}
+ |-
+ | Beat [[chapter 3]] without taking damage.
+ |
+* {{a|Dark Boy}}
+* {{a|Leprosy}}
+ |-
+ | Beat [[chapter 4]] without taking damage.
+ |
+* {{a|Mama's Boy}}
+* {{a|Pop!}}
+ |-
+ | Beat [[chapter 6]] without taking damage.
+ |
+* {{a|Dead Boy}}
+ |}
+</table-progress-tracking>
+Note that there is no achievement for completing {{s|Sheol}} or the {{s|Cathedral}} this way.
+
+=== What Doesn't Count as Taking Damage ===
+* Using any item that causes self damage ({{i|Blood Rights}}, {{i|Razor Blade}}, {{i|IV Bag}} or {{i|Sharp Plug}})
+* Using health on a [[Blood Donation Machine]] or a [[Devil Beggar]]
+* Taking a [[Devil Room#Deals with the Devil|deal with the Devil]]
+* Using a [[Health Down]] pill
+* Resetting damage with {{i|Glowing Hourglass}}
+* Getting hit while having {{i|Holy Mantle}} active
+
+=== What Counts as Taking Damage ===
+* Getting hit by:
+** Bombs
+** Enemies
+** Enemy projectiles
+** [[Spikes]] (except [[Sacrifice Room]] spikes)
+** Other hazards
+* Stepping on [[Curse Room]] spikes
+* Using a [[Bad Trip]] pill
+
+=== Items ===
+The lists below contain a large majority of items that are valuable and can help a lot in getting these achievements (Most are unlocked by default)
+
+==== Good Items ====
+* {{i|Holy Mantle}} blocks one hit per room, and it doesn't count as damage for these achievements
+* {{i|Glowing Hourglass}} can rewind time allowing you to exit a room in an emergency
+* {{i|Infamy}} can block damage occasionally making it good for saving you
+** {{i|Scapular}} works similar to this but it does not negate damage, instead granting you a soul heart
+* {{i|Gnawed Leaf}} can be extremely useful in boss fights with hard to dodge attacks like {{e|Hush}} and {{e|Delirium}}
+* {{i|Brimstone}} has exteremely high damage, infinite piercing, infinite range and synergizes well with almost all items
+* Any item that increases damage (even temporarily), such as {{i|The Book of Belial}}
+* Any item that provides flight as it is extremely valuable
+** {{t|Callus}}, to a lesser extent
+* Any item that provides [[spectral tears]]
+* Items that provide [[Temporary Buffs#Invulnerability|invincibility]], such as the {{i|Book of Shadows}} or {{i|Unicorn Stump}}
+* {{i|The Bible}} kills {{e|Mom}} and {{e|Mom's Heart}}/{{e|It Lives}} instantly when used during those boss fights.
+* {{i|Pyromaniac}} grants immunity to all explosions.
+* [[Familiar#Orbital Familiars|Orbitals]] that can block enemy shots
+** {{i|Psy Fly}} being one of the most powerful orbitals as it moves to and blocks projectiles unlock normal orbitals
+* {{i|Flush!}} can clear annoying rooms instantly
+* Most [[Cards and Runes]] can be extremely useful in traversing the map quickly 
+** Most useful of which being {{p|XVIII - The Moon}} teleports you to the secret room 
+** {{p|XVII - The Stars}} and {{p|IX - The Hermit}} both teleport you to the shop/treasure room without spending keys
+** {{p|XIX - The Sun}} and {{p|XXI - The World}} both reveal the entire map (Excluding [[Super Secret Room]]s)
+** {{p|IV - The Emperor}} teleports you to the boss room, allowing you to effectively skip the floor by gaining access to the trapdoor
+* {{t|Flat File}} removes all spikes including curse room door spikes, removing the damage penalty upon entering them
+* All playing cards are extremely useful granting a variety of very useful effects
+** {{p|2 of Diamonds}} doubles your coins (If you dont have any you are given 2 coins)
+** {{p|2 of Spades}} doubles your keys (If you dont have any you are given 2 keys)
+** {{p|2 of Clubs}} doubles your bombs (If you dont have any you are given 2 bombs)
+** {{p|Joker}} can teleport you to an angel or devil deal even if you have 0% chance for one to spawn
+* {{i|Diplopia}} can duplicate all items on screen including pickups, along with a really simple acquisition method
+* {{i|Abaddon}} can be good if you dont have a lot of health or need damage
+* {{i|The D6}} can reroll a useless item into a better item (like the ones mentioned above).
+* {{i|Cricket's Head}} grants a 100% damage multiplier and is found in [[Treasure Room (Item Pool)]], {{i|Sacred Heart}} gives homing shots alongside this but is rare and found in [[Angel Room (Item Pool)]]
+** {{i|Polyphemus}} works the same way but with a severe fire rate penalty
+* {{i|Soy Milk}} can grant a 5x fire rate multiplier at the cost of a 0.2x damage multiplier
+** This can be especially useful if used with items like {{i|Playdough Cookie}}, {{i|Little Horn}}, {{i|Explosivo}}
+* {{i|Crack the Sky}} Is relatively common and can kill almost all bosses up until {{e|Mom}} in one use
+* Charge items like {{i|Habit}} and {{i|4.5 Volt}} can be extremely useful in charging items with high charge time like {{i|The D6}}
+* {{i|Dr. Fetus}} grants a 10x damage multiplier and effectively can be used as infinte bombs, working similarly to {{i|Ipecac}}
+* {{i|We Need To Go Deeper!}} Can create trapdoors allowing you to repeatedly skip floors
+** A more effective use of this item is using it while standing on a tile with a cosmetic (Ex. Something with grass or a note on it) will spawn a crawl space, granting you an item, pickups or more rarely spawning a [[Black Market]]
+* {{i|Magic Mushroom}} and {{i|Capricorn}} both increase all stats
+* {{i|A Pony}} and {{i|White Pony}} both grant flight, a 0.5 speed up, and a powerful dash attack
+* {{i|Mama Mega!}} creates a map wide blast, destroying everything on the floor, opening all secret rooms and dealing 200 damage to all enemies
+* {{i|Mystery Gift}} spawns an item from the item pool of the current room your standing in (Ex. if you are standing in a [[Devil Room]] it will spawn an item from the [[Devil Room (Item Pool)]])
+* {{i|Fortune Cookie}} can frequently spawn [[Cards and Runes]] and soul hearts
+* Items like {{i|20/20}}, {{i|The Inner Eye}} and {{i|Mutant Spider}} are major DPS ups as they grant extra shots, effectively multiplying your damage by how many extra shots are granted, which synergizes well with things like {{i|Brimstone}}
+* {{i|Blue Map}} shows you the location of both [[Secret Room]]s
+* {{i|PHD}} makes all of your pills have positive effects
+* {{i|The Parasite}} and {{i|Cricket's Body}} both split your tears upon landing, adding an area of effect
+** This works extremely well with {{i|Jacob's Ladder}} as it will chain the electricity even more
+
+==== Neutral Items ====
+* {{i|Iron Bar}}'s concussive tears cause enemies to move around unpredictably.
+* {{i|Thunder Thighs}} and {{i|Leo}} can be used as an alternative to bombs to break [[Rocks#Tinted Rocks|Tinted Rocks]] (though they mostly drop [[Soul Heart]]s) and possibly find a [[Crawl Space]] or [[Black Market]] but should be used with great care, as stepping on a [[Rock#Bomb Rocks|Bomb Rock]] or a bad [[Rocks#Mushrooms|Mushroom]] will damage the player and disqualify the achievement.
+** Thunder Thighs is also a speed down and a useless health up.
+* {{i|Fire Mind}}'s explosions can damage you if you are too close.
+* {{i|Dark Bum}} usually drops useless Soul Hearts, but occasionally spawns [[Familiar#Blue Spiders|Blue Spiders]] or [[Spider]]s instead.
+* {{t|Mom's Toenail}} can hurt you.
+* Teleporting items.
+** Teleporting into the [[I AM ERROR]] room can cause the player to miss out on a boss item, or even the achievement itself if it is the floor that they would have got it on.
+* {{i|The Wafer}} generally won't help, as the player would be trying not to take any damage in the first place. However, it can be used in conjunction with self-damaging items, even in {{s|Womb}}/{{s|Utero}} and beyond.
+
+==== Bad Items ====
+* Any items that only give health are useless.
+** {{i|Bucket of Lard}} gives 2 Red Heart containers and heals half a Red Heart but is also a speed down.
+* {{i|Strange Attractor}} can cause unpredictable enemy movement, especially with enemies like [[Dip]]s and [[Boom Fly|Boom Flies]].
+* Explosive items such as {{i|Anarchist Cookbook}} should be used with extreme care.
+
+=== Characters ===
+==== Isaac ====
+* {{C|Isaac}} is very advisable once {{i|The D6}} is unlocked; an active item which can be extremely useful to reroll bad items into better items that makes the runs easier.
+* If you have not unlocked {{i|The D6}}, Isaac is less advisable than {{C|???}}, who has slightly better base stats as Isaac.
+
+==== Magdalene ====
+* {{C|Magdalene}} is not a very good choice since she starts with 4 health and the {{i|Yum Heart}}. She also has a low base speed, which makes it hard to avoid enemies that run into you.
+* {{dlc+|a+nr}} Upon completion of the {{A|Aprils Fool}} challenge, Magdalene starts each run holding a [[Speed Up]] pill, allowing her speed to be set to 1.0 from the beginning of the run, allowing for easier dodging.{{dlc-}}
+** {{Dlc|r}}She now starts off with a [[Pills|Full Health Pill]] instead, which forces her to keep her low base speed until a [[Speed#Activated Items|Speed Up Item]] or pill is found.
+
+==== Judas ====
+* {{C|Judas}} is a very advisable character, since he starts with a higher damage multiplier than most characters, and {{i|The Book of Belial}}. Being able to deal more damage means less time dealing with enemies and bosses, and clearing rooms faster. His low health is not a drawback in this case, as long as the player is skilled enough to avoid damage.
+
+==== Samson ====
+* {{C|Samson}} is less advisable than Isaac, as {{i|Bloody Lust}} only increases his damage whenever he takes damage. This leads to a dilemma; Samson must either avoid damage for a higher [[Devil Room]] or [[Angel Room]] chance, or take damage to take advantage of {{i|Bloody Lust}}.
+
+==== Azazel ====
+* {{C|Azazel}} is extremely advisable, as he starts with [[flight]] and a short-ranged version of {{i|Brimstone}}. Azazel's flight allows Azazel to have increased mobility and hide behind [[obstacle]]s, which helps counteract his lack of range with {{i|Brimstone}} on early floors. Azazel's short-ranged {{i|Brimstone}} deals significantly more damage than any other character; allowing Azazel to quickly get through early floors.
+
+==== ??? (or Blue Baby) ====
+* {{C|???}} has slightly better stats than Isaac, making him an advisable character to play.
+* ??? has some advantages over other characters when picking up certain items, since he cannot gain Red [[Heart container]]s. For example, {{i|Whore of Babylon}} is permanently active for ??? once picked up.
+
+==== Lazarus ====
+* {{C|Lazarus}} is not advisable, as he has low range and starts with a random [[pill]]; this makes him slightly worse than non-{{i|The D6}} Isaac.
+* If Lazarus dies, he resurrects as Lazarus Risen - starting with increased stats and the effect of {{i|Anemic}}, which negates his low range. However, Lazarus cannot get the current chapter's achievement if he takes damage to kill himself.
+* {{dlc+|a+}} After beating the {{A|Backasswards}} challenge, Lazarus now begins with {{i|Anemic}}, making his stats roughly equal to Isaac's.{{dlc-}}
+
+==== Eden ====
+* {{C|Eden}} is inadvisable due to their randomness and the fact that [[Mom's Heart]]/[[It Lives]] need to be killed several times to play as Eden for several runs; if Eden starts with a poor set of items, then the player will have to waste another Eden Token.
+
+==== The Lost ====
+* {{C|The Lost}} has no health (although internally he has half a Soul Heart), which can be used to encourage the player to get these achievements, as he can't take damage without dying. He also has flight and can take any Devil deals for free (with the downside of only getting one devil deal). However, strategies such as using Blood Donation Machines won't work with him unless he has extra lives.
+* {{dlc|a}} The Lost begins with {{i|Holy Mantle}} after donating 879 coins to the [[Greed Donation Machine]], allowing him to take one hit on rooms without dying.
+
+==== {{dlc+|a}} Lilith ====
+* {{C|Lilith}} is not recommended for these achievements, as she relies on {{i|Incubus}} to deal damage, and is [[Blindfolded]], which can leave her open to damage if the player isn't careful.{{dlc-}}
+
+==== {{dlc|a}} Keeper ====
+* {{C|Keeper}} is not recommended for these achievements, {{Dlc|nr}}as he is the slowest character in the game (tied with {{C|Magdalene}}), and has a tear delay of 28, the slowest fire rate besides {{C|Azazel}}. The combination of these two factors will have Keeper open to attack much of the time, which is made worse by his slow speed, making it harder to dodge.
+
+==== {{dlc+|a+}} Apollyon ====
+* {{C|Apollyon}} is recommended for these achievements, as he starts with average stats and {{i|Void}}, an item which absorbs other items. Void gives stat increases to Apollyon when passive items are absorbed, and uses the effects of any absorbed active items every time Void is used.{{dlc-}}
+
+=== Strategies ===
+* If possible, maximize the number of times you get to use {{i|The D6}}.
+* Use bombs to escape rooms that you don't think you can handle.
+* Do not risk going over spikes, if you don't have flight.
+* A very easy way to achieve the Dark Boy/Mama's Boy is to obtain {{I|The Bible}} while holding {{P|IV - The Emperor}}. This can be used to skip the final floor of the {{s|Depths}}/{{s|Womb}} entirely.
+** This is even more effective if the floor is affected by [[Curse of the Labyrinth]].
+** Picking up {{i|Starter Deck}} and holding the {{P|Rune of Ehwaz}} and {{P|IV - The Emperor}} in combination with the {{I|The Bible}} is also a viable strategy, although {{P|Rune of Ehwaz}} has a small chance of spawning a door to a [[Crawl Space]] instead.
+* Note that you gain the achievement after you defeat the second boss of a chapter, not after you go down to the next floor. This means, after getting the related achievement, you can go visit the rest of the floor (including the curse room if you have enough health) and obtain pickups that could help you get the later achievements.
+
+== Force Quit and File Manipulation ==
+As a last resort, force quitting the game may help net achievements that remain elusive due to lack of skills and/or luck. A save game is generated whenever one exits a game to the menu or at the start of a new level. If one wishes to go back to the last save game, force quit the game (Force Quit on OS X, End Task on Windows, home button and then close the app on consoles) and then restart the game. The continue option will light up and then your last save game will be restored. Aside from helping with Achievements, this is useful if you want to reverse negative pill effects, exploit coin donation, find the quickest way through the level after doing a "test run", etc...
+* The method is also capable of reversing a player's death. After death, the game will erase the save game. However, if you pause the game right after you are killed and before the next menu pops up, you may then force quit and restore your last save game in the run. This was the only way less skilled players were able to finish the game with The Lost.
+
+* Of course, this method when abused does take away the charm and fun from the game, not to mention significantly extending the real-time it takes to get through a run. A half-hour game may easily extend to several hours if one tries to Force Quit repeatedly.
+
+{{dlc|a}} In Afterbirth, the Force Quit method has been partially patched. It still works as in Rebirth except after a player's death. If you attempt to Force Quit after death, the continue option is not selectable, and you have to start a new game.
+* Having extra lives used to allow the Force Quit method to work after death. There was no need to immediately pause the game after a death in this case. Force quitting after the extra life starts would still restore the last save game. This has since also been patched.
+Alternatively on OS X and Windows, one may disable cloud saving and copy / restore certain save files after quitting the game. This is capable of reversing a player death and allow less skilled players to finish The Lost and {{dlc|a}} Keeper runs. However, this is risky and careless copy and pasting may result in permanently lost in-game achievements and secrets. One does not need to force quit either and may close the app normally. BACK UP YOUR SAVE FILES before attempting the following.
+* Go to The Binding of Isaac Afterbirth folder. Find options.ini and open in a text editor. Change the SteamCloud value from 1 to 0. Save the change to options.ini.
+* When SteamCloud is disabled, the local save file will not reflect your latest cloud save file. The game will look like you're starting from scratch. You can use your last local copy of the cloud save file as the new local save file. The cloud save has format ''[YearMonthDate]''.ab_persistentgamedata''[Slot#]''.dat. Rename this file (and overwrite) to persistentgamedata[''Slot#]''.dat. For example, if using slot 1, rename 20160331.ab_persistentgamedata1.dat (and overwrite) to persistentgamedata1.dat. Now your local save file will reflect your last cloud save file.
+* Play the game and reach a point where you want to save. Pause and exit to the menu to generate a save file (alternatively, starting a new level will generate one). Look in the Binding of Isaac Afterbirth folder for 2 specific files with the following formats: gamestate[Slot#].dat and persistentgamedata[''Slot#]''.dat. Copy these files to another folder on your hard drive. For example, if using slot 1, copy gamestate1.dat and persistentgamedata1.dat to another folder.
+* Since you are using this method and are going to screw up, you may exit the app normally after your character dies instead of force quitting. You'll notice that gamestate[Slot#].dat has disappeared from the Isaac folder. Restore the gamestate[Slot#].dat and (overwrite) persistentgamedata[''Slot#]''.dat files from your other folder.
+* Restart the app. You'll notice that the continue option is now available. You may resume your failed run.
+* In-game and Steam achievements will still unlock with this method.
+* Once you are done manipulating files and want to go back to Steam cloud saving, go back to options.ini in the Isaac folder and change SteamCloud value back to 1.
+* However, once you do this, your cloud save is the old one. To update your cloud save with your current local save, copy the persistentgamedata[''Slot#]''.dat file from the Isaac folder to the remote folder. Rename (and overwrite) to ab_persistentgamedata''[Slot#]''.dat. For example, if using slot 1, copy persistentgamedata1.dat from the Isaac folder and rename/overwrite to ab_persistentgamedata1.dat in the Remote folder.
+This can also work on the 3DS by pausing just as you die and pressing the home button, then closing The Binding of Isaac. Reopening the game and hitting continue will respawn you on the floor you died on. This will reset your progress for that floor. This can be repeated as much as needed; however, there is a bug. If used on the first floor, and the character that dies spawned with any active items - such as Isaac's D6, The Lost's D4, or Judas' Book of Belial - the items will be removed. This can be fixed simply by quitting and continuing whilst still alive.
+{{plat|PS4}} If you are playing while using an active PlayStation Plus membership (even with the Essential tier) you can upload your system save file (as long as automatic upload for the game is disabled) to the cloud. This means, even if you make a mistake during a run while trying to unlock an achievement, you can download the uploaded save file to overwrite your system save file. This will allow you to resume an optimal run from that specific point you uploaded the save file, granting you the freedom to keep replaying until you achieve your desired result. This is incredibly useful for Challenges, such as ULTRA HARD, where certain drops may require multiple resets to acquire again. This also allows you to manipulate certain items like Crooked Penny, allowing for powerful safe runs. The Crooked Penny can be used outside of a room safely, to avoid the failure outcome, then recharged to duplicate the items. (When a run is backed up like this, the Crooked Penny's outcome will always be the same, rolling a new outcome after it's used.)
+{{nav|fr=Succès - Conseils}}
+[[Category:Mechanics]]

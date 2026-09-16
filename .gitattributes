@@ -2,3 +2,4 @@
 *.bin binary
 *.dat binary
 *.vbs text eol=crlf
+tests/fixtures/wiki/** -text

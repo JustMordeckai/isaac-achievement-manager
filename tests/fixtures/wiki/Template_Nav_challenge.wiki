@@ -1,0 +1,74 @@
+{| class="nav-box mw-collapsible {{#if: {{{collapsed|}}} | mw-collapsed}}"
+! colspan="5" class="nav-title" | [[Image:MainPageChallenges.png|24px|frameless]] [[Challenges]] [[Image:MainPageChallenges.png|24px|frameless]]
+|-
+! colspan="5" | [[The Binding of Isaac: Rebirth|Rebirth]]
+|- style="vertical-align:top; text-align:left;"
+| style="width:20%;" | 1. [[Pitch Black]]
+| style="width:20%;" | 2. [[High Brow]]
+| style="width:20%;" | 3. [[Head Trauma]]
+| style="width:20%;" | 4. [[Darkness Falls]]
+| style="width:20%;" | 5. [[The Tank]]
+|- style="vertical-align:top; text-align:left;"
+| 6. [[Solar System]]
+| 7. [[Suicide King (Challenge)|Suicide King]]
+| 8. [[Cat Got Your Tongue]]
+| 9. [[Demo Man]]
+| 10. [[Cursed!]] 
+|- style="vertical-align:top; text-align:left;"
+| 11. [[Glass Cannon (Challenge)|Glass Cannon]]
+| 12. [[When Life Gives You Lemons]]
+| 13. [[Beans!]]
+| 14. [[It's in the Cards]]
+| 15. [[Slow Roll]] 
+|- style="vertical-align:top; text-align:left;"
+| 16. [[Computer Savvy]]
+| 17. [[Waka Waka]]
+| 18. [[The Host]]
+| 19. [[The Family Man]]
+| 20. [[Purist]]
+|-
+! colspan="5" |[[The Binding of Isaac: Afterbirth|Afterbirth]]
+|- style="vertical-align:top; text-align:left;"
+| 21. [[XXXXXXXXL]]
+| 22. [[SPEED!]]
+| 23. [[Blue Bomber]]
+| 24. [[PAY TO PLAY]]
+| 25. [[Have a Heart]]
+|- style="vertical-align:top; text-align:left;"
+| 26. [[I RULE!]]
+| 27. [[BRAINS!]]
+| 28. [[PRIDE DAY!]]
+| 29. [[Onan's Streak]]
+| 30. [[The Guardian]]
+|-
+! colspan="5" | [[The Binding of Isaac: Afterbirth †|Afterbirth †]]
+|- style="vertical-align:top; text-align:left;"
+| 31. [[Backasswards]]
+| 32. [[Aprils Fool]]
+| 33. [[Pokey Mans]]
+| 34. [[Ultra Hard]]
+| 35. [[Pong]]
+|-
+! colspan="5" |[[The Binding of Isaac: Repentance|Repentance]]
+|- style="vertical-align:top; text-align:left;"
+| 36. [[Scat Man]]
+| 37. [[Bloody Mary]]
+| 38. [[Baptism by Fire]]
+| 39. [[Isaac's Awakening]]
+| 40. [[Seeing Double]]
+|- style="vertical-align:top; text-align:left;"
+| 41. [[Pica Run]]
+| 42. [[Hot Potato]]
+| 43. [[Cantripped!]]
+| 44. [[Red Redemption]]
+| 45. [[DELETE THIS]]
+|}
+<noinclude>
+This template should be put at the bottom of challenge related pages for easy navigation.
+
+== Usage ==
+This template is used by entering : {{tl|nav challenge}}
+
+[[Category:Navigation bar templates]]
+[[fr:Modèle:Nav défi]]
+</noinclude>
