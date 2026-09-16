@@ -1,3 +1,4 @@
+import type { LinkedPageInfo } from '../../../server/planner/classify.ts';
 import { fixtureText } from './fixtures.ts';
 
 /** Wikitext d'une page enregistrée dans tests/fixtures/wiki (ex. "Achievements.wiki"). */
@@ -8,4 +9,9 @@ export function wikiText(name: string): string {
 /** Échantillon de pages réelles, titre vers wikitext. */
 export function samplePages(): Record<string, string> {
   return JSON.parse(fixtureText('wiki/pages-sample.json')) as Record<string, string>;
+}
+
+/** Index des 550 pages liées aux fiches (titre demandé vers page résolue et type d'infobox). */
+export function linkedPages(): Record<string, LinkedPageInfo> {
+  return JSON.parse(fixtureText('wiki/linked-pages.json')) as Record<string, LinkedPageInfo>;
 }
