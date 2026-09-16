@@ -60,6 +60,15 @@ describe('parseProfileStatsXml', () => {
     ]);
   });
 
+  it('laisse telle quelle une entité numérique hors plage Unicode', () => {
+    const body = `<playerstats><privacyState>public</privacyState><player><steamID64>${ME_ID64}</steamID64></player>
+      <achievements><achievement closed="0"><name>&#x110000;</name><apiname>5</apiname>
+      <description>Desc</description></achievement></achievements></playerstats>`;
+    expect(parseProfileStatsXml(body).achievements).toEqual([
+      { id: 5, name: '&#x110000;', description: 'Desc', icon: '', iconGray: '', unlocked: false, unlockedAt: null },
+    ]);
+  });
+
   it('signale un profil introuvable', () => {
     expect(errorOf(() => parseProfileStatsXml(NOT_FOUND_XML))).toMatchObject({ kind: 'notFound', message: 'Profil Steam introuvable' });
   });
@@ -103,6 +112,7 @@ describe('parseProfileInput', () => {
     ['https://steamcommunity.com/id/JustMordeckai/', { kind: 'vanity', value: 'JustMordeckai' }],
     ['JustMordeckai', { kind: 'vanity', value: 'JustMordeckai' }],
     ['https://steamcommunity.com/profiles/123/', null],
+    ['https://steamcommunity.com/id/%E0%A4%A/', null],
     ['pas un profil !', null],
     ['', null],
   ])('%s', (input, expected) => {

@@ -39,7 +39,10 @@ function decodeText(raw: string): string {
   return raw.trim().replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
     if (code[0] === '#') {
       const hex = code[1] === 'x' || code[1] === 'X';
-      return String.fromCodePoint(Number.parseInt(code.slice(hex ? 2 : 1), hex ? 16 : 10));
+      const codePoint = Number.parseInt(code.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
     }
     return NAMED_ENTITIES[code.toLowerCase()] ?? entity;
   });
@@ -117,7 +120,11 @@ export function parseProfileInput(input: string): ProfileInput | null {
     if (url[1].toLowerCase() === 'profiles') {
       return isSteamId64(url[2]) ? { kind: 'id64', value: url[2] } : null;
     }
-    return { kind: 'vanity', value: decodeURIComponent(url[2]) };
+    try {
+      return { kind: 'vanity', value: decodeURIComponent(url[2]) };
+    } catch {
+      return null;
+    }
   }
   return /^[A-Za-z0-9_-]{2,32}$/.test(text) ? { kind: 'vanity', value: text } : null;
 }
