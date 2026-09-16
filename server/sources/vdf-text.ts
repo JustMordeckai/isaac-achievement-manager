@@ -13,7 +13,7 @@ export function parseTextVdf(text: string): VdfTextObject {
   function skipBlanks(): void {
     while (pos < text.length) {
       const c = text[pos];
-      if (c === ' ' || c === '\t' || c === '\r' || c === '\n' || c === '﻿') {
+      if (c === ' ' || c === '\t' || c === '\r' || c === '\n' || c === '\uFEFF') {
         pos++;
       } else if (c === '/' && text[pos + 1] === '/') {
         const eol = text.indexOf('\n', pos);

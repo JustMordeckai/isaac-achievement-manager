@@ -20,7 +20,7 @@ export interface SourceResult<T> {
 
 export interface MergeInput {
   profile: ProgressSummary['profile'];
-  /** Definitions du schema Steam local, null s'il est indisponible. */
+  /** Définitions du schéma Steam local, null s'il est indisponible. */
   defs: AchievementDef[] | null;
   steamCache: SourceResult<UnlockMap>;
   save: SourceResult<SaveFileData>;
