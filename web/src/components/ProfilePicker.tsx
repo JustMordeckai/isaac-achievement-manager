@@ -30,6 +30,8 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
 
   function select(value: string) {
     requestId.current += 1;
+    setBusy(false);
+    setInput('');
     if (value === OTHER) {
       setEditing(true);
       setError(null);

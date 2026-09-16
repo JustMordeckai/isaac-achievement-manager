@@ -177,4 +177,30 @@ describe('ProfilePicker', () => {
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     expect(screen.getByLabelText('SteamID64, URL de profil ou pseudo')).toHaveValue('');
   });
+
+  it('ignore une résolution obsolète et libère le formulaire quand on change de profil dans la liste', async () => {
+    const user = userEvent.setup();
+    let resolveFetch: (value: unknown) => void = () => {};
+    const pending = new Promise<unknown>((resolve) => {
+      resolveFetch = resolve;
+    });
+    stubFetch({ 'GET /api/profile/resolve': () => pending });
+    const onChange = vi.fn();
+    render(<ProfilePicker profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
+    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Mon profil (Player)');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('me');
+    await act(async () => {
+      resolveFetch({ steamId64: '76561198000000001', name: 'Ami' });
+      await pending;
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    expect(screen.getByRole('button', { name: 'Charger' })).toBeEnabled();
+    expect(screen.getByLabelText('SteamID64, URL de profil ou pseudo')).toHaveValue('');
+  });
 });
