@@ -23,10 +23,22 @@ if (args.has('--log')) {
   mkdirSync(DATA_DIR, { recursive: true });
   const logFile = path.join(DATA_DIR, 'server.log');
   const write = (...parts: unknown[]): void => {
-    appendFileSync(logFile, `${format(...parts)}\n`);
+    try {
+      appendFileSync(logFile, `${format(...parts)}\n`);
+    } catch {
+      // Erreur disque transitoire pendant l’écriture du journal : on l’ignore pour ne pas
+      // faire planter un serveur par ailleurs sain.
+    }
   };
   console.log = write;
   console.error = write;
+  // Une erreur fatale au démarrage (port invalide dans data/settings.json, échec de bind non lié
+  // à EADDRINUSE, etc.) devient une rejection non gérée puis une exception non interceptée : sans
+  // ce gestionnaire, Node l’écrirait sur une console cachée, invisible, au lieu de data/server.log.
+  process.on('uncaughtException', (error) => {
+    write('Erreur fatale :', error);
+    process.exit(1);
+  });
 }
 
 const settings = loadSettings(DATA_DIR);
