@@ -36,7 +36,7 @@ function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
                 </li>
               ))}
               {items.length > SHOWN_PER_KIND && (
-                <li className="chip chip--more">et {items.length - SHOWN_PER_KIND} autres</li>
+                <li className="chip chip--more">et {items.length - SHOWN_PER_KIND} {items.length - SHOWN_PER_KIND === 1 ? 'autre' : 'autres'}</li>
               )}
             </ul>
           </div>
@@ -59,14 +59,14 @@ export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
         </p>
         <ProgressBar value={summary.unlocked} max={summary.total} label="Progression globale" />
         <p className="hero__meta">
-          {percent(summary.unlocked, summary.total)} · {missing} manquants
+          {percent(summary.unlocked, summary.total)} · {missing} {missing === 1 ? 'manquant' : 'manquants'}
         </p>
         <button
           type="button"
           className="btn btn--primary"
           onClick={() => onShowAchievements({ status: 'missing', dlc: 'all', onlyDesync: false })}
         >
-          Voir les {missing} succès manquants
+          {missing === 1 ? 'Voir le succès manquant' : `Voir les ${missing} succès manquants`}
         </button>
       </section>
 

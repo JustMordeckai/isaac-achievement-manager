@@ -47,7 +47,7 @@ describe('Dashboard', () => {
     expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-09-16T14:30:51.000Z');
   });
 
-  it("indique l'absence de date", () => {
+  it('indique l’absence de date', () => {
     render(<Dashboard summary={makeSummary({ recent: [] })} onShowAchievements={vi.fn()} />);
     expect(screen.getByText('Aucune date de déblocage connue.')).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe('Dashboard', () => {
     expect(onShow).toHaveBeenCalledWith({ status: 'all', dlc: 'all', onlyDesync: true });
   });
 
-  it("résume les longues listes et donne l'astuce Alt+F2", () => {
+  it('résume les longues listes et donne l’astuce Alt+F2', () => {
     const desyncs: Desync[] = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: `Succès ${i + 1}`, kind: 'steamOnly' }));
     render(<Dashboard summary={makeSummary({ desyncs })} onShowAchievements={vi.fn()} />);
     expect(screen.getByText('#10 Succès 10')).toBeInTheDocument();
@@ -72,15 +72,29 @@ describe('Dashboard', () => {
     expect(screen.getByText(/Alt\+F2/)).toBeInTheDocument();
   });
 
-  it("indique l'absence d'écart", () => {
+  it('indique l’absence d’écart', () => {
     render(<Dashboard summary={makeSummary({ desyncs: [] })} onShowAchievements={vi.fn()} />);
     expect(screen.getByText(/Aucun écart/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Voir dans la liste' })).not.toBeInTheDocument();
   });
+
+  it('affiche le singulier pour un seul manquant', () => {
+    render(<Dashboard summary={makeSummary({ unlocked: 640, total: 641 })} onShowAchievements={vi.fn()} />);
+    expect(screen.getByText('99,8 % · 1 manquant')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir le succès manquant' })).toBeInTheDocument();
+  });
+
+  it('affiche le singulier pour un seul désyncs restant', () => {
+    const desyncs: Desync[] = Array.from({ length: 11 }, (_, i) => ({ id: i + 1, name: `Succès ${i + 1}`, kind: 'steamOnly' }));
+    render(<Dashboard summary={makeSummary({ desyncs })} onShowAchievements={vi.fn()} />);
+    expect(screen.getByText('#10 Succès 10')).toBeInTheDocument();
+    expect(screen.queryByText('#11 Succès 11')).not.toBeInTheDocument();
+    expect(screen.getByText('et 1 autre')).toBeInTheDocument();
+  });
 });
 
 describe('AchievementIcon', () => {
-  it("affiche l'icône puis un repli en cas d'erreur", () => {
+  it('affiche l’icône puis un repli en cas d’erreur', () => {
     const { container } = render(<AchievementIcon file="abc.jpg" alt="Magdalene" />);
     const img = screen.getByRole('img', { name: 'Magdalene' });
     expect(img).toHaveAttribute('src', '/api/icons/abc.jpg');
@@ -89,7 +103,7 @@ describe('AchievementIcon', () => {
     expect(container.querySelector('.ach-icon--missing')).not.toBeNull();
   });
 
-  it("affiche le repli sans fichier", () => {
+  it('affiche le repli sans fichier', () => {
     const { container } = render(<AchievementIcon file="" alt="" />);
     expect(container.querySelector('.ach-icon--missing')).not.toBeNull();
   });
