@@ -59,7 +59,7 @@ export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
         </p>
         <ProgressBar value={summary.unlocked} max={summary.total} label="Progression globale" />
         <p className="hero__meta">
-          {percent(summary.unlocked, summary.total)} · {missing} {missing === 1 ? 'manquant' : 'manquants'}
+          {percent(summary.unlocked, summary.total)}, {missing} {missing === 1 ? 'manquant' : 'manquants'}
         </p>
         <button
           type="button"

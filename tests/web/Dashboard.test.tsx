@@ -11,7 +11,7 @@ describe('Dashboard', () => {
     render(<Dashboard summary={makeSummary()} onShowAchievements={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
     expect(screen.getByText('125')).toBeInTheDocument();
-    expect(screen.getByText('19,5 % · 516 manquants')).toBeInTheDocument();
+    expect(screen.getByText('19,5 %, 516 manquants')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Progression globale' })).toHaveAttribute('aria-valuenow', '125');
   });
 
@@ -80,7 +80,7 @@ describe('Dashboard', () => {
 
   it('affiche le singulier pour un seul manquant', () => {
     render(<Dashboard summary={makeSummary({ unlocked: 640, total: 641 })} onShowAchievements={vi.fn()} />);
-    expect(screen.getByText('99,8 % · 1 manquant')).toBeInTheDocument();
+    expect(screen.getByText('99,8 %, 1 manquant')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Voir le succès manquant' })).toBeInTheDocument();
   });
 
