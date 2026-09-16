@@ -27,7 +27,20 @@ function readQuery(req: Request): { profile: string; slot: number | null } {
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
+
+  // Contrôle du DNS rebinding : après un rebinding, une page tierce devient same-origin avec
+  // 127.0.0.1 et pourrait lire /api/progress ou appeler /api/shutdown. Placé avant toute route,
+  // ce middleware couvre aussi les middlewares statiques et Vite ajoutés ensuite par server/index.ts.
+  app.use((req, res, next) => {
+    if (req.hostname === '127.0.0.1' || req.hostname === 'localhost') return next();
+    res.status(403).json({ error: 'Hôte non autorisé' } satisfies ApiError);
+  });
+
   const api = express.Router();
+
+  api.get('/ping', (_req, res) => {
+    res.json({ app: APP_NAME });
+  });
 
   api.get('/status', async (_req, res) => {
     let sources: StatusResponse['sources'] = null;
@@ -64,7 +77,8 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   api.post('/shutdown', (req, res) => {
-    // En-tête personnalisé : un site tiers ne peut pas l'envoyer sans requête CORS préalable, jamais autorisée ici.
+    // L'en-tête personnalisé bloque les requêtes cross-origin (un site tiers ne peut pas l'envoyer sans
+    // requête CORS préalable, jamais autorisée ici) ; le contrôle d'hôte au-dessus bloque le rebinding DNS.
     if (req.get('X-IAM-Action') !== 'shutdown') throw new HttpError(403, 'En-tête X-IAM-Action: shutdown requis');
     const { onShutdown } = deps;
     if (!onShutdown) throw new HttpError(404, 'Arrêt indisponible');

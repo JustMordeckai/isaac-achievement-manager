@@ -1,5 +1,5 @@
 import { once } from 'node:events';
-import type { Server } from 'node:http';
+import http, { type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, type AppDeps } from '../../server/app.ts';
@@ -36,7 +36,41 @@ async function start(overrides: Partial<AppDeps> = {}): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
+function requestWithHost(port: number, hostHeader: string): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: '127.0.0.1', port, path: '/api/status', headers: { Host: hostHeader } },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => {
+          data += chunk;
+        });
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: data ? JSON.parse(data) : null }));
+      },
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 describe('API', () => {
+  it('bloque un hôte non autorisé et laisse passer 127.0.0.1 et localhost', async () => {
+    const base = await start();
+    const { port } = new URL(base);
+    const evil = await requestWithHost(Number(port), 'evil.example:5250');
+    expect(evil.status).toBe(403);
+    expect(evil.body).toEqual({ error: 'Hôte non autorisé' });
+    const local = await requestWithHost(Number(port), `localhost:${port}`);
+    expect(local.status).toBe(200);
+  });
+
+  it('répond à /api/ping sans dépendre des sources de progression', async () => {
+    const base = await start({ progress: { get: vi.fn(() => new Promise<never>(() => {})) } });
+    const res = await fetch(`${base}/api/ping`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ app: 'isaac-achievement-manager' });
+  });
+
   it('sert la progression du profil par défaut', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get } });

@@ -82,7 +82,7 @@ function openBrowser(target: string): void {
 
 async function isOurServer(): Promise<boolean> {
   try {
-    const res = await fetch(new URL('api/status', url), { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(new URL('api/ping', url), { signal: AbortSignal.timeout(3000) });
     const body: unknown = await res.json();
     return typeof body === 'object' && body !== null && (body as { app?: unknown }).app === APP_NAME;
   } catch {
