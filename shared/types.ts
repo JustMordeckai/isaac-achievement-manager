@@ -236,6 +236,8 @@ export interface PlannedRun {
   steps: string[];
   /** Succès obtenus par cette run. */
   achievements: Array<{ id: number; name: string }>;
+  /** Succès que cette run rapproche sans les obtenir (run de préparation), vide sinon. */
+  prepares: Array<{ id: number; name: string }>;
   minutes: number;
   score: number;
   /** Prérequis encore manquants (vide si la run est jouable). */
@@ -306,5 +308,13 @@ export interface RoutesResponse {
 /** Partie planificateur de la fiche d'un succès. */
 export interface CardPlan {
   requirements: Requirement[];
-  runs: Array<Pick<PlannedRun, 'id' | 'character' | 'mode' | 'endings' | 'minutes'>>;
+  /** Runs du plan qui obtiennent le succès ou le préparent. */
+  runs: Array<
+    Pick<PlannedRun, 'id' | 'character' | 'mode' | 'endings' | 'minutes'> & {
+      /** La run a des prérequis manquants. */
+      blocked: boolean;
+      /** Run de préparation : elle rapproche du succès sans l'obtenir. */
+      preparation: boolean;
+    }
+  >;
 }

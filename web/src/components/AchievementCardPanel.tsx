@@ -56,6 +56,8 @@ function PlanSection({ plan, onOpenRoutes }: { plan: CardPlan; onOpenRoutes(): v
               <li key={run.id}>
                 Run <span lang="en">{characterName(run.character)}</span> ({RUN_MODE_LABELS[run.mode]}) : battre{' '}
                 <span lang="en">{endingList(run.endings)}</span>, environ {formatMinutes(run.minutes)}
+                {run.preparation && ', run de préparation'}
+                {run.blocked && ", à débloquer d'abord"}
               </li>
             ))}
           </ul>

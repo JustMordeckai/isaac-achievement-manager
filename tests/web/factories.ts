@@ -121,6 +121,7 @@ export function makeRun(overrides: Partial<PlannedRun> = {}): PlannedRun {
       { id: 45, name: 'Guardian Angel' },
       { id: 71, name: "Maggy's Faith" },
     ],
+    prepares: [],
     minutes: 74,
     score: 1.622,
     missing: [],

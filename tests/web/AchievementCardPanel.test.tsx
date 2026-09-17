@@ -75,7 +75,17 @@ describe('AchievementCardPanel', () => {
         { anyOf: [{ id: 79, name: 'Azazel' }], met: true },
         { anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: false },
       ],
-      runs: [{ id: 'azazel-1', character: 'azazel', mode: 'hard', endings: ['bossRush', 'momsHeart'], minutes: 38 }],
+      runs: [
+        {
+          id: 'azazel-1',
+          character: 'azazel',
+          mode: 'hard',
+          endings: ['bossRush', 'momsHeart'],
+          minutes: 38,
+          blocked: false,
+          preparation: false,
+        },
+      ],
     };
     const { onOpenRoutes } = renderPanel(makeCard({ plan }));
     const section = await screen.findByRole('region', { name: "Pour l'obtenir" });
@@ -88,6 +98,26 @@ describe('AchievementCardPanel', () => {
     expect(within(section).getByRole('heading', { level: 4, name: 'Run du plan' })).toBeInTheDocument();
     await user.click(within(section).getByRole('button', { name: 'Voir les routes' }));
     expect(onOpenRoutes).toHaveBeenCalled();
+  });
+
+  it('signale les runs à débloquer d’abord et les runs de préparation', async () => {
+    const run = { character: 'azazel' as const, mode: 'hard' as const };
+    const plan: CardPlan = {
+      requirements: [],
+      runs: [
+        { ...run, id: 'azazel-2', endings: ['mother'], minutes: 55, blocked: true, preparation: false },
+        { ...run, id: 'azazel-3', endings: ['beast'], minutes: 60, blocked: false, preparation: true },
+        { ...run, id: 'azazel-1', endings: ['bossRush', 'mother'], minutes: 63, blocked: true, preparation: true },
+      ],
+    };
+    renderPanel(makeCard({ plan }));
+    const section = await screen.findByRole('region', { name: "Pour l'obtenir" });
+    expect(within(section).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      "Run Azazel (Difficile) : battre Mother, environ 55 min, à débloquer d'abord",
+      'Run Azazel (Difficile) : battre The Beast, environ 1 h, run de préparation',
+      "Run Azazel (Difficile) : battre Boss Rush, Mother, environ 1 h 03, run de préparation, à débloquer d'abord",
+    ]);
+    expect(within(section).getByRole('heading', { level: 4, name: 'Runs du plan' })).toBeInTheDocument();
   });
 
   it('masque le plan d’un succès débloqué ou sans méthode planifiable', async () => {

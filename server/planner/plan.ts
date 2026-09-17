@@ -37,16 +37,29 @@ const KILL_COUNTERS = new Map<number, EndingId>([
 const MAX_RUNS = 12;
 
 interface Context {
-  kb: KnowledgeBase;
   names: Map<number, string>;
   /** Succès obtenus, plus ceux déjà promis par une run retenue. */
   claimed: Set<number>;
   unlocked: ReadonlySet<number>;
   counters: readonly number[] | null;
+  /** Compteur de la sauvegarde et fin comptée, pour chaque succès « battre X n fois » reconnu. */
+  killCounters: Map<number, { index: number; ending: EndingId }>;
   byCharacter: Map<CharacterId, KbAchievement[]>;
   others: KbAchievement[];
-  /** Fins déjà battues par au moins un personnage, ou promises par une run retenue. */
-  beaten: Set<EndingId>;
+}
+
+/** Situation dans laquelle on évalue une run. */
+interface State {
+  /** Marques du personnage. */
+  marks: CharacterMarks;
+  /** Fins déjà battues par au moins un personnage. */
+  beaten: ReadonlySet<EndingId>;
+}
+
+/** Marque à élever jusqu'à un niveau pour un succès encore visé. */
+interface Pair {
+  mark: MarkId;
+  level: MarkLevel;
 }
 
 function providedMarks(endings: EndingId[], mode: RunMode): Map<MarkId, MarkLevel> {
@@ -59,18 +72,18 @@ function providedMarks(endings: EndingId[], mode: RunMode): Map<MarkId, MarkLeve
   return provided;
 }
 
-function required(ending: EndingId, hard: boolean): { mark: MarkId; level: MarkLevel } {
+function required(ending: EndingId, hard: boolean): Pair {
   const { mark, level } = markForEnding(ending);
   return { mark, level: hard ? 2 : level };
 }
 
-function gainsFor(
-  ctx: Context,
-  character: CharacterId,
-  marks: CharacterMarks,
-  option: RouteOption,
-  mode: RunMode,
-): number[] {
+/** Succès « toutes les marques en difficile » du personnage, s'il en a un. */
+function hardAllOf(byCharacter: Map<CharacterId, KbAchievement[]>, character: CharacterId): KbAchievement | undefined {
+  return (byCharacter.get(character) ?? []).find((a) => a.how.kind === 'hard-all');
+}
+
+function gainsFor(ctx: Context, character: CharacterId, state: State, option: RouteOption, mode: RunMode): number[] {
+  const { marks, beaten } = state;
   const provided = providedMarks(option.endings, mode);
   const reaches = (ending: EndingId, hard: boolean) => {
     const need = required(ending, hard);
@@ -97,22 +110,26 @@ function gainsFor(
     if (gained) gains.push(achievement.id);
   }
   const normalRun = option.kind !== 'greed' && option.kind !== 'greedier';
+  const inRun = (boss: string) => {
+    if (boss === 'Mom') return normalRun;
+    const ending = endingByName(boss);
+    return ending !== null && option.endings.includes(ending.id);
+  };
+  const beatenBefore = (boss: string) => {
+    const ending = endingByName(boss);
+    return ending !== null && beaten.has(ending.id);
+  };
   for (const achievement of ctx.others) {
     if (ctx.claimed.has(achievement.id)) continue;
     const how = achievement.how;
     if (how.kind === 'boss') {
-      const beaten = how.bosses.every((boss) => {
-        if (boss === 'Mom') return normalRun;
-        const ending = endingByName(boss);
-        return ending !== null && (option.endings.includes(ending.id) || ctx.beaten.has(ending.id));
-      });
-      if (beaten && how.bosses.some((boss) => boss === 'Mom' || option.endings.includes(endingByName(boss)?.id as EndingId))) {
+      if (how.bosses.every((boss) => inRun(boss) || beatenBefore(boss)) && how.bosses.some(inRun)) {
         gains.push(achievement.id);
       }
     } else if (how.kind === 'counter' && ctx.counters) {
-      const index = counterIndex(achievement.condition);
-      const ending = index === null ? undefined : KILL_COUNTERS.get(index);
-      if (index !== null && ending && option.endings.includes(ending) && ctx.counters[index] + 1 >= how.total) {
+      const kill = ctx.killCounters.get(achievement.id);
+      const value = kill ? ctx.counters[kill.index] : undefined;
+      if (kill && value !== undefined && option.endings.includes(kill.ending) && value + 1 >= how.total) {
         gains.push(achievement.id);
       }
     }
@@ -120,8 +137,44 @@ function gainsFor(
   return gains;
 }
 
-function requirementsFor(ctx: Context, character: CharacterId, option: RouteOption): Requirement[] {
-  return toRequirements(requirementGroups(character, option.endings, option.extraRequires), ctx.names, ctx.unlocked);
+function requirementKey(requirement: Requirement): string {
+  return requirement.anyOf.map((a) => a.id).join('|');
+}
+
+/** Ajoute à une liste de prérequis ceux qui n'y figurent pas encore. */
+function mergeRequirements(list: Requirement[], extra: Requirement[]): Requirement[] {
+  const seen = new Set(list.map(requirementKey));
+  const merged = [...list];
+  for (const requirement of extra) {
+    const key = requirementKey(requirement);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(requirement);
+  }
+  return merged;
+}
+
+/**
+ * Prérequis manquants d'une run. Si un de ses gains n'existe que grâce aux runs déjà retenues (il
+ * n'apparaît pas face à l'état réel), elle hérite des prérequis manquants des runs bloquées du personnage.
+ */
+function missingFor(
+  ctx: Context,
+  character: CharacterId,
+  option: RouteOption,
+  mode: RunMode,
+  gains: number[],
+  real: State,
+  blocked: Requirement[],
+): Requirement[] {
+  const missing = toRequirements(
+    requirementGroups(character, option.endings, option.extraRequires),
+    ctx.names,
+    ctx.unlocked,
+  ).filter((r) => !r.met);
+  if (blocked.length === 0 || gains.length === 0) return missing;
+  const realGains = new Set(gainsFor(ctx, character, real, option, mode));
+  return gains.every((id) => realGains.has(id)) ? missing : mergeRequirements(missing, blocked);
 }
 
 function modeFor(option: RouteOption, hard: boolean): RunMode {
@@ -139,16 +192,91 @@ interface Candidate {
   option: RouteOption;
   mode: RunMode;
   gains: number[];
+  /** Succès visés dont la run élève au moins une marque (run de préparation). */
+  prepares: number[];
+  /** Nombre de marques distinctes élevées vers un succès visé (run de préparation). */
+  raised: number;
   missing: Requirement[];
 }
 
-function better(a: Candidate, b: Candidate): boolean {
+function better(a: Candidate, b: Candidate, value: (c: Candidate) => number): boolean {
   const playableA = a.missing.length === 0;
   const playableB = b.missing.length === 0;
   if (playableA !== playableB) return playableA;
-  // Le plus de succès par run (spec §7.4), puis la run la plus courte.
-  if (a.gains.length !== b.gains.length) return a.gains.length > b.gains.length;
+  // Le plus de succès par run (spec §7.4), ou de marques élevées, puis la run la plus courte.
+  if (value(a) !== value(b)) return value(a) > value(b);
   return a.option.minutes < b.option.minutes;
+}
+
+interface Search {
+  ctx: Context;
+  character: CharacterId;
+  /** Marques du personnage après les runs déjà retenues, et fins battues par les runs jouables. */
+  state: State;
+  /** État réel, avant toute run planifiée. */
+  real: State;
+  hard: boolean;
+  /** Prérequis manquants des runs bloquées déjà retenues pour ce personnage. */
+  blocked: Requirement[];
+}
+
+/** Run qui rapporte le plus de succès tout de suite. */
+function bestRun({ ctx, character, state, real, hard, blocked }: Search): Candidate | null {
+  let best: Candidate | null = null;
+  for (const option of ROUTE_OPTIONS) {
+    const mode = modeFor(option, hard);
+    const gains = gainsFor(ctx, character, state, option, mode);
+    if (gains.length === 0) continue;
+    const missing = missingFor(ctx, character, option, mode, gains, real, blocked);
+    const candidate: Candidate = { option, mode, gains, prepares: [], raised: 0, missing };
+    if (!best || better(candidate, best, (c) => c.gains.length)) best = candidate;
+  }
+  return best;
+}
+
+/** Marques encore à élever pour chaque succès `hard-all` ou `multi-mark` visé par le personnage. */
+function pendingTargets(ctx: Context, character: CharacterId, marks: CharacterMarks) {
+  const targets: Array<{ id: number; pairs: Pair[] }> = [];
+  for (const achievement of ctx.byCharacter.get(character) ?? []) {
+    if (ctx.claimed.has(achievement.id)) continue;
+    const how = achievement.how;
+    let pairs: Pair[] = [];
+    if (how.kind === 'hard-all') {
+      pairs = MARK_IDS.filter((mark) => marks[mark] < 2).map((mark) => ({ mark, level: 2 }));
+    } else if (how.kind === 'multi-mark') {
+      pairs = how.endings.map((e) => required(e, how.hard)).filter((need) => marks[need.mark] < need.level);
+    }
+    if (pairs.length > 0) targets.push({ id: achievement.id, pairs });
+  }
+  return targets;
+}
+
+/**
+ * Run de préparation, quand aucune run ne rapporte de succès : celle qui élève le plus de marques
+ * encore exigées par un succès visé (note complète en plusieurs runs, fins d'un `multi-mark` qui ne
+ * tiennent pas dans une seule run).
+ */
+function bestPreparation({ ctx, character, state, real, hard, blocked }: Search): Candidate | null {
+  const targets = pendingTargets(ctx, character, state.marks);
+  if (targets.length === 0) return null;
+  let best: Candidate | null = null;
+  for (const option of ROUTE_OPTIONS) {
+    const mode = modeFor(option, hard);
+    const provided = providedMarks(option.endings, mode);
+    const raised = new Set<string>();
+    const prepares: number[] = [];
+    for (const { id, pairs } of targets) {
+      const hit = pairs.filter((pair) => (provided.get(pair.mark) ?? 0) >= pair.level);
+      if (hit.length === 0) continue;
+      prepares.push(id);
+      for (const pair of hit) raised.add(`${pair.mark}:${pair.level}`);
+    }
+    if (raised.size === 0) continue;
+    const missing = missingFor(ctx, character, option, mode, [], real, blocked);
+    const candidate: Candidate = { option, mode, gains: [], prepares, raised: raised.size, missing };
+    if (!best || better(candidate, best, (c) => c.raised)) best = candidate;
+  }
+  return best;
 }
 
 /** Fins dont la marque est déjà obtenue par au moins un personnage. */
@@ -171,6 +299,7 @@ export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
   const names = new Map(achievements.map((a) => [a.id, a.name]));
   const byCharacter = new Map<CharacterId, KbAchievement[]>();
   const others: KbAchievement[] = [];
+  const killCounters = new Map<number, { index: number; ending: EndingId }>();
   for (const achievement of kb.achievements) {
     const how = achievement.how;
     if (how.kind === 'mark' || how.kind === 'multi-mark' || how.kind === 'hard-all' || how.kind === 'closet') {
@@ -180,54 +309,61 @@ export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
     } else if (how.kind === 'boss' || how.kind === 'counter') {
       others.push(achievement);
     }
+    if (how.kind === 'counter') {
+      const index = counterIndex(achievement.condition);
+      const ending = index === null ? undefined : KILL_COUNTERS.get(index);
+      if (index !== null && ending) killCounters.set(achievement.id, { index, ending });
+    }
   }
   const ctx: Context = {
-    kb,
     names,
     claimed: new Set(unlocked),
     unlocked,
     counters: save?.counters ?? null,
+    killCounters,
     byCharacter,
     others,
-    beaten: new Set(),
   };
   const current = save?.marks ?? inferMarks(kb, unlocked);
-  ctx.beaten = beatenEndings(current);
+  const realBeaten = beatenEndings(current);
+  // Fins battues en vrai, plus celles des runs jouables déjà retenues.
+  const beaten = new Set(realBeaten);
   const shown = displayMarks(kb, current, save?.marks != null);
 
   const runs: PlannedRun[] = [];
   for (const { id: character } of CHARACTERS) {
     const marks = { ...current[character] };
-    const hardAll = (byCharacter.get(character) ?? []).find((a) => a.how.kind === 'hard-all');
-    const hard = hardAll !== undefined && !unlocked.has(hardAll.id);
+    const hardAll = hardAllOf(byCharacter, character);
+    const search: Search = {
+      ctx,
+      character,
+      state: { marks, beaten },
+      real: { marks: current[character], beaten: realBeaten },
+      hard: hardAll !== undefined && !unlocked.has(hardAll.id),
+      blocked: [],
+    };
     const coefficient = CHARACTER_INFO[character].coefficient;
     for (let n = 1; n <= MAX_RUNS; n++) {
-      let best: Candidate | null = null;
-      for (const option of ROUTE_OPTIONS) {
-        const mode = modeFor(option, hard);
-        const gains = gainsFor(ctx, character, marks, option, mode);
-        if (gains.length === 0) continue;
-        const candidate: Candidate = {
-          option,
-          mode,
-          gains,
-          missing: requirementsFor(ctx, character, option).filter((r) => !r.met),
-        };
-        if (!best || better(candidate, best)) best = candidate;
-      }
+      const best = bestRun(search) ?? bestPreparation(search);
       if (!best) break;
       for (const id of best.gains) ctx.claimed.add(id);
-      for (const ending of best.option.endings) ctx.beaten.add(ending);
+      if (best.missing.length === 0) {
+        for (const ending of best.option.endings) beaten.add(ending);
+      } else {
+        search.blocked = mergeRequirements(search.blocked, best.missing);
+      }
       applyRun(marks, best.option.endings, best.mode);
+      const named = (id: number) => ({ id, name: names.get(id) ?? `#${id}` });
       runs.push({
         id: `${character}-${n}`,
         character,
         mode: best.mode,
         endings: best.option.endings,
         steps: routeSteps(best.option),
-        achievements: best.gains.map((id) => ({ id, name: names.get(id) ?? `#${id}` })),
+        achievements: best.gains.map(named),
+        prepares: best.prepares.map(named),
         minutes: best.option.minutes,
-        // Succès par heure de jeu, pondérés par la facilité du personnage.
+        // Succès par heure de jeu, pondérés par la facilité du personnage (0 pour une run de préparation).
         score: round((best.gains.length * coefficient * 60) / best.option.minutes),
         missing: best.missing,
         note: CHARACTER_INFO[character].note,
@@ -246,7 +382,7 @@ export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
   return {
     marksSource: save?.marks ? 'save' : 'inferred',
     characters: CHARACTERS.map(({ id }) => {
-      const hardAll = (byCharacter.get(id) ?? []).find((a) => a.how.kind === 'hard-all');
+      const hardAll = hardAllOf(byCharacter, id);
       return {
         id,
         unlocked: isCharacterUnlocked(id, unlocked),

@@ -61,7 +61,9 @@ describe('Routes : runs conseillées', () => {
     expect(screen.getByText(/^1 run jouable tout de suite sur 2/)).toBeInTheDocument();
     unmount();
     renderRoutes(makePlan({ runs: [] }));
-    expect(screen.getByText('Aucune run à proposer : toutes les marques utiles sont obtenues.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Aucune run à proposer : les succès liés aux marques sont tous obtenus.'),
+    ).toBeInTheDocument();
   });
 
   it('affiche les runs par pages de 20', async () => {

@@ -282,7 +282,15 @@ describe('API wiki', () => {
     expect(card.kb).toEqual({ state: 'ok', syncedAt: kb.syncedAt, running: false });
     expect(card.plan.requirements).toEqual([{ anyOf: [{ id: 4, name: 'The Womb' }], met: true }]);
     expect(card.plan.runs).toEqual([
-      { id: 'isaac-1', character: 'isaac', mode: 'hard', endings: ['bossRush', 'momsHeart', 'satan', 'lamb', 'megaSatan', 'delirium'], minutes: 85 },
+      {
+        id: 'isaac-1',
+        character: 'isaac',
+        mode: 'hard',
+        endings: ['bossRush', 'momsHeart', 'satan', 'lamb', 'megaSatan', 'delirium'],
+        minutes: 85,
+        blocked: false,
+        preparation: false,
+      },
     ]);
   });
 
@@ -296,7 +304,15 @@ describe('API wiki', () => {
       { anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: true },
     ]);
     expect(card.plan.runs).toEqual([
-      { id: 'taintedIsaac-5', character: 'taintedIsaac', mode: 'normal', endings: ['beast'], minutes: 60 },
+      {
+        id: 'taintedIsaac-5',
+        character: 'taintedIsaac',
+        mode: 'normal',
+        endings: ['beast'],
+        minutes: 60,
+        blocked: true,
+        preparation: false,
+      },
     ]);
   });
 

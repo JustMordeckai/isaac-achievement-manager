@@ -34,6 +34,32 @@ describe('RunCard', () => {
     expect(steps).toEqual(makeRun().steps);
   });
 
+  it('présente une run de préparation et ouvre les succès qu’elle rapproche', async () => {
+    const user = userEvent.setup();
+    const onOpenAchievement = vi.fn();
+    const run = makeRun({
+      id: 'isaac-1',
+      character: 'isaac',
+      endings: ['mother'],
+      achievements: [],
+      prepares: [{ id: 253, name: 'Buddy Baby' }],
+      score: 0,
+    });
+    render(<RunCard run={run} onOpenAchievement={onOpenAchievement} />);
+    const card = screen.getByRole('article', { name: 'Isaac' });
+    expect(
+      within(card).getByText('Run de préparation : aucun succès tout de suite, elle rapproche de'),
+    ).toBeInTheDocument();
+    expect(within(card).queryByText(/par heure/)).not.toBeInTheDocument();
+    expect(within(card).queryByRole('list', { name: 'Succès obtenus' })).not.toBeInTheDocument();
+    const chip = within(within(card).getByRole('list', { name: 'Succès préparés' })).getByRole('button');
+    expect(chip).toHaveClass('chip', 'chip--link');
+    expect(chip).toHaveTextContent('Buddy Baby');
+    expect(chip.firstElementChild).toHaveAttribute('lang', 'en');
+    await user.click(chip);
+    expect(onOpenAchievement).toHaveBeenCalledWith(253);
+  });
+
   it('indique les prérequis manquants et la note du personnage', () => {
     const run = makeRun({
       mode: 'normal',

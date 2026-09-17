@@ -180,7 +180,7 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
       {runs.length === 0 ? (
         <p className="placeholder">
           {plan.runs.length === 0
-            ? 'Aucune run à proposer : toutes les marques utiles sont obtenues.'
+            ? 'Aucune run à proposer : les succès liés aux marques sont tous obtenus.'
             : "Aucune run jouable pour ce choix : affiche les runs à débloquer pour voir quoi débloquer d'abord."}
         </p>
       ) : (
