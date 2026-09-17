@@ -151,6 +151,9 @@ describe('Achievements', () => {
     expect(within(playOnline).getByText('Repentance')).toBeInTheDocument();
     expect(within(playOnline).getByText('dans la sauvegarde')).toBeInTheDocument();
     expect(within(playOnline).getByText('#638')).toBeInTheDocument();
+    // Noms et descriptions viennent du jeu, en anglais.
+    expect(within(playOnline).getByRole('button', { name: 'Play Online' })).toHaveAttribute('lang', 'en');
+    expect(playOnline.querySelector('.ach__desc')).toHaveAttribute('lang', 'en');
   });
 
   it('signale un succès Steam absent de la sauvegarde', () => {

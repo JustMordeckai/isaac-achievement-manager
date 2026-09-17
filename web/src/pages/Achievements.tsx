@@ -39,6 +39,7 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
             type="button"
             id={`ach-${a.id}`}
             className="ach__name"
+            lang="en"
             aria-current={selected ? 'true' : undefined}
             onClick={onOpen}
           >
@@ -46,7 +47,9 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
           </button>
           {a.hidden && <span className="tag">secret</span>}
         </p>
-        <p className="ach__desc">{a.description}</p>
+        <p className="ach__desc" lang="en">
+          {a.description}
+        </p>
       </div>
       <div className="ach__meta">
         <span className="tag tag--dlc">{DLC_LABELS[a.dlc]}</span>
