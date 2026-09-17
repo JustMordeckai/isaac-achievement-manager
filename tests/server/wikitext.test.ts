@@ -21,6 +21,12 @@ describe('findTemplates et templateParams', () => {
     ]);
   });
 
+  it('ignore un modèle jamais fermé et retrouve le modèle complet qui suit', () => {
+    const text = 'avant {{infobox achievement|name=Jamais refermé puis suite {{infobox achievement|id=5}} après';
+    const found = findTemplates(text, 'infobox achievement');
+    expect(found.map((t) => t.raw)).toEqual(['{{infobox achievement|id=5}}']);
+  });
+
   it('sépare les paramètres nommés et positionnels en ignorant les barres des liens et modèles', () => {
     expect(templateParams('{{a|Eden      |text}}')).toEqual({ name: 'a', params: { '1': 'Eden', '2': 'text' } });
     expect(templateParams('{{x| link = [[A|B]] | cond = {{i|Key|n}} and more }}')).toEqual({

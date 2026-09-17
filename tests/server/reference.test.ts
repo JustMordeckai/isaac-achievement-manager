@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import { CHARACTERS, characterById, characterByName, characterNames } from '../../shared/characters.ts';
 import { ENDINGS, endingById, endingByName } from '../../shared/endings.ts';

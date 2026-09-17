@@ -79,4 +79,18 @@ describe('buildKnowledgeBase', () => {
     const kb = await buildKnowledgeBase({ client: fakeWikiClient(), steamDefs: null, now });
     expect(kb.achievements).toHaveLength(640);
   });
+
+  it('échoue sans écrire la base si des pages liées sont injoignables et sans cache', async () => {
+    const client = fakeWikiClient({ failed: ['Boss Rush'] });
+    await expect(buildKnowledgeBase({ client, steamDefs, now })).rejects.toThrow(
+      'Wiki injoignable pour 1 page sans copie en cache : Boss Rush. Relance la synchro plus tard.',
+    );
+  });
+
+  it('échoue aussi quand ce sont les pages de base qui sont injoignables', async () => {
+    const client = fakeWikiClient({ failed: ['Achievement Tips', 'Template:Nav challenge'] });
+    await expect(buildKnowledgeBase({ client, steamDefs, now })).rejects.toThrow(
+      'Wiki injoignable pour 2 pages sans copie en cache : Achievement Tips, Template:Nav challenge. Relance la synchro plus tard.',
+    );
+  });
 });

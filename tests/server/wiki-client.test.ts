@@ -1,4 +1,5 @@
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -108,6 +109,15 @@ describe('createWikiClient', () => {
     const result = await createWikiClient({ cacheDir: dir, fetch: async () => json(truncated), sleep: async () => {} }).fetchPages(['A']);
     expect(result.failed).toEqual(['A']);
     expect(result.pages.has('A')).toBe(false);
+  });
+
+  it('ignore un échec d’écriture du cache disque sans faire échouer la synchro', async () => {
+    const hash = createHash('sha1').update('A').digest('hex');
+    await mkdir(path.join(dir, 'pages', `${hash}.json`), { recursive: true }); // bloque le renommage du cache
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => echo(String(input)));
+    const result = await createWikiClient({ cacheDir: dir, fetch: fetchMock, sleep: async () => {} }).fetchPages(['A']);
+    expect(result.pages.get('A')).toBe('texte de A');
+    expect(result.failed).toEqual([]);
   });
 
   it('distingue dans le cache deux titres qui ne diffèrent que par la casse', async () => {

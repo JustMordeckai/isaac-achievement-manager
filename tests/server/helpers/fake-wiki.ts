@@ -7,7 +7,7 @@ import { linkedPages, samplePages, wikiText } from './wiki.ts';
  * minimale réduite à son infobox, d'après l'index linked-pages.json.
  */
 export function fakeWikiClient(
-  options: { achievements?: string | null } = {},
+  options: { achievements?: string | null; failed?: string[] } = {},
 ): WikiClient & { calls: string[][] } {
   const sample = samplePages();
   const index = linkedPages();
@@ -17,6 +17,7 @@ export function fakeWikiClient(
     'Template:Nav challenge': wikiText('Template_Nav_challenge.wiki'),
   };
   const byTitle = new Map(Object.values(index).map((entry) => [entry.title, entry]));
+  const failed = new Set(options.failed ?? []);
   const calls: string[][] = [];
 
   return {
@@ -25,6 +26,10 @@ export function fakeWikiClient(
       calls.push(titles);
       const result: FetchPagesResult = { resolved: new Map(), pages: new Map(), fromCache: [], failed: [] };
       for (const requested of titles) {
+        if (failed.has(requested)) {
+          result.failed.push(requested);
+          continue;
+        }
         const entry = index[requested];
         const target = entry ? { title: entry.title, fragment: entry.fragment } : { title: requested, fragment: null };
         result.resolved.set(requested, target);

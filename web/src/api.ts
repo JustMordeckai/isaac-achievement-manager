@@ -65,12 +65,18 @@ async function syncWiki(onEvent: (event: WikiSyncEvent) => void): Promise<WikiSy
     buffer = done ? '' : (lines.pop() ?? '');
     for (const line of lines) {
       if (line.trim() === '') continue;
-      last = JSON.parse(line) as WikiSyncEvent;
+      try {
+        last = JSON.parse(line) as WikiSyncEvent;
+      } catch {
+        throw new ApiRequestError(res.status, 'Réponse de synchro illisible');
+      }
       onEvent(last);
     }
     if (done) break;
   }
-  if (!last) throw new ApiRequestError(res.status, 'Synchro interrompue sans résultat');
+  if (!last || (last.step !== 'done' && last.step !== 'error')) {
+    throw new ApiRequestError(res.status, 'Synchro interrompue sans résultat');
+  }
   return last;
 }
 

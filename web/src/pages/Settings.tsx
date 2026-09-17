@@ -67,7 +67,7 @@ function Report({ report }: { report: WikiSyncReport }) {
       {unknown.length > 0 && (
         <details>
           <summary>{unknown.length} modèles du wiki non reconnus</summary>
-          <p>{unknown.map(([name, count]) => `${name} (${count})`).join(', ')}</p>
+          <p lang="en">{unknown.map(([name, count]) => `${name} (${count})`).join(', ')}</p>
         </details>
       )}
     </div>

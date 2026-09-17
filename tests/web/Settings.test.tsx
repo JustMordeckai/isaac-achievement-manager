@@ -71,7 +71,7 @@ describe('Settings', () => {
     expect(report.getByText('Non classés').nextElementSibling).toHaveTextContent('108 conditions et 61 déblocages');
     expect(report.getByText('2 pages liées absentes du wiki')).toBeInTheDocument();
     expect(report.getByText('1001%, Basement Boy')).toBeInTheDocument();
-    expect(report.getByText('repentance babies (6)')).toBeInTheDocument();
+    expect(report.getByText('repentance babies (6)')).toHaveAttribute('lang', 'en');
   });
 
   it('affiche l’échec de la synchro', () => {

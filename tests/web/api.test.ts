@@ -130,4 +130,14 @@ describe('api.syncWiki', () => {
     stubFetch({ 'POST /api/wiki/sync': () => ndjson([]) });
     await expect(api.syncWiki(() => {})).rejects.toThrow('Synchro interrompue sans résultat');
   });
+
+  it('signale un flux terminé sans événement final', async () => {
+    stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\n${JSON.stringify(EVENTS[1])}\n`]) });
+    await expect(api.syncWiki(() => {})).rejects.toThrow('Synchro interrompue sans résultat');
+  });
+
+  it('signale une ligne du flux illisible', async () => {
+    stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\npas du json\n`]) });
+    await expect(api.syncWiki(() => {})).rejects.toThrow('Réponse de synchro illisible');
+  });
 });

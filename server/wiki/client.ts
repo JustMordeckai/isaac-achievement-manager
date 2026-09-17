@@ -160,7 +160,8 @@ export function createWikiClient(options: WikiClientOptions): WikiClient {
           const value = page.missing ? null : (content ?? null);
           result.pages.set(page.title, value);
           const entry: CachedPage = { title: page.title, content: value, fetchedAt: new Date().toISOString() };
-          await writeFileAtomic(pageFile(page.title), JSON.stringify(entry));
+          // Le cache disque n'est qu'un secours : une écriture qui échoue ne doit pas faire échouer la synchro.
+          await writeFileAtomic(pageFile(page.title), JSON.stringify(entry)).catch(() => {});
         }
         for (const requested of batch) {
           const name = normalized.get(requested) ?? requested;

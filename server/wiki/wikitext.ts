@@ -39,7 +39,7 @@ export function findTemplates(text: string, name: string): TemplateMatch[] {
   while ((match = opening.exec(text))) {
     if (normalizeTemplateName(match[1]) !== wanted) continue;
     const end = closingBraces(text, match.index);
-    if (end < 0) break;
+    if (end < 0) continue;
     found.push({ name: match[1], start: match.index, end, raw: text.slice(match.index, end) });
     opening.lastIndex = end;
   }

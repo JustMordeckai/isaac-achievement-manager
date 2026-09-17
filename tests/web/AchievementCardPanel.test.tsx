@@ -23,6 +23,7 @@ describe('AchievementCardPanel', () => {
     renderPanel(makeCard());
     expect(screen.getByText('Chargement de la fiche…')).toBeInTheDocument();
     const panel = await screen.findByRole('complementary', { name: 'The Nail' });
+    expect(within(panel).getByRole('heading', { level: 2, name: 'The Nail' })).toHaveAttribute('lang', 'en');
     expect(within(panel).getByText('#9')).toBeInTheDocument();
     expect(within(panel).getByText('Manquant')).toBeInTheDocument();
     expect(within(panel).getByText('Unlocked a new item.')).toHaveAttribute('lang', 'en');
@@ -32,10 +33,9 @@ describe('AchievementCardPanel', () => {
     expect(within(panel).getByText('Grants a soul heart and more damage.')).toBeInTheDocument();
     expect(within(panel).getByText('Qualité 2')).toBeInTheDocument();
     expect(within(panel).getByText('The Nail is an active item.')).toBeInTheDocument();
-    expect(within(panel).getByRole('link', { name: 'Page « The Nail » sur le wiki' })).toHaveAttribute(
-      'href',
-      'https://bindingofisaacrebirth.fandom.com/wiki/The_Nail',
-    );
+    const wikiLink = within(panel).getByRole('link', { name: 'Page « The Nail » sur le wiki' });
+    expect(wikiLink).toHaveAttribute('href', 'https://bindingofisaacrebirth.fandom.com/wiki/The_Nail');
+    expect(within(wikiLink).getByText('The Nail')).toHaveAttribute('lang', 'en');
     expect(within(panel).getByRole('heading', { level: 4, name: 'Boss Rush' })).toBeInTheDocument();
     expect(within(panel).getByRole('heading', { level: 5, name: 'Tips' })).toBeInTheDocument();
     expect(within(panel).getByText('Use the Stop Watch.')).toBeInTheDocument();

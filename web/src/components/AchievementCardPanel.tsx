@@ -43,7 +43,7 @@ function WikiSection({ wiki, syncedAt }: { wiki: AchievementWiki; syncedAt: stri
             <TextBlocks blocks={page.intro} headingLevel={4} />
             <p>
               <a href={page.url} target="_blank" rel="noreferrer">
-                Page «&nbsp;{page.title}&nbsp;» sur le wiki
+                Page «&nbsp;<span lang="en">{page.title}</span>&nbsp;» sur le wiki
               </a>
             </p>
           </>
@@ -138,7 +138,7 @@ export function AchievementCardPanel({ id, query, reloadKey, onClose, onOpenSett
       }}
     >
       <div className="ach-card__head">
-        <h2 id="ach-card-title" ref={heading} tabIndex={-1}>
+        <h2 id="ach-card-title" ref={heading} tabIndex={-1} lang="en">
           {achievement ? achievement.name : `Succès #${id}`}
         </h2>
         <button type="button" className="btn btn--ghost" onClick={onClose}>

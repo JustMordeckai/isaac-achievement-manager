@@ -34,12 +34,24 @@ export interface SyncDeps {
   onEvent?: (event: WikiSyncEvent) => void;
 }
 
+/** Message d'échec quand des pages restent injoignables (ni téléchargées ni en cache). */
+function unreachableError(titles: string[]): Error {
+  const sorted = [...titles].sort();
+  const shown = sorted.slice(0, 5);
+  const remaining = sorted.length - shown.length;
+  let list = shown.join(', ');
+  if (remaining > 0) list += ` et ${remaining} autre${remaining > 1 ? 's' : ''}`;
+  const count = titles.length === 1 ? '1 page' : `${titles.length} pages`;
+  return new Error(`Wiki injoignable pour ${count} sans copie en cache : ${list}. Relance la synchro plus tard.`);
+}
+
 export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase> {
   const emit = deps.onEvent ?? (() => {});
   const unknown: TemplateCounter = new Map();
 
   emit({ step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' });
   const core = await deps.client.fetchPages(Object.values(CORE_PAGES));
+  if (core.failed.length > 0) throw unreachableError(core.failed);
   const contentOf = (requested: string) => {
     const target = core.resolved.get(requested);
     return target ? (core.pages.get(target.title) ?? null) : null;
@@ -56,6 +68,7 @@ export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase>
   const fetched = await deps.client.fetchPages(titles, (done, total) =>
     emit({ step: 'pages', done, total, message: `Lot ${done} sur ${total}` }),
   );
+  if (fetched.failed.length > 0) throw unreachableError(fetched.failed);
 
   emit({ step: 'build', done: 0, total: 1, message: 'Analyse des pages' });
   const textOf = (requested: string): { title: string; fragment: string | null; text: string | null } | null => {

@@ -63,6 +63,8 @@ select {
 html {
   /* Un élément qui reçoit le focus ne doit pas finir sous l'en-tête fixe. */
   scroll-padding-top: calc(var(--header-height, 0px) + 12px);
+  /* Réserve toujours la place de la barre de défilement pour que l'en-tête ne se décale pas entre les pages. */
+  scrollbar-gutter: stable;
 }
 
 .app {
