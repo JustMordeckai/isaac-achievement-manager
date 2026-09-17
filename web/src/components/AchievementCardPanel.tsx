@@ -138,7 +138,7 @@ export function AchievementCardPanel({ id, query, reloadKey, onClose, onOpenSett
       }}
     >
       <div className="ach-card__head">
-        <h2 id="ach-card-title" ref={heading} tabIndex={-1} lang="en">
+        <h2 id="ach-card-title" ref={heading} tabIndex={-1} lang={achievement ? 'en' : undefined}>
           {achievement ? achievement.name : `Succès #${id}`}
         </h2>
         <button type="button" className="btn btn--ghost" onClick={onClose}>

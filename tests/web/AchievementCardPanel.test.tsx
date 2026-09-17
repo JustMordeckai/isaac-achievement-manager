@@ -49,8 +49,11 @@ describe('AchievementCardPanel', () => {
   it('place le focus sur le titre et se ferme avec Échap ou le bouton', async () => {
     const user = userEvent.setup();
     const { onClose } = renderPanel(makeCard());
-    expect(screen.getByRole('heading', { level: 2, name: 'Succès #9' })).toHaveFocus();
-    await screen.findByRole('heading', { level: 2, name: 'The Nail' });
+    const loadingHeading = screen.getByRole('heading', { level: 2, name: 'Succès #9' });
+    expect(loadingHeading).toHaveFocus();
+    expect(loadingHeading).not.toHaveAttribute('lang');
+    const heading = await screen.findByRole('heading', { level: 2, name: 'The Nail' });
+    expect(heading).toHaveAttribute('lang', 'en');
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: 'Fermer la fiche' }));
