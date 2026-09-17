@@ -4,12 +4,14 @@ import { makeAchievement } from './factories.ts';
 
 const LIST = [
   makeAchievement(343, { name: 'Flooded Caves', dlc: 'afterbirthPlus', unlocked: true, unlockedAt: '2026-09-16T14:30:51.000Z', inSave: true }),
-  makeAchievement(1, { name: 'Magdalene', unlocked: true, unlockedAt: '2023-02-20T20:15:25.000Z', inSave: true }),
-  makeAchievement(9, { name: 'The Nail', description: 'Unlocked a new item.' }),
-  makeAchievement(638, { name: 'Play Online', dlc: 'repentance', inSave: true, hidden: true }),
+  makeAchievement(1, { name: 'Magdalene', unlocked: true, unlockedAt: '2023-02-20T20:15:25.000Z', inSave: true, how: 'counter' }),
+  makeAchievement(9, { name: 'The Nail', description: 'Unlocked a new item.', how: 'mark', character: 'azazel' }),
+  makeAchievement(638, { name: 'Play Online', dlc: 'repentance', inSave: true, hidden: true, how: 'misc' }),
 ];
 
-const ids = (filter: Partial<AchievementFilter>) => filterAchievements(LIST, { ...DEFAULT_FILTER, ...filter }).map((a) => a.id);
+const NONE: ReadonlySet<number> = new Set();
+const ids = (filter: Partial<AchievementFilter>, desyncIds = NONE) =>
+  filterAchievements(LIST, { ...DEFAULT_FILTER, ...filter }, desyncIds).map((a) => a.id);
 
 describe('filterAchievements', () => {
   it('garde les manquants par défaut, triés par numéro', () => {
@@ -23,6 +25,13 @@ describe('filterAchievements', () => {
 
   it('filtre par extension', () => {
     expect(ids({ status: 'all', dlc: 'afterbirthPlus' })).toEqual([343]);
+  });
+
+  it('filtre par méthode et par personnage', () => {
+    expect(ids({ status: 'all', how: 'mark' })).toEqual([9]);
+    expect(ids({ status: 'all', how: 'misc' })).toEqual([638]);
+    expect(ids({ status: 'all', character: 'azazel' })).toEqual([9]);
+    expect(ids({ status: 'all', how: 'counter', character: 'azazel' })).toEqual([]);
   });
 
   it('cherche sans tenir compte de la casse ni des accents', () => {
@@ -39,10 +48,9 @@ describe('filterAchievements', () => {
     expect(ids({ status: 'all', search: '343' })).toEqual([343]);
   });
 
-  it('isole les écarts entre sauvegarde et Steam', () => {
-    const list = [...LIST, makeAchievement(50, { unlocked: true, unlockedAt: null, inSave: false }), makeAchievement(60, { inSave: null })];
-    const result = filterAchievements(list, { ...DEFAULT_FILTER, status: 'all', onlyDesync: true });
-    expect(result.map((a) => a.id)).toEqual([50, 638]);
+  it('isole les écarts d’après la liste fournie par le résumé', () => {
+    expect(ids({ status: 'all', onlyDesync: true }, new Set([638, 1]))).toEqual([1, 638]);
+    expect(ids({ status: 'all', onlyDesync: true })).toEqual([]);
   });
 
   it('filtre les secrets', () => {
@@ -51,7 +59,7 @@ describe('filterAchievements', () => {
   });
 
   it('trie par nom et par déblocage récent', () => {
-    expect(filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all', sort: 'name' }).map((a) => a.name)).toEqual([
+    expect(filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all', sort: 'name' }, NONE).map((a) => a.name)).toEqual([
       'Flooded Caves',
       'Magdalene',
       'Play Online',
@@ -62,7 +70,7 @@ describe('filterAchievements', () => {
 
   it('ne modifie pas la liste reçue', () => {
     const before = LIST.map((a) => a.id);
-    filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all' });
+    filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all' }, NONE);
     expect(LIST.map((a) => a.id)).toEqual(before);
   });
 });

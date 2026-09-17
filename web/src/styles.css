@@ -60,6 +60,11 @@ select {
   outline-offset: 2px;
 }
 
+html {
+  /* Un élément qui reçoit le focus ne doit pas finir sous l'en-tête fixe. */
+  scroll-padding-top: calc(var(--header-height, 0px) + 12px);
+}
+
 .app {
   min-height: 100vh;
 }
@@ -218,10 +223,28 @@ select {
 .badges {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
-  margin: 0 0 0 auto;
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.sources {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.source-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: right;
 }
 
 .badge {
@@ -289,6 +312,30 @@ select {
 .banner--error,
 .error-panel {
   border-color: var(--danger);
+}
+
+.banner--warn {
+  border-color: var(--warn);
+}
+
+.banner--info {
+  border-color: var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-elev);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.banner--info p {
+  margin: 0;
+}
+
+.kb-banner {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .error-panel__actions {
@@ -510,14 +557,231 @@ select {
   margin: 16px auto 0;
 }
 
+.ach__name {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ach__name:hover {
+  text-decoration-color: var(--accent-text);
+}
+
+.ach--selected {
+  border-color: var(--accent);
+}
+
+/* Fiche d'un succès, à droite de la liste */
+.achievements--with-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 16px;
+  align-items: start;
+}
+
+.ach-card {
+  position: sticky;
+  top: calc(var(--header-height, 0px) + 12px);
+  max-height: calc(100vh - var(--header-height, 0px) - 24px);
+  overflow-y: auto;
+}
+
+.ach-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ach-card__head h2 {
+  margin: 0;
+}
+
+/* Le titre reçoit le focus à l'ouverture pour les lecteurs d'écran ; ce n'est pas une commande. */
+.ach-card__head h2:focus {
+  outline: none;
+}
+
+.ach-card__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.ach-card .ach-card__summary p {
+  margin: 0;
+}
+
+.ach-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ach-card__meta .tag {
+  margin-left: 0;
+}
+
+.ach-card h3 {
+  margin: 18px 0 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.ach-card h4 {
+  margin: 12px 0 4px;
+  font-size: 0.9rem;
+}
+
+.ach-card h5,
+.ach-card h6 {
+  margin: 10px 0 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ach-card p {
+  margin: 0 0 8px;
+}
+
+.ach-card a {
+  color: var(--accent-text);
+}
+
+.ach-card__effect {
+  font-weight: 600;
+}
+
+.ach-card__source {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.text-blocks ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.text-blocks ul ul {
+  margin: 2px 0 0;
+}
+
+.text-blocks li + li {
+  margin-top: 2px;
+}
+
+/* Paramètres */
+.settings {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.settings .banner {
+  margin: 8px 0;
+}
+
+.info-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 8px 0;
+}
+
+.info-list dt {
+  color: var(--text-muted);
+}
+
+.info-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sync-progress,
+.sync-report {
+  margin-top: 12px;
+}
+
+.sync-progress p,
+.sync-report p {
+  margin: 0 0 6px;
+}
+
+.sync-report details {
+  margin-top: 6px;
+}
+
+.sync-report summary {
+  cursor: pointer;
+}
+
+@media (max-width: 980px) {
+  .achievements--with-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* La fiche passe au-dessus de la liste ; le focus la fait défiler à l'écran. */
+  .ach-card {
+    position: static;
+    max-height: none;
+    order: -1;
+  }
+
+  .settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 760px) {
+  html {
+    scroll-padding-top: 12px;
+  }
+
+  /* Sur un petit écran, l'en-tête occuperait trop de hauteur s'il restait fixe. */
+  .header {
+    position: static;
+  }
+
   .dashboard {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .header__actions,
-  .badges {
+  .sources {
     margin-left: 0;
+  }
+
+  .sources {
+    align-items: flex-start;
+  }
+
+  .badges {
+    justify-content: flex-start;
+  }
+
+  .source-notes {
+    text-align: left;
+  }
+
+  .info-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .info-list dd + dt {
+    margin-top: 6px;
   }
 
   .ach {

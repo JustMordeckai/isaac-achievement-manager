@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type ProfileQuery } from './api.ts';
+import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
 import { Dashboard, type FilterPatch } from './pages/Dashboard.tsx';
+import { Settings } from './pages/Settings.tsx';
 import { applyTheme, loadTheme, type Theme } from './theme.ts';
-import { useHashTab } from './useHashTab.ts';
+import { useHashAchievement, useHashTab } from './useHashTab.ts';
 import { useProgress } from './useProgress.ts';
+import { useKbStatus, useSettings, useWikiSync } from './useWiki.ts';
 
 type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; message: string };
+
+const NO_DESYNC: ReadonlySet<number> = new Set();
 
 export function App() {
   const [query, setQuery] = useState<ProfileQuery>({ profile: 'me', slot: null });
@@ -17,11 +22,26 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [stop, setStop] = useState<StopState>({ kind: 'running' });
   const [tab, setTab] = useHashTab();
+  const [cardId, setCardId] = useHashAchievement();
   const state = useProgress(query, reloadKey);
+  const kb = useKbStatus(reloadKey);
+  const settings = useSettings();
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+  // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
+  const [sync, startSync] = useWikiSync(reload);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  const summary = state.status === 'ready' ? state.data.summary : null;
+  const desyncIds = useMemo(
+    () =>
+      summary
+        ? new Set(summary.desyncs.filter((d) => d.kind === 'saveOnly' || d.kind === 'steamOnly').map((d) => d.id))
+        : NO_DESYNC,
+    [summary],
+  );
 
   if (stop.kind === 'stopped') {
     return (
@@ -47,14 +67,16 @@ export function App() {
     setTab('achievements');
   }
 
-  const reload = () => setReloadKey((key) => key + 1);
-  const summary = state.status === 'ready' ? state.data.summary : null;
   const busy = state.status === 'loading' || (state.status === 'ready' && state.refreshing);
+  const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
+  const openSettings = () => setTab('settings');
 
   return (
     <div className="app">
       <Header
         summary={summary}
+        kb={kb}
+        meSteamId={meSteamId}
         query={query}
         onQueryChange={setQuery}
         refreshing={busy}
@@ -71,28 +93,58 @@ export function App() {
             Arrêt impossible : {stop.message}
           </p>
         )}
-        {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
-        {state.status === 'error' && (
-          <div className="card error-panel" role="alert">
-            <h2>Impossible de charger la progression</h2>
-            <p>{state.message}</p>
-            <div className="error-panel__actions">
-              <button type="button" className="btn btn--primary" onClick={reload}>
-                Réessayer
-              </button>
-              {query.profile !== 'me' && (
-                <button type="button" className="btn" onClick={() => setQuery({ profile: 'me', slot: null })}>
-                  Revenir à mon profil
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {state.status === 'ready' && tab === 'dashboard' && (
-          <Dashboard summary={state.data.summary} onShowAchievements={showAchievements} />
-        )}
-        {state.status === 'ready' && tab === 'achievements' && (
-          <Achievements achievements={state.data.achievements} filter={filter} onFilterChange={setFilter} />
+        {tab === 'settings' ? (
+          <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} />
+        ) : (
+          <>
+            {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
+            {state.status === 'error' && (
+              <div className="card error-panel" role="alert">
+                <h2>Impossible de charger la progression</h2>
+                <p>{state.message}</p>
+                <div className="error-panel__actions">
+                  <button type="button" className="btn btn--primary" onClick={reload}>
+                    Réessayer
+                  </button>
+                  {query.profile !== 'me' && (
+                    <button type="button" className="btn" onClick={() => setQuery({ profile: 'me', slot: null })}>
+                      Revenir à mon profil
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {state.status === 'ready' && tab === 'dashboard' && (
+              <Dashboard
+                summary={state.data.summary}
+                kb={kb}
+                onShowAchievements={showAchievements}
+                onOpenSettings={openSettings}
+              />
+            )}
+            {state.status === 'ready' && tab === 'achievements' && (
+              <Achievements
+                achievements={state.data.achievements}
+                filter={filter}
+                onFilterChange={setFilter}
+                desyncIds={desyncIds}
+                selectedId={cardId}
+                onOpen={setCardId}
+                panel={
+                  cardId !== null && (
+                    <AchievementCardPanel
+                      key={cardId}
+                      id={cardId}
+                      query={query}
+                      reloadKey={reloadKey}
+                      onClose={() => setCardId(null)}
+                      onOpenSettings={openSettings}
+                    />
+                  )
+                }
+              />
+            )}
+          </>
         )}
       </main>
     </div>

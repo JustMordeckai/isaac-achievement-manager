@@ -9,12 +9,14 @@ export interface ProfilePickerProps {
   /** "me" ou un SteamID64. */
   profile: string;
   accounts: LocalAccount[];
+  /** SteamID64 du compte servi sous « Mon profil », null s'il est inconnu. */
+  meSteamId: string | null;
   /** Nom du profil actuellement affiché. */
   currentName: string | null;
   onChange(profile: string): void;
 }
 
-export function ProfilePicker({ profile, accounts, currentName, onChange }: ProfilePickerProps) {
+export function ProfilePicker({ profile, accounts, meSteamId, currentName, onChange }: ProfilePickerProps) {
   const [recent, setRecent] = useState<SavedProfile[]>(loadRecentProfiles);
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState('');
@@ -23,8 +25,11 @@ export function ProfilePicker({ profile, accounts, currentName, onChange }: Prof
   /** Incrémenté à chaque annulation ou nouvelle sélection, pour ignorer une résolution obsolète. */
   const requestId = useRef(0);
 
-  const otherLocals = accounts.length > 1 ? accounts : [];
-  const recentOthers = recent.filter((r) => !otherLocals.some((a) => a.steamId64 === r.steamId64));
+  // « Mon profil » représente déjà le compte choisi par le serveur : on ne le répète pas dans la liste.
+  const otherLocals = meSteamId === null ? (accounts.length > 1 ? accounts : []) : accounts.filter((a) => a.steamId64 !== meSteamId);
+  const recentOthers = recent.filter(
+    (r) => r.steamId64 !== meSteamId && !otherLocals.some((a) => a.steamId64 === r.steamId64),
+  );
   const known = new Set(['me', ...otherLocals.map((a) => a.steamId64), ...recentOthers.map((r) => r.steamId64)]);
   const meLabel = profile === 'me' && currentName ? `Mon profil (${currentName})` : 'Mon profil';
 

@@ -1,4 +1,5 @@
-import type { AchievementState, Dlc } from '../../../shared/types.ts';
+import type { CharacterId } from '../../../shared/characters.ts';
+import type { AchievementEntry, Dlc, HowKind } from '../../../shared/types.ts';
 
 export type StatusFilter = 'all' | 'unlocked' | 'missing';
 export type SecretFilter = 'all' | 'only' | 'exclude';
@@ -8,6 +9,8 @@ export interface AchievementFilter {
   status: StatusFilter;
   dlc: Dlc | 'all';
   secret: SecretFilter;
+  how: HowKind | 'all';
+  character: CharacterId | 'all';
   search: string;
   onlyDesync: boolean;
   sort: SortOrder;
@@ -17,6 +20,8 @@ export const DEFAULT_FILTER: AchievementFilter = {
   status: 'missing',
   dlc: 'all',
   secret: 'all',
+  how: 'all',
+  character: 'all',
   search: '',
   onlyDesync: false,
   sort: 'id',
@@ -27,7 +32,7 @@ export function normalizeText(text: string): string {
 }
 
 function compare(sort: SortOrder) {
-  return (a: AchievementState, b: AchievementState): number => {
+  return (a: AchievementEntry, b: AchievementEntry): number => {
     if (sort === 'name') return a.name.localeCompare(b.name, 'en') || a.id - b.id;
     if (sort === 'recent') {
       if (a.unlockedAt && b.unlockedAt) return b.unlockedAt.localeCompare(a.unlockedAt) || a.id - b.id;
@@ -38,7 +43,15 @@ function compare(sort: SortOrder) {
   };
 }
 
-export function filterAchievements(list: AchievementState[], filter: AchievementFilter): AchievementState[] {
+/**
+ * `desyncIds` : succès en écart entre la sauvegarde et Steam, tirés du résumé de progression
+ * (et non de `inSave`, qui ne dit rien quand aucune source Steam n'est disponible).
+ */
+export function filterAchievements(
+  list: AchievementEntry[],
+  filter: AchievementFilter,
+  desyncIds: ReadonlySet<number>,
+): AchievementEntry[] {
   const query = normalizeText(filter.search.trim());
   const idMatch = /^#?(\d+)$/.exec(query);
   const wantedId = idMatch ? Number(idMatch[1]) : null;
@@ -48,7 +61,9 @@ export function filterAchievements(list: AchievementState[], filter: Achievement
       if (filter.dlc !== 'all' && a.dlc !== filter.dlc) return false;
       if (filter.secret === 'only' && !a.hidden) return false;
       if (filter.secret === 'exclude' && a.hidden) return false;
-      if (filter.onlyDesync && (a.inSave === null || a.inSave === a.unlocked)) return false;
+      if (filter.how !== 'all' && a.how !== filter.how) return false;
+      if (filter.character !== 'all' && a.character !== filter.character) return false;
+      if (filter.onlyDesync && !desyncIds.has(a.id)) return false;
       if (query === '') return true;
       if (wantedId !== null) return a.id === wantedId;
       return normalizeText(a.name).includes(query) || normalizeText(a.description).includes(query);

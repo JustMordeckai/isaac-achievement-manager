@@ -1,5 +1,5 @@
 import { DLC_ORDER } from '../../../shared/dlc.ts';
-import type { Desync, DesyncKind, Dlc, ProgressSummary } from '../../../shared/types.ts';
+import type { Desync, DesyncKind, Dlc, KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import { AchievementIcon } from '../components/AchievementIcon.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { DESYNC_LABELS, DLC_LABELS, formatDate, percent } from '../labels.ts';
@@ -12,7 +12,9 @@ export interface FilterPatch {
 
 export interface DashboardProps {
   summary: ProgressSummary;
+  kb: KbStatus | null;
   onShowAchievements(patch: FilterPatch): void;
+  onOpenSettings(): void;
 }
 
 const DESYNC_ORDER: DesyncKind[] = ['saveOnly', 'steamOnly', 'profileAhead', 'cacheAhead'];
@@ -46,12 +48,30 @@ function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
   );
 }
 
-export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
+/** Bandeau affiché tant que la base wiki n'est pas utilisable ; le reste du tableau de bord fonctionne sans. */
+function KbBanner({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): void }) {
+  if (kb.state === 'ok') return null;
+  return (
+    <div className="banner banner--info kb-banner">
+      <p>
+        {kb.state === 'absent'
+          ? "Base wiki absente : synchronise-la pour afficher les fiches, les méthodes d'obtention et les filtres par personnage."
+          : `Base wiki inutilisable : ${kb.message ?? 'erreur inconnue'}`}
+      </p>
+      <button type="button" className="btn" onClick={onOpenSettings}>
+        Ouvrir les paramètres
+      </button>
+    </div>
+  );
+}
+
+export function Dashboard({ summary, kb, onShowAchievements, onOpenSettings }: DashboardProps) {
   const missing = summary.total - summary.unlocked;
   const dlcs = DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0);
 
   return (
     <div className="dashboard">
+      {kb && <KbBanner kb={kb} onOpenSettings={onOpenSettings} />}
       <section className="card hero" aria-labelledby="progress-title">
         <h2 id="progress-title">Progression</h2>
         <p className="hero__count">
@@ -82,13 +102,14 @@ export function Dashboard({ summary, onShowAchievements }: DashboardProps) {
                 <button
                   type="button"
                   className="dlc-row"
+                  aria-label={`${DLC_LABELS[dlc]} : ${stats.unlocked} sur ${stats.total}, voir les manquants`}
                   onClick={() => onShowAchievements({ status: 'missing', dlc, onlyDesync: false })}
                 >
                   <span className="dlc-row__name">{DLC_LABELS[dlc]}</span>
                   <span className="dlc-row__count">
                     {stats.unlocked} / {stats.total}
                   </span>
-                  <ProgressBar value={stats.unlocked} max={stats.total} label={`Progression ${DLC_LABELS[dlc]}`} />
+                  <ProgressBar value={stats.unlocked} max={stats.total} />
                 </button>
               </li>
             );

@@ -1,15 +1,17 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
 import { ProfilePicker } from '../../web/src/components/ProfilePicker.tsx';
 import { rememberProfile, RECENT_PROFILES_KEY } from '../../web/src/recent-profiles.ts';
-import { makeSummary } from './factories.ts';
+import { KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 function renderHeader(overrides: Partial<HeaderProps> = {}) {
   const props: HeaderProps = {
     summary: makeSummary(),
+    kb: null,
+    meSteamId: null,
     query: { profile: 'me', slot: null },
     onQueryChange: vi.fn(),
     refreshing: false,
@@ -39,6 +41,37 @@ describe('Header', () => {
     expect(screen.getByText('Cache Steam : obsolète')).toHaveAttribute('title', 'Le profil en ligne compte 1 succès de plus que le cache local');
     expect(screen.getByText('Sauvegarde : erreur')).toHaveClass('badge--error');
     expect(screen.getByText('Profil en ligne : OK')).toHaveClass('badge--ok');
+    // Les messages des sources en défaut sont visibles sans survol.
+    expect(screen.getByText('Cache Steam : Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
+    expect(screen.getByText('Sauvegarde : En-tête inconnu')).toBeInTheDocument();
+    expect(screen.queryByText('Sauvegarde : Slot 1')).not.toBeInTheDocument();
+  });
+
+  it('ajoute l’état de la base wiki', () => {
+    renderHeader({ kb: KB_OK });
+    const wiki = screen.getByText('Wiki : OK');
+    expect(wiki).toHaveClass('badge--ok');
+    expect(wiki.getAttribute('title')).toMatch(/^Synchro du 17 sept\. 2026/);
+    expect(screen.queryByText(/^Wiki : Synchro/)).not.toBeInTheDocument();
+  });
+
+  it('affiche le dernier échec de synchro d’une base absente', () => {
+    renderHeader({ kb: { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' } });
+    expect(screen.getByText('Wiki : absente')).toHaveClass('badge--absent');
+    expect(screen.getByText('Wiki : Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
+  });
+
+  it('montre l’état du wiki même sans résumé de progression', () => {
+    renderHeader({ summary: null, kb: KB_ABSENT });
+    expect(within(screen.getByRole('list', { name: 'État des sources' })).getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('propose l’onglet Paramètres', async () => {
+    const user = userEvent.setup();
+    const props = renderHeader({ tab: 'settings' });
+    expect(screen.getByRole('button', { name: 'Paramètres' })).toHaveAttribute('aria-current', 'page');
+    await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
+    expect(props.onTabChange).toHaveBeenCalledWith('dashboard');
   });
 
   it('change de slot', async () => {
@@ -76,7 +109,7 @@ describe('Header', () => {
 
 describe('ProfilePicker', () => {
   it('affiche le nom du profil courant', () => {
-    render(<ProfilePicker profile="me" accounts={[]} currentName="Player" onChange={vi.fn()} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={vi.fn()} />);
     expect(screen.getByRole('option', { name: 'Mon profil (Player)' })).toBeInTheDocument();
   });
 
@@ -89,7 +122,7 @@ describe('ProfilePicker', () => {
       },
     });
     const onChange = vi.fn();
-    render(<ProfilePicker profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
     await user.click(screen.getByRole('button', { name: 'Charger' }));
@@ -103,7 +136,7 @@ describe('ProfilePicker', () => {
     const user = userEvent.setup();
     stubFetch({ 'GET /api/profile/resolve': () => jsonResponse({ error: 'Profil Steam introuvable' }, 404) });
     const onChange = vi.fn();
-    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={onChange} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={onChange} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'inconnu');
     await user.click(screen.getByRole('button', { name: 'Charger' }));
@@ -117,6 +150,7 @@ describe('ProfilePicker', () => {
     const onChange = vi.fn();
     render(
       <ProfilePicker
+        meSteamId={null}
         profile="me"
         accounts={[
           { accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' },
@@ -131,15 +165,49 @@ describe('ProfilePicker', () => {
     expect(onChange).toHaveBeenCalledWith('76561198000000001');
   });
 
+  it('ne répète pas le compte servi sous « Mon profil »', () => {
+    rememberProfile({ steamId64: '76561198083722517', name: 'Player' });
+    render(
+      <ProfilePicker
+        meSteamId="76561198083722517"
+        profile="me"
+        accounts={[{ accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' }]}
+        currentName="Player"
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Mon profil (Player)', 'Autre joueur…']);
+  });
+
+  it('liste un second compte local mais pas le compte principal', () => {
+    render(
+      <ProfilePicker
+        meSteamId="76561198083722517"
+        profile="me"
+        accounts={[
+          { accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' },
+          { accountId: 234567890, steamId64: '76561198194833618', personaName: 'Second Player' },
+        ]}
+        currentName="Player"
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Mon profil (Player)',
+      'Second Player (compte local)',
+      'Autre joueur…',
+    ]);
+  });
+
   it('affiche un profil courant inconnu de la liste', () => {
-    render(<ProfilePicker profile="76561198000000009" accounts={[]} currentName="Inconnu" onChange={vi.fn()} />);
+    render(<ProfilePicker meSteamId={null} profile="76561198000000009" accounts={[]} currentName="Inconnu" onChange={vi.fn()} />);
     expect(screen.getByLabelText('Profil')).toHaveValue('76561198000000009');
     expect(screen.getByRole('option', { name: 'Inconnu' })).toBeInTheDocument();
   });
 
   it('annule la saisie', async () => {
     const user = userEvent.setup();
-    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.click(screen.getByRole('button', { name: 'Annuler' }));
     expect(screen.getByLabelText('Profil')).toHaveValue('me');
@@ -153,7 +221,7 @@ describe('ProfilePicker', () => {
     });
     stubFetch({ 'GET /api/profile/resolve': () => pending });
     const onChange = vi.fn();
-    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={onChange} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={onChange} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
     await user.click(screen.getByRole('button', { name: 'Charger' }));
@@ -170,7 +238,7 @@ describe('ProfilePicker', () => {
 
   it('vide le champ de saisie en rouvrant après une annulation', async () => {
     const user = userEvent.setup();
-    render(<ProfilePicker profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'texte perdu');
     await user.click(screen.getByRole('button', { name: 'Annuler' }));
@@ -186,7 +254,7 @@ describe('ProfilePicker', () => {
     });
     stubFetch({ 'GET /api/profile/resolve': () => pending });
     const onChange = vi.fn();
-    render(<ProfilePicker profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
+    render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
     await user.click(screen.getByRole('button', { name: 'Charger' }));

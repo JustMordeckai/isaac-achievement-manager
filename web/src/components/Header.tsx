@@ -1,4 +1,5 @@
-import type { ProgressSummary } from '../../../shared/types.ts';
+import { useLayoutEffect, useRef } from 'react';
+import type { KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import type { ProfileQuery } from '../api.ts';
 import type { Theme } from '../theme.ts';
 import type { Tab } from '../useHashTab.ts';
@@ -7,6 +8,9 @@ import { SourceBadges } from './SourceBadges.tsx';
 
 export interface HeaderProps {
   summary: ProgressSummary | null;
+  kb: KbStatus | null;
+  /** SteamID64 du compte local servi sous « Mon profil », s'il est connu. */
+  meSteamId: string | null;
   query: ProfileQuery;
   onQueryChange(query: ProfileQuery): void;
   refreshing: boolean;
@@ -21,13 +25,32 @@ export interface HeaderProps {
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'dashboard', label: 'Tableau de bord' },
   { id: 'achievements', label: 'Succès' },
+  { id: 'settings', label: 'Paramètres' },
 ];
+
+/** Publie la hauteur de l'en-tête (variable CSS --header-height) pour placer la fiche et le défilement. */
+function useHeaderHeight() {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => root.style.setProperty('--header-height', `${element.offsetHeight}px`));
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--header-height');
+    };
+  }, []);
+  return ref;
+}
 
 export function Header(props: HeaderProps) {
   const { summary, query } = props;
   const save = summary?.save ?? null;
+  const ref = useHeaderHeight();
   return (
-    <header className="header">
+    <header className="header" ref={ref}>
       <div className="header__top">
         <h1 className="brand">Isaac Achievement Manager</h1>
         <nav className="tabs" aria-label="Sections">
@@ -59,6 +82,7 @@ export function Header(props: HeaderProps) {
         <ProfilePicker
           profile={query.profile}
           accounts={summary?.accounts ?? []}
+          meSteamId={props.meSteamId}
           currentName={summary?.profile.name ?? null}
           onChange={(profile) => props.onQueryChange({ profile, slot: null })}
         />
@@ -77,7 +101,7 @@ export function Header(props: HeaderProps) {
             </select>
           </label>
         )}
-        {summary && <SourceBadges sources={summary.sources} />}
+        <SourceBadges sources={summary?.sources ?? null} wiki={props.kb} />
       </div>
     </header>
   );

@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
-import { makeAchievement, makeSummary } from './factories.ts';
+import type { WikiSyncEvent } from '../../shared/types.ts';
+import { KB_ABSENT, KB_OK, makeAchievement, makeCard, makeSummary, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 const ACHIEVEMENTS = [
@@ -11,15 +12,22 @@ const ACHIEVEMENTS = [
   makeAchievement(638, { name: 'Play Online', dlc: 'repentance', inSave: true }),
 ];
 
-function stubProgress() {
-  return stubFetch({
-    'GET /api/progress': () => makeSummary(),
-    'GET /api/achievements': () => ACHIEVEMENTS,
-  });
+const BASE_ROUTES = {
+  'GET /api/progress': () => makeSummary(),
+  'GET /api/achievements': () => ACHIEVEMENTS,
+  'GET /api/wiki/status': () => KB_OK,
+  'GET /api/settings': () => SETTINGS,
+  'GET /api/achievement/2': () => makeCard({ achievement: ACHIEVEMENTS[1] }),
+};
+
+function stubProgress(routes: Parameters<typeof stubFetch>[0] = {}) {
+  return stubFetch({ ...BASE_ROUTES, ...routes });
 }
 
-const progressCalls = (mock: ReturnType<typeof stubFetch>) =>
-  mock.mock.calls.filter(([input]) => String(input).startsWith('/api/progress')).length;
+const callsTo = (mock: ReturnType<typeof stubFetch>, prefix: string) =>
+  mock.mock.calls.filter(([input]) => String(input).startsWith(prefix)).length;
+
+const progressCalls = (mock: ReturnType<typeof stubFetch>) => callsTo(mock, '/api/progress');
 
 describe('App', () => {
   it('affiche le tableau de bord puis les succès manquants', async () => {
@@ -82,9 +90,8 @@ describe('App', () => {
   it('affiche une erreur et permet de réessayer', async () => {
     const user = userEvent.setup();
     let fail = true;
-    stubFetch({
+    stubProgress({
       'GET /api/progress': () => (fail ? jsonResponse({ error: 'Aucun compte Steam local' }, 404) : makeSummary()),
-      'GET /api/achievements': () => ACHIEVEMENTS,
     });
     render(<App />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Aucun compte Steam local');
@@ -107,11 +114,7 @@ describe('App', () => {
   it('arrête le serveur après confirmation', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    stubFetch({
-      'GET /api/progress': () => makeSummary(),
-      'GET /api/achievements': () => ACHIEVEMENTS,
-      'POST /api/shutdown': () => ({ ok: true }),
-    });
+    stubProgress({ 'POST /api/shutdown': () => ({ ok: true }) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progression' });
     await user.click(screen.getByRole('button', { name: 'Arrêter' }));
@@ -132,15 +135,110 @@ describe('App', () => {
   it('affiche une erreur si l’arrêt échoue et garde le tableau de bord', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    stubFetch({
-      'GET /api/progress': () => makeSummary(),
-      'GET /api/achievements': () => ACHIEVEMENTS,
-      'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403),
-    });
+    stubProgress({ 'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progression' });
     await user.click(screen.getByRole('button', { name: 'Arrêter' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Arrêt impossible');
     expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+  });
+
+  it('ouvre la fiche d’un succès puis rend le focus à la liste en la fermant', async () => {
+    const user = userEvent.setup();
+    stubProgress();
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Progression' });
+    await user.click(screen.getByRole('button', { name: 'Succès' }));
+    const cain = screen.getByRole('button', { name: 'Cain' });
+    await user.click(cain);
+    expect(window.location.hash).toBe('#/succes/2');
+    const panel = await screen.findByRole('complementary', { name: 'Cain' });
+    expect(within(panel).getByText('Defeat Boss Rush as Azazel')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Fermer la fiche' }));
+    expect(window.location.hash).toBe('#/succes');
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(cain).toHaveFocus();
+  });
+
+  it('ouvre directement la fiche indiquée dans l’adresse', async () => {
+    window.location.hash = '#/succes/2';
+    stubProgress();
+    render(<App />);
+    expect(await screen.findByRole('complementary', { name: 'Cain' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Succès' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('signale une base wiki absente et mène aux paramètres', async () => {
+    const user = userEvent.setup();
+    stubProgress({ 'GET /api/wiki/status': () => KB_ABSENT });
+    render(<App />);
+    expect(await screen.findByText(/^Base wiki absente/)).toBeInTheDocument();
+    expect(screen.getByText('Wiki : absente')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ouvrir les paramètres' }));
+    expect(window.location.hash).toBe('#/parametres');
+    expect(screen.getByRole('heading', { name: 'Base wiki' })).toBeInTheDocument();
+  });
+
+  it('synchronise le wiki depuis les paramètres puis recharge les données', async () => {
+    const user = userEvent.setup();
+    const events: WikiSyncEvent[] = [
+      { step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' },
+      {
+        step: 'done',
+        done: 1,
+        total: 1,
+        message: 'Synchro terminée',
+        report: {
+          achievements: 641,
+          pages: 518,
+          missingPages: [],
+          unknownTemplates: {},
+          miscCount: 108,
+          otherUnlockCount: 61,
+          cachedPages: 0,
+        },
+      },
+    ];
+    const body = events.map((e) => `${JSON.stringify(e)}\n`).join('');
+    const mock = stubProgress({ 'POST /api/wiki/sync': () => new Response(body) });
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Progression' });
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }));
+    expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Synchroniser le wiki' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Synchro terminée.');
+    await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
+    expect(callsTo(mock, '/api/achievements')).toBe(2);
+    expect(callsTo(mock, '/api/wiki/status')).toBe(2);
+    expect(screen.getByRole('button', { name: 'Synchroniser le wiki' })).toBeEnabled();
+  });
+
+  it('affiche les paramètres même si la progression échoue', async () => {
+    window.location.hash = '#/parametres';
+    stubProgress({ 'GET /api/progress': () => jsonResponse({ error: 'Aucun compte Steam local' }, 404) });
+    render(<App />);
+    expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Impossible de charger la progression' })).not.toBeInTheDocument();
+  });
+
+  it('ne répète pas le compte principal dans le choix du profil', async () => {
+    stubProgress({
+      'GET /api/progress': () =>
+        makeSummary({
+          accounts: [
+            { accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' },
+            { accountId: 234567890, steamId64: '76561198194833618', personaName: 'Second Player' },
+          ],
+        }),
+    });
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Progression' });
+    await vi.waitFor(() =>
+      expect(within(screen.getByLabelText('Profil')).getAllByRole('option').map((o) => o.textContent)).toEqual([
+        'Mon profil (Player)',
+        'Second Player (compte local)',
+        'Autre joueur…',
+      ]),
+    );
   });
 });
