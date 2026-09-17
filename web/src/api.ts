@@ -1,7 +1,12 @@
+import { ndjsonLines } from '../../shared/ndjson.ts';
 import type {
   AchievementCard,
   AchievementEntry,
+  AdvisorEvent,
+  AdvisorRequest,
+  AdvisorStatus,
   KbStatus,
+  OllamaSettings,
   ProgressSummary,
   ResolvedProfile,
   RoutesResponse,
@@ -46,6 +51,25 @@ function profileParams({ profile, slot }: ProfileQuery): string {
   return params.toString();
 }
 
+/** Transmet chaque ligne d'un flux NDJSON et renvoie la dernière (null si le flux est vide). */
+async function readEvents<T>(
+  res: Response,
+  body: ReadableStream<Uint8Array>,
+  onEvent: (event: T) => void,
+  unreadable: string,
+): Promise<T | null> {
+  let last: T | null = null;
+  for await (const line of ndjsonLines(body)) {
+    try {
+      last = JSON.parse(line) as T;
+    } catch {
+      throw new ApiRequestError(res.status, unreadable);
+    }
+    onEvent(last);
+  }
+  return last;
+}
+
 /**
  * Lance la synchro du wiki et transmet chaque ligne du flux NDJSON.
  * Renvoie le dernier événement (`done` ou `error`) ; un refus du serveur (403, 409) lève une ApiRequestError.
@@ -54,29 +78,33 @@ async function syncWiki(onEvent: (event: WikiSyncEvent) => void): Promise<WikiSy
   const res = await fetch('/api/wiki/sync', { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
   if (!res.ok) throw await errorOf(res);
   if (!res.body) throw new ApiRequestError(res.status, 'Réponse de synchro vide');
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let last: WikiSyncEvent | null = null;
-  for (;;) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const lines = buffer.split('\n');
-    // Une ligne peut arriver en plusieurs morceaux : on garde la fin incomplète pour la lecture suivante.
-    buffer = done ? '' : (lines.pop() ?? '');
-    for (const line of lines) {
-      if (line.trim() === '') continue;
-      try {
-        last = JSON.parse(line) as WikiSyncEvent;
-      } catch {
-        throw new ApiRequestError(res.status, 'Réponse de synchro illisible');
-      }
-      onEvent(last);
-    }
-    if (done) break;
-  }
+  const last = await readEvents(res, res.body, onEvent, 'Réponse de synchro illisible');
   if (!last || (last.step !== 'done' && last.step !== 'error')) {
     throw new ApiRequestError(res.status, 'Synchro interrompue sans résultat');
+  }
+  return last;
+}
+
+/**
+ * Pose une question au conseiller et transmet chaque ligne du flux NDJSON. Renvoie le dernier événement
+ * (`done` ou `error`) ; un refus avant le flux (Ollama injoignable, modèle absent) lève une ApiRequestError.
+ */
+async function askAdvisor(
+  request: AdvisorRequest,
+  onEvent: (event: AdvisorEvent) => void,
+  signal?: AbortSignal,
+): Promise<AdvisorEvent> {
+  const res = await fetch('/api/advisor', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'advisor' },
+    body: JSON.stringify(request),
+    signal,
+  });
+  if (!res.ok) throw await errorOf(res);
+  if (!res.body) throw new ApiRequestError(res.status, 'Réponse du conseiller vide');
+  const last = await readEvents(res, res.body, onEvent, 'Réponse du conseiller illisible');
+  if (!last || (last.kind !== 'done' && last.kind !== 'error')) {
+    throw new ApiRequestError(res.status, 'Réponse du conseiller interrompue');
   }
   return last;
 }
@@ -95,6 +123,14 @@ export const api = {
   resolveProfile: (input: string) =>
     request<ResolvedProfile>(`/api/profile/resolve?${new URLSearchParams({ input })}`),
   syncWiki,
+  advisorStatus: (signal?: AbortSignal) => request<AdvisorStatus>('/api/advisor/status', { signal }),
+  saveAdvisorSettings: (settings: OllamaSettings) =>
+    request<AdvisorStatus>('/api/advisor/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'advisor-settings' },
+      body: JSON.stringify(settings),
+    }),
+  askAdvisor,
   shutdown: async (): Promise<void> => {
     await request<{ ok: boolean }>('/api/shutdown', { method: 'POST', headers: { 'X-IAM-Action': 'shutdown' } });
   },

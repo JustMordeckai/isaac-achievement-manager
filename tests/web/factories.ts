@@ -1,7 +1,9 @@
 import { CHARACTERS } from '../../shared/characters.ts';
+import { vi } from 'vitest';
 import type {
   AchievementCard,
   AchievementEntry,
+  AdvisorStatus,
   CharacterProgress,
   KbStatus,
   KnownMarks,
@@ -11,6 +13,7 @@ import type {
   RoutesResponse,
   SettingsInfo,
 } from '../../shared/types.ts';
+import type { AdvisorStatusState } from '../../web/src/useAdvisor.ts';
 
 export function makeAchievement(id: number, overrides: Partial<AchievementEntry> = {}): AchievementEntry {
   return {
@@ -65,6 +68,26 @@ export const SETTINGS: SettingsInfo = {
   account: { accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' },
   forcedAccountId: null,
 };
+
+export const ADVISOR_OK: AdvisorStatus = {
+  state: 'ok',
+  url: 'http://127.0.0.1:11434',
+  model: 'qwen3.5:9b',
+  models: ['qwen3.5:4b', 'qwen3.5:9b'],
+};
+
+export const ADVISOR_OFFLINE: AdvisorStatus = {
+  state: 'absent',
+  url: 'http://127.0.0.1:11434',
+  model: 'qwen3.5:9b',
+  models: [],
+  message: 'Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)',
+};
+
+/** État du conseiller tel que le donne useAdvisorStatus. */
+export function makeAdvisorState(status: AdvisorStatus | null = ADVISOR_OK, checking = false): AdvisorStatusState {
+  return { status, checking, recheck: vi.fn(), replace: vi.fn() };
+}
 
 /** Fiche de The Nail (#9) telle que la renvoie /api/achievement/9. */
 export function makeCard(overrides: Partial<AchievementCard> = {}): AchievementCard {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { WikiSyncEvent } from '../../shared/types.ts';
+import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
 import { api, ApiRequestError, iconUrl } from '../../web/src/api.ts';
-import { KB_OK, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
+import { ADVISOR_OK, KB_OK, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 describe('api', () => {
@@ -92,6 +92,71 @@ describe('api', () => {
     stubFetch({ 'GET /api/wiki/status': () => KB_OK, 'GET /api/settings': () => SETTINGS });
     expect(await api.wikiStatus()).toEqual(KB_OK);
     expect(await api.settings()).toEqual(SETTINGS);
+  });
+});
+
+describe('api : conseiller', () => {
+  it('lit l’état du conseiller et enregistre ses réglages avec l’en-tête dédié', async () => {
+    const mock = stubFetch({
+      'GET /api/advisor/status': () => ADVISOR_OK,
+      'POST /api/advisor/settings': (_url, init) => {
+        expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor-settings');
+        expect(new Headers(init?.headers).get('Content-Type')).toBe('application/json');
+        return { ...ADVISOR_OK, model: 'qwen3.5:4b' };
+      },
+    });
+    expect(await api.advisorStatus()).toEqual(ADVISOR_OK);
+    expect(await api.saveAdvisorSettings({ url: ADVISOR_OK.url, model: 'qwen3.5:4b' })).toMatchObject({ model: 'qwen3.5:4b' });
+    expect(JSON.parse(String(mock.mock.calls[1][1]?.body))).toEqual({ url: ADVISOR_OK.url, model: 'qwen3.5:4b' });
+  });
+});
+
+describe('api.askAdvisor', () => {
+  const REQUEST = { question: 'Quelle run faire ?', history: [], profile: 'me', slot: 1 };
+  const EVENTS: AdvisorEvent[] = [
+    { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
+    { kind: 'delta', text: 'Commence par ' },
+    { kind: 'delta', text: 'Magdalene.' },
+    { kind: 'done' },
+  ];
+  const body = (events: AdvisorEvent[]) => new Response(events.map((e) => `${JSON.stringify(e)}\n`).join(''));
+
+  it('envoie la question avec l’en-tête dédié et transmet chaque événement', async () => {
+    const mock = stubFetch({
+      'POST /api/advisor': (_url, init) => {
+        expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor');
+        return body(EVENTS);
+      },
+    });
+    const seen: AdvisorEvent[] = [];
+    expect(await api.askAdvisor(REQUEST, (event) => seen.push(event))).toEqual({ kind: 'done' });
+    expect(seen).toEqual(EVENTS);
+    expect(JSON.parse(String(mock.mock.calls[0][1]?.body))).toEqual(REQUEST);
+  });
+
+  it('renvoie l’erreur envoyée dans le flux', async () => {
+    const error: AdvisorEvent = { kind: 'error', message: "Erreur d'Ollama : out of memory" };
+    stubFetch({ 'POST /api/advisor': () => body([EVENTS[0], error]) });
+    expect(await api.askAdvisor(REQUEST, () => {})).toEqual(error);
+  });
+
+  it('remonte un refus avant le flux, un flux interrompu ou illisible', async () => {
+    stubFetch({ 'POST /api/advisor': () => jsonResponse({ error: 'Ollama injoignable sur http://127.0.0.1:11434' }, 503) });
+    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toMatchObject({
+      status: 503,
+      message: 'Ollama injoignable sur http://127.0.0.1:11434',
+    });
+    stubFetch({ 'POST /api/advisor': () => body(EVENTS.slice(0, 2)) });
+    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toThrow('Réponse du conseiller interrompue');
+    stubFetch({ 'POST /api/advisor': () => new Response('pas du json\n') });
+    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toThrow('Réponse du conseiller illisible');
+  });
+
+  it('transmet le signal d’abandon', async () => {
+    const controller = new AbortController();
+    const mock = stubFetch({ 'POST /api/advisor': () => body(EVENTS) });
+    await api.askAdvisor(REQUEST, () => {}, controller.signal);
+    expect(mock.mock.calls[0][1]?.signal).toBe(controller.signal);
   });
 });
 
