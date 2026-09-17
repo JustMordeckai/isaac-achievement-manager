@@ -73,6 +73,7 @@ function ExchangeView({ exchange, onRetry, onOpenAchievement }: ExchangeViewProp
           </p>
         )}
         {answer !== '' && <p className="chat__text">{answer}</p>}
+        {state === 'done' && answer === '' && <p className="hint">Le conseiller n'a rien répondu.</p>}
         {state === 'stopped' && <p className="hint">Réponse interrompue.</p>}
         {state === 'failed' && (
           <div className="banner banner--error" role="alert">
@@ -175,7 +176,7 @@ export function Advisor({
             </ul>
           </div>
         ) : (
-          <ol className="chat" aria-label="Échanges" aria-busy={chat.busy}>
+          <ol className="chat" aria-label="Échanges" aria-busy={chat.busy} aria-live="polite">
             {chat.exchanges.map((exchange) => (
               <ExchangeView
                 key={exchange.id}

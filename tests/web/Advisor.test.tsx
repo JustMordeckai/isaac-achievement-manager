@@ -82,6 +82,7 @@ describe('Advisor', () => {
     const { props } = renderAdvisor({ chat: makeChat([exchange()]) });
     const conversation = screen.getByRole('list', { name: 'Échanges' });
     expect(conversation).toHaveAttribute('aria-busy', 'false');
+    expect(conversation).toHaveAttribute('aria-live', 'polite');
     const item = within(conversation).getAllByRole('listitem')[0];
     expect(within(item).getByText('Quelle run faire ?')).toHaveClass('chat__text');
     // Les sauts de ligne de la réponse sont gardés (texte brut, pas de Markdown).
@@ -106,6 +107,12 @@ describe('Advisor', () => {
     expect(chat.ask).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Arrêter la réponse' }));
     expect(chat.stop).toHaveBeenCalled();
+  });
+
+  it('indique quand le conseiller n’a rien répondu', () => {
+    const chat = makeChat([exchange({ answer: '', sources: [], state: 'done' })]);
+    renderAdvisor({ chat });
+    expect(screen.getByText("Le conseiller n'a rien répondu.")).toBeInTheDocument();
   });
 
   it('signale une réponse interrompue ou en échec, et propose de réessayer', async () => {
