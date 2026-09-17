@@ -89,6 +89,7 @@ export function makeCard(overrides: Partial<AchievementCard> = {}): AchievementC
       sourceUrl: 'https://bindingofisaacrebirth.fandom.com/wiki/Achievements',
     },
     kb: KB_OK,
+    plan: null,
     ...overrides,
   };
 }

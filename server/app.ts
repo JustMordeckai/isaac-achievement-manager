@@ -1,8 +1,17 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { AchievementCard, ApiError, SettingsInfo, StatusResponse, WikiSyncEvent } from '../shared/types.ts';
+import type {
+  AchievementCard,
+  ApiError,
+  RoutesResponse,
+  SettingsInfo,
+  StatusResponse,
+  WikiSyncEvent,
+} from '../shared/types.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
 import type { KbService } from './kb-service.ts';
+import { cardPlan } from './planner/card-plan.ts';
+import { buildPlan } from './planner/plan.ts';
 import { profileErrorToHttp, type ProgressService } from './progress-service.ts';
 import { ProfileError, type ProfileClient } from './sources/steam-profile.ts';
 import { buildAchievementWiki, enrichAchievements } from './wiki/card.ts';
@@ -79,7 +88,14 @@ export function createApp(deps: AppDeps): express.Express {
     const achievement = progress.achievements.find((a) => a.id === id);
     if (!achievement) throw new HttpError(404, `Succès #${id} inconnu`);
     const [entry] = enrichAchievements([achievement], kb);
-    res.json({ achievement: entry, wiki: kb ? buildAchievementWiki(kb, id) : null, kb: status } satisfies AchievementCard);
+    const plan = kb ? cardPlan(kb, buildPlan({ kb, ...progress }), progress.achievements, id) : null;
+    res.json({ achievement: entry, wiki: kb ? buildAchievementWiki(kb, id) : null, kb: status, plan } satisfies AchievementCard);
+  });
+
+  api.get('/routes', async (req, res) => {
+    const { profile, slot } = readQuery(req);
+    const [progress, kb, status] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get(), deps.kb.status()]);
+    res.json({ kb: status, plan: kb ? buildPlan({ kb, ...progress }) : null } satisfies RoutesResponse);
   });
 
   api.get('/profile/resolve', async (req, res) => {
