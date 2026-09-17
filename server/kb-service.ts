@@ -63,7 +63,10 @@ export function createKbService({ file, build }: KbServiceOptions): KbService {
       const { kb, error } = await load();
       const failure = lastError ? { message: `Dernière synchro échouée : ${lastError}` } : {};
       if (kb) return { state: 'ok', syncedAt: kb.syncedAt, running, ...failure };
-      if (error) return { state: 'error', syncedAt: null, running, message: error };
+      if (error) {
+        const message = lastError ? `${error} ; dernière synchro échouée : ${lastError}` : error;
+        return { state: 'error', syncedAt: null, running, message };
+      }
       return { state: 'absent', syncedAt: null, running, ...failure };
     },
 

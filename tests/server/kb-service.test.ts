@@ -98,5 +98,17 @@ describe('createKbService', () => {
       message: "Base wiki d'un autre format (version 99) : relance la synchro",
     });
     expect(await service.get()).toBeNull();
+
+    const failing = createKbService({
+      file,
+      build: async () => {
+        throw new Error('wiki injoignable');
+      },
+    });
+    await expect(failing.sync(() => {})).rejects.toThrow('wiki injoignable');
+    expect(await failing.status()).toMatchObject({
+      state: 'error',
+      message: "Base wiki d'un autre format (version 99) : relance la synchro ; dernière synchro échouée : wiki injoignable",
+    });
   });
 });
