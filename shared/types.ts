@@ -68,6 +68,7 @@ export interface ResolvedProfile {
 export interface StatusResponse {
   app: string;
   sources: Record<SourceKey, SourceStatus> | null;
+  wiki: KbStatus;
 }
 
 export interface ApiError {

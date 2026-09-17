@@ -1,9 +1,11 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { ApiError, StatusResponse } from '../shared/types.ts';
+import type { AchievementCard, ApiError, SettingsInfo, StatusResponse, WikiSyncEvent } from '../shared/types.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
+import type { KbService } from './kb-service.ts';
 import { profileErrorToHttp, type ProgressService } from './progress-service.ts';
 import { ProfileError, type ProfileClient } from './sources/steam-profile.ts';
+import { buildAchievementWiki, enrichAchievements } from './wiki/card.ts';
 
 export const APP_NAME = 'isaac-achievement-manager';
 
@@ -11,6 +13,8 @@ export interface AppDeps {
   progress: Pick<ProgressService, 'get'>;
   profiles: ProfileClient;
   icons: IconCache;
+  kb: KbService;
+  settings: SettingsInfo;
   /** Appelé une fois la réponse de POST /api/shutdown envoyée. */
   onShutdown?: () => void;
 }
@@ -49,7 +53,11 @@ export function createApp(deps: AppDeps): express.Express {
     } catch {
       sources = null;
     }
-    res.json({ app: APP_NAME, sources } satisfies StatusResponse);
+    res.json({ app: APP_NAME, sources, wiki: await deps.kb.status() } satisfies StatusResponse);
+  });
+
+  api.get('/settings', (_req, res) => {
+    res.json(deps.settings);
   });
 
   api.get('/progress', async (req, res) => {
@@ -59,7 +67,19 @@ export function createApp(deps: AppDeps): express.Express {
 
   api.get('/achievements', async (req, res) => {
     const { profile, slot } = readQuery(req);
-    res.json((await deps.progress.get(profile, slot)).achievements);
+    const [progress, kb] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get()]);
+    res.json(enrichAchievements(progress.achievements, kb));
+  });
+
+  api.get('/achievement/:id', async (req, res) => {
+    const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : 0;
+    if (id <= 0) throw new HttpError(400, 'Identifiant de succès invalide');
+    const { profile, slot } = readQuery(req);
+    const [progress, kb, status] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get(), deps.kb.status()]);
+    const achievement = progress.achievements.find((a) => a.id === id);
+    if (!achievement) throw new HttpError(404, `Succès #${id} inconnu`);
+    const [entry] = enrichAchievements([achievement], kb);
+    res.json({ achievement: entry, wiki: kb ? buildAchievementWiki(kb, id) : null, kb: status } satisfies AchievementCard);
   });
 
   api.get('/profile/resolve', async (req, res) => {
@@ -74,6 +94,29 @@ export function createApp(deps: AppDeps): express.Express {
   api.get('/icons/:file', async (req, res) => {
     const bytes = await deps.icons.get(req.params.file);
     res.set('Cache-Control', 'public, max-age=604800, immutable').type('image/jpeg').send(Buffer.from(bytes));
+  });
+
+  api.get('/wiki/status', async (_req, res) => {
+    res.json(await deps.kb.status());
+  });
+
+  api.post('/wiki/sync', async (req, res) => {
+    // Même garde que /shutdown : un site tiers ne peut pas envoyer cet en-tête sans requête CORS préalable.
+    if (req.get('X-IAM-Action') !== 'wiki-sync') throw new HttpError(403, 'En-tête X-IAM-Action: wiki-sync requis');
+    if (deps.kb.isRunning()) throw new HttpError(409, 'Une synchro du wiki est déjà en cours');
+    res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.flushHeaders();
+    // La synchro continue si le navigateur se déconnecte : on cesse seulement d'écrire.
+    res.on('error', () => {});
+    const send = (event: WikiSyncEvent) => {
+      if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
+    };
+    try {
+      await deps.kb.sync(send);
+    } catch {
+      // L'événement « error » a déjà été envoyé dans le flux.
+    }
+    if (!res.destroyed) res.end();
   });
 
   api.post('/shutdown', (req, res) => {
