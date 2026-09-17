@@ -52,6 +52,14 @@ describe('buildOffRoute', () => {
     const list = buildOffRoute({ kb, achievements: merged.achievements, unlocked, counters: null }).counters;
     expect(list.every((c) => c.value === null)).toBe(true);
   });
+
+  it('laisse inconnue la valeur d’un compteur situé après la fin du bloc', async () => {
+    const kb = await testKnowledgeBase();
+    // Bloc réduit aux deux premiers compteurs : seul MOM_KILLS (index 1) est lisible.
+    const list = buildOffRoute({ kb, achievements: merged.achievements, unlocked, counters: [0, 16] }).counters;
+    expect(list.find((c) => c.id === 344)?.value).toBe(16);
+    expect(new Set(list.map((c) => c.value))).toEqual(new Set([16, null]));
+  });
 });
 
 function off(kb: Awaited<ReturnType<typeof testKnowledgeBase>>) {
@@ -79,5 +87,15 @@ describe('inferMarks et displayMarks', () => {
     expect(shown.isaac.satan).toBe(0);
     expect(shown.taintedIsaac.momsHeart).toBeNull();
     expect(displayMarks(kb, marks, true).isaac.momsHeart).toBe(0);
+  });
+
+  it('ne tient pas compte des succès à plusieurs marques ni de Greedier pour connaître une marque', async () => {
+    const kb = await testKnowledgeBase();
+    const shown = displayMarks(kb, inferMarks(kb, new Set()), false);
+    // Tainted Isaac : Mom's Lock (#548, Isaac, ???, Satan, The Lamb), #618 (Hush et Boss Rush) et
+    // Ultra Greedier (#541) ne disent rien d'une marque seule ; The Beast (#491) la prouve.
+    expect(shown.taintedIsaac).toMatchObject({ isaac: null, lamb: null, hush: null, bossRush: null, greed: null, beast: 0 });
+    // Isaac : Ultra Greed (#192) prouve la marque Greed.
+    expect(shown.isaac.greed).toBe(0);
   });
 });

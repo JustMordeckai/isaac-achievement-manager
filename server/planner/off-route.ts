@@ -56,7 +56,7 @@ export function buildOffRoute({ kb, achievements, unlocked, counters }: OffRoute
         name: state.name,
         condition: achievement.condition,
         total: how.total,
-        value: index !== null && counters ? counters[index] : null,
+        value: index !== null && counters ? (counters[index] ?? null) : null,
       });
     } else if (how.kind === 'closet') {
       closets.push({ id: achievement.id, name: state.name, character: how.character });

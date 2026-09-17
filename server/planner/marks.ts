@@ -39,8 +39,9 @@ export function inferMarks(kb: KnowledgeBase, unlocked: ReadonlySet<number>): Co
 
 /**
  * Marques à afficher. Avec la sauvegarde, elles sont exactes. Déduites, une marque absente reste
- * inconnue (null) quand aucun succès ne l'aurait prouvée en mode normal (ex. Mom's Heart des personnages
- * de base, qui n'a de succès qu'en difficile).
+ * inconnue (null) sauf si un succès `mark` en mode normal l'aurait prouvée (ex. Mom's Heart des
+ * personnages de base, qui n'a de succès qu'en difficile, reste inconnue). Un succès à plusieurs
+ * marques ou de Greedier manquant ne dit rien d'une marque normale seule.
  */
 export function displayMarks(
   kb: KnowledgeBase,
@@ -50,10 +51,8 @@ export function displayMarks(
   const provable = new Set<string>();
   for (const achievement of kb.achievements) {
     const how = achievement.how;
-    if ((how.kind === 'mark' || how.kind === 'multi-mark') && !how.hard) {
-      for (const ending of how.kind === 'mark' ? [how.ending] : how.endings) {
-        provable.add(`${how.character}:${markForEnding(ending).mark}`);
-      }
+    if (how.kind === 'mark' && !how.hard && markForEnding(how.ending).level === 1) {
+      provable.add(`${how.character}:${markForEnding(how.ending).mark}`);
     }
   }
   const result = {} as Record<CharacterId, KnownMarks>;
