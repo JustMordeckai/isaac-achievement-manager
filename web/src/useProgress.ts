@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AchievementState, ProgressSummary } from '../../shared/types.ts';
+import type { AchievementEntry, ProgressSummary } from '../../shared/types.ts';
 import { api, type ProfileQuery } from './api.ts';
 
 export interface ProgressData {
   summary: ProgressSummary;
-  achievements: AchievementState[];
+  achievements: AchievementEntry[];
 }
 
 export type ProgressState =
