@@ -318,3 +318,41 @@ export interface CardPlan {
     }
   >;
 }
+
+/** Serveur Ollama utilisé par le conseiller (champ `ollama` de data/settings.json). */
+export interface OllamaSettings {
+  url: string;
+  model: string;
+}
+
+export type AdvisorState = 'ok' | 'absent' | 'error';
+
+/** Réponse de GET /api/advisor/status : réglages en cours et état du serveur Ollama. */
+export interface AdvisorStatus extends OllamaSettings {
+  /** `absent` : serveur injoignable ; `error` : réponse inattendue ou modèle absent. */
+  state: AdvisorState;
+  message?: string;
+  /** Modèles installés sur le serveur (vide s'il est injoignable). */
+  models: string[];
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** Corps de POST /api/advisor. */
+export interface AdvisorRequest {
+  question: string;
+  /** Échanges précédents, du plus ancien au plus récent. */
+  history: ChatMessage[];
+  profile: string;
+  slot: number | null;
+}
+
+/** Ligne du flux NDJSON de POST /api/advisor. */
+export type AdvisorEvent =
+  | { kind: 'context'; sources: Array<{ id: number; name: string }> }
+  | { kind: 'delta'; text: string }
+  | { kind: 'done' }
+  | { kind: 'error'; message: string };

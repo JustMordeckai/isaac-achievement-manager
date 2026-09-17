@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { LocalAccount } from '../shared/types.ts';
+import type { LocalAccount, OllamaSettings } from '../shared/types.ts';
+import { writeFileAtomic } from './fs-atomic.ts';
+import { HttpError } from './http-error.ts';
 import { parseTextVdf, type VdfTextObject } from './sources/vdf-text.ts';
 import { APP_ID, accountIdToSteamId64, isSteamId64, steamId64ToAccountId } from './steam.ts';
 import { readRegistry, type RegistryReader } from './win-registry.ts';
@@ -97,9 +100,35 @@ export interface Settings {
   port: number;
   /** Compte Steam imposé (id de compte), sinon choix automatique. */
   accountId: number | null;
+  ollama: OllamaSettings;
 }
 
-export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null };
+export const DEFAULT_OLLAMA: OllamaSettings = { url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b' };
+
+export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null, ollama: DEFAULT_OLLAMA };
+
+const MODEL_NAME = /^[\w.:/-]{1,200}$/;
+
+/** Adresse http(s) d'un serveur Ollama, sans barre finale ; null si la valeur ne convient pas. */
+export function ollamaUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 200) return null;
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  if (url.username || url.password || url.search || url.hash) return null;
+  return url.toString().replace(/\/+$/, '');
+}
+
+/** Nom de modèle Ollama (ex. qwen3.5:9b) ; null si la valeur ne convient pas. */
+export function ollamaModel(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const model = value.trim();
+  return MODEL_NAME.test(model) ? model : null;
+}
 
 export function loadSettings(dataDir: string): Settings {
   let raw: unknown;
@@ -109,7 +138,8 @@ export function loadSettings(dataDir: string): Settings {
     return { ...DEFAULT_SETTINGS };
   }
   if (typeof raw !== 'object' || raw === null) return { ...DEFAULT_SETTINGS };
-  const { port, accountId } = raw as Record<string, unknown>;
+  const { port, accountId, ollama } = raw as Record<string, unknown>;
+  const server = typeof ollama === 'object' && ollama !== null ? (ollama as Record<string, unknown>) : {};
   return {
     port: Number.isInteger(port) && (port as number) > 0 && (port as number) < 65536 ? (port as number) : DEFAULT_SETTINGS.port,
     // Un id de compte Steam tient sur 32 bits : au-delà, le SteamID64 calculé serait faux.
@@ -117,5 +147,34 @@ export function loadSettings(dataDir: string): Settings {
       Number.isInteger(accountId) && (accountId as number) > 0 && (accountId as number) <= 0xffffffff
         ? (accountId as number)
         : null,
+    ollama: {
+      url: ollamaUrl(server.url) ?? DEFAULT_OLLAMA.url,
+      model: ollamaModel(server.model) ?? DEFAULT_OLLAMA.model,
+    },
   };
+}
+
+/** Écrit les réglages Ollama dans data/settings.json en gardant les autres champs du fichier. */
+export async function saveOllamaSettings(dataDir: string, ollama: OllamaSettings): Promise<void> {
+  const file = path.join(dataDir, 'settings.json');
+  let current: Record<string, unknown> = {};
+  let text: string | null = null;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+  if (text !== null) {
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Traité juste en dessous : on ne remplace pas un fichier que l'utilisateur est peut-être en train d'écrire.
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new HttpError(409, "data/settings.json est illisible : corrige-le avant d'enregistrer depuis l'interface");
+    }
+    current = parsed as Record<string, unknown>;
+  }
+  await writeFileAtomic(file, `${JSON.stringify({ ...current, ollama }, null, 2)}\n`);
 }

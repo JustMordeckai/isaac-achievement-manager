@@ -1,11 +1,15 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   chooseAccount,
   detectSteamEnv,
+  DEFAULT_OLLAMA,
   loadSettings,
+  ollamaModel,
+  ollamaUrl,
+  saveOllamaSettings,
   steamPaths,
   type SteamAccount,
   type SteamEnv,
@@ -139,23 +143,80 @@ describe('loadSettings', () => {
   const write = (content: string) => writeFileSync(path.join(dir, 'settings.json'), content);
 
   it('utilise les valeurs par défaut sans fichier', () => {
-    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
-    expect(loadSettings(path.join(dir, 'absent'))).toEqual({ port: 5250, accountId: null });
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
+    expect(loadSettings(path.join(dir, 'absent'))).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
   });
 
   it('lit un fichier valide', () => {
-    write(JSON.stringify({ port: 6000, accountId: 123456789 }));
-    expect(loadSettings(dir)).toEqual({ port: 6000, accountId: 123456789 });
+    write(JSON.stringify({ port: 6000, accountId: 123456789, ollama: { url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' } }));
+    expect(loadSettings(dir)).toEqual({
+      port: 6000,
+      accountId: 123456789,
+      ollama: { url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' },
+    });
   });
 
   it('ignore les valeurs invalides et un JSON illisible', () => {
     write(JSON.stringify({ port: 'x', accountId: -4 }));
-    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
     write(JSON.stringify({ port: 70000, accountId: 2 ** 32 }));
-    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
     write('{');
-    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
     write('null');
-    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null });
+    expect(loadSettings(dir)).toEqual({ port: 5250, accountId: null, ollama: DEFAULT_OLLAMA });
+    write(JSON.stringify({ ollama: { url: 'ftp://nas', model: 'a b' } }));
+    expect(loadSettings(dir).ollama).toEqual(DEFAULT_OLLAMA);
+  });
+
+  it('garde les réglages Ollama par défaut du serveur du LAN', () => {
+    expect(DEFAULT_OLLAMA).toEqual({ url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b' });
+  });
+});
+
+describe('réglages Ollama', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'iam-ollama-'));
+  });
+  afterEach(() => removeDir(dir));
+  const file = () => path.join(dir, 'settings.json');
+
+  it('valide l’adresse du serveur', () => {
+    expect(ollamaUrl(' http://127.0.0.1:11434/ ')).toBe('http://127.0.0.1:11434');
+    expect(ollamaUrl('https://ollama.lan/api-proxy/')).toBe('https://ollama.lan/api-proxy');
+    for (const bad of ['', 'ollama:11434', 'ftp://nas', 'http://user:pw@nas', 'http://nas/?x=1', 42, null]) {
+      expect(ollamaUrl(bad)).toBeNull();
+    }
+  });
+
+  it('valide le nom du modèle', () => {
+    expect(ollamaModel(' qwen3.5:9b ')).toBe('qwen3.5:9b');
+    expect(ollamaModel('hf.co/bartowski/Qwen-GGUF:Q4_K_M')).toBe('hf.co/bartowski/Qwen-GGUF:Q4_K_M');
+    for (const bad of ['', 'qwen 9b', 'a'.repeat(201), 3]) expect(ollamaModel(bad)).toBeNull();
+  });
+
+  it('écrit les réglages en gardant les autres champs', async () => {
+    writeFileSync(file(), JSON.stringify({ port: 5263, extra: true }));
+    await saveOllamaSettings(dir, { url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' });
+    const text = readFileSync(file(), 'utf8');
+    expect(JSON.parse(text)).toEqual({ port: 5263, extra: true, ollama: { url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' } });
+    expect(text.endsWith('}\n')).toBe(true);
+    expect(loadSettings(dir).port).toBe(5263);
+  });
+
+  it('crée le fichier s’il n’existe pas', async () => {
+    const nested = path.join(dir, 'data');
+    await saveOllamaSettings(nested, DEFAULT_OLLAMA);
+    expect(JSON.parse(readFileSync(path.join(nested, 'settings.json'), 'utf8'))).toEqual({ ollama: DEFAULT_OLLAMA });
+  });
+
+  it('refuse de remplacer un fichier illisible', async () => {
+    writeFileSync(file(), '{ "port": ');
+    await expect(saveOllamaSettings(dir, DEFAULT_OLLAMA)).rejects.toMatchObject({
+      status: 409,
+      message: "data/settings.json est illisible : corrige-le avant d'enregistrer depuis l'interface",
+    });
+    expect(readFileSync(file(), 'utf8')).toBe('{ "port": ');
   });
 });
