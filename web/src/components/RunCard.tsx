@@ -1,5 +1,6 @@
 import type { PlannedRun } from '../../../shared/types.ts';
-import { characterName, endingList, formatMinutes, requirementText, RUN_MODE_LABELS } from '../labels.ts';
+import { characterName, endingList, formatMinutes, RUN_MODE_LABELS } from '../labels.ts';
+import { RequirementNames } from './RequirementNames.tsx';
 
 export interface RunCardProps {
   run: PlannedRun;
@@ -65,7 +66,7 @@ export function RunCard({ run, onOpenAchievement }: RunCardProps) {
       )}
       {run.missing.length > 0 && (
         <p className="run__missing">
-          À débloquer d'abord : <span lang="en">{run.missing.map(requirementText).join(', ')}</span>
+          À débloquer d'abord : <RequirementNames requirements={run.missing} />
         </p>
       )}
       {run.note && <p className="hint">{run.note}</p>}

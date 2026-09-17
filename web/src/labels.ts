@@ -2,13 +2,13 @@ import { characterById } from '../../shared/characters.ts';
 import { endingById, type EndingId } from '../../shared/endings.ts';
 import type { MarkId } from '../../shared/marks.ts';
 import type {
+  AdvisorState,
   DesyncKind,
   Dlc,
   How,
   HowKind,
   KbState,
   MarksSource,
-  Requirement,
   RunMode,
   SourceKey,
   SourceState,
@@ -39,6 +39,12 @@ export const STATE_LABELS: Record<SourceState, string> = {
 export const KB_STATE_LABELS: Record<KbState, string> = {
   ok: 'OK',
   absent: 'absente',
+  error: 'erreur',
+};
+
+export const ADVISOR_STATE_LABELS: Record<AdvisorState, string> = {
+  ok: 'OK',
+  absent: 'injoignable',
   error: 'erreur',
 };
 
@@ -123,7 +129,7 @@ export const MARK_LABELS: Record<MarkId, { name: string; short: string }> = {
   blueBaby: { name: '???', short: '???' },
   lamb: { name: 'The Lamb', short: 'Lamb' },
   megaSatan: { name: 'Mega Satan', short: 'Mega' },
-  greed: { name: 'Greed et Greedier', short: 'Greed' },
+  greed: { name: 'Greed / Greedier', short: 'Greed' },
   hush: { name: 'Hush', short: 'Hush' },
   delirium: { name: 'Delirium', short: 'Deli' },
   mother: { name: 'Mother', short: 'Mother' },
@@ -151,10 +157,6 @@ export function formatMinutes(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const rest = minutes % 60;
   return rest === 0 ? `${minutes / 60} h` : `${Math.floor(minutes / 60)} h ${String(rest).padStart(2, '0')}`;
-}
-
-export function requirementText(requirement: Requirement): string {
-  return requirement.anyOf.map((a) => a.name).join(' ou ');
 }
 
 export function characterName(id: Parameters<typeof characterById>[0]): string {

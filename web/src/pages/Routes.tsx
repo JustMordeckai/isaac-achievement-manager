@@ -3,14 +3,18 @@ import { CHARACTERS, type CharacterId } from '../../../shared/characters.ts';
 import { DLC_ORDER } from '../../../shared/dlc.ts';
 import type { KbStatus, OffRoute, RoutePlan } from '../../../shared/types.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
+import { RequirementNames } from '../components/RequirementNames.tsx';
 import { RunCard } from '../components/RunCard.tsx';
-import { characterName, DLC_LABELS, requirementText } from '../labels.ts';
+import { characterName, DLC_LABELS } from '../labels.ts';
 import type { RoutesState } from '../useRoutes.ts';
 
 export interface RoutesProps {
   state: RoutesState;
   onOpenSettings(): void;
   onOpenAchievement(id: number): void;
+  onRetry(): void;
+  /** Revenir au profil local après l'échec d'un autre profil, null si c'est déjà le cas. */
+  onResetProfile: (() => void) | null;
 }
 
 const PAGE_SIZE = 20;
@@ -63,7 +67,7 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
               {c.requirement && !c.requirement.met && (
                 <span className="todo-list__missing">
                   {' '}
-                  (à débloquer d'abord : <span lang="en">{requirementText(c.requirement)}</span>)
+                  (à débloquer d'abord : <RequirementNames requirements={[c.requirement]} />)
                 </span>
               )}
             </li>
@@ -99,7 +103,8 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
           {!offRoute.redKey && (
             <>
               {' '}
-              Le coffre de Mom donne la <span lang="en">Red Key</span> au premier passage à <span lang="en">Home</span>.
+              Le coffre de <span lang="en">Mom</span> donne la <span lang="en">Red Key</span> au premier passage à{' '}
+              <span lang="en">Home</span>.
             </>
           )}
         </p>
@@ -235,13 +240,24 @@ function KbMissing({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): voi
 }
 
 /** Écran Routes : runs conseillées puis succès hors routes. */
-export function Routes({ state, onOpenSettings, onOpenAchievement }: RoutesProps) {
+export function Routes({ state, onOpenSettings, onOpenAchievement, onRetry, onResetProfile }: RoutesProps) {
   if (state.status === 'loading') return <p className="placeholder">Calcul des routes…</p>;
   if (state.status === 'error') {
     return (
-      <p className="banner banner--error" role="alert">
-        Impossible de calculer les routes : {state.message}
-      </p>
+      <div className="card error-panel" role="alert">
+        <h2>Impossible de calculer les routes</h2>
+        <p>{state.message}</p>
+        <div className="error-panel__actions">
+          <button type="button" className="btn btn--primary" onClick={onRetry}>
+            Réessayer
+          </button>
+          {onResetProfile && (
+            <button type="button" className="btn" onClick={onResetProfile}>
+              Revenir à mon profil
+            </button>
+          )}
+        </div>
+      </div>
     );
   }
   const { plan, kb } = state.data;

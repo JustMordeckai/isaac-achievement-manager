@@ -95,6 +95,10 @@ describe('AchievementCardPanel', () => {
       'The Polaroid ou The Negative : à débloquer',
       "Run Azazel (Difficile) : battre Boss Rush, Mom's Heart, environ 38 min",
     ]);
+    expect([...items[1].querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([
+      'The Polaroid',
+      'The Negative',
+    ]);
     expect(within(section).getByRole('heading', { level: 4, name: 'Run du plan' })).toBeInTheDocument();
     await user.click(within(section).getByRole('button', { name: 'Voir les routes' }));
     expect(onOpenRoutes).toHaveBeenCalled();

@@ -79,6 +79,7 @@ export function App() {
   const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');
+  const resetProfile = query.profile !== 'me' ? () => setQuery({ profile: 'me', slot: null }) : null;
 
   return (
     <div className="app">
@@ -103,7 +104,15 @@ export function App() {
           </p>
         )}
         {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} />}
-        {tab === 'routes' && <Routes state={routes} onOpenSettings={openSettings} onOpenAchievement={setCardId} />}
+        {tab === 'routes' && (
+          <Routes
+            state={routes}
+            onOpenSettings={openSettings}
+            onOpenAchievement={setCardId}
+            onRetry={reload}
+            onResetProfile={resetProfile}
+          />
+        )}
         {(tab === 'dashboard' || tab === 'achievements') && (
           <>
             {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
@@ -115,8 +124,8 @@ export function App() {
                   <button type="button" className="btn btn--primary" onClick={reload}>
                     Réessayer
                   </button>
-                  {query.profile !== 'me' && (
-                    <button type="button" className="btn" onClick={() => setQuery({ profile: 'me', slot: null })}>
+                  {resetProfile && (
+                    <button type="button" className="btn" onClick={resetProfile}>
                       Revenir à mon profil
                     </button>
                   )}

@@ -27,7 +27,7 @@ describe('CharacterGrid', () => {
     expect(isaac[1]).toHaveClass('mark--none');
     expect(isaac[2]).toHaveTextContent('Satan : normal');
     expect(isaac[2]).toHaveClass('mark--normal');
-    expect(isaac[7]).toHaveTextContent('Greed et Greedier : Greed');
+    expect(isaac[7]).toHaveTextContent('Greed / Greedier : Greed');
   });
 
   it('signale les personnages verrouillés, la note complète et les marques inconnues', () => {
@@ -42,7 +42,7 @@ describe('CharacterGrid', () => {
     expect(within(maggy).getByText('note complète')).toBeInTheDocument();
     expect(within(maggy).queryByText('verrouillé')).not.toBeInTheDocument();
     const cells = within(maggy).getAllByRole('cell');
-    expect(cells[7]).toHaveTextContent('Greed et Greedier : Greedier');
+    expect(cells[7]).toHaveTextContent('Greed / Greedier : Greedier');
     expect(cells[11]).toHaveTextContent('The Beast : inconnue');
     expect(cells[11]).toHaveClass('mark--unknown');
     expect(screen.getByText(/Marques déduites des succès/)).toBeInTheDocument();

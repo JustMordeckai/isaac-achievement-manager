@@ -276,6 +276,27 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: 'Impossible de charger la progression' })).not.toBeInTheDocument();
   });
 
+  it('propose de réessayer quand les routes d’un autre joueur échouent, ou de revenir à son profil', async () => {
+    const user = userEvent.setup();
+    const mock = stubProgress({
+      'GET /api/profile/resolve': () => ({ steamId64: '76561198000000001', name: 'Ami' }),
+      'GET /api/routes': (url) =>
+        url.searchParams.get('profile') === 'me' ? ROUTES_OK : jsonResponse({ error: 'Profil Steam privé' }, 403),
+    });
+    window.location.hash = '#/routes';
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
+    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'ami');
+    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Profil Steam privé');
+    await user.click(within(alert).getByRole('button', { name: 'Réessayer' }));
+    await vi.waitFor(() => expect(callsTo(mock, '/api/routes?profile=76561198000000001')).toBe(2));
+    await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Revenir à mon profil' }));
+    expect(await screen.findByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+  });
+
   it('ne répète pas le compte principal dans le choix du profil', async () => {
     stubProgress({
       'GET /api/progress': () =>

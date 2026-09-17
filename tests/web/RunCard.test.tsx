@@ -77,9 +77,14 @@ describe('RunCard', () => {
     });
     render(<RunCard run={run} onOpenAchievement={vi.fn()} />);
     expect(screen.getByText('Normal')).not.toHaveClass('run__mode--strong');
-    expect(screen.getByText(/^À débloquer d'abord/)).toHaveTextContent(
-      "À débloquer d'abord : A Secret Exit, The Polaroid ou The Negative",
-    );
+    const missing = screen.getByText(/^À débloquer d'abord/);
+    expect(missing).toHaveTextContent("À débloquer d'abord : A Secret Exit, The Polaroid ou The Negative");
+    // Chaque nom est en anglais, les liaisons restent en français.
+    expect([...missing.querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([
+      'A Secret Exit',
+      'The Polaroid',
+      'The Negative',
+    ]);
     expect(screen.getByText('Eden change de départ à chaque partie.')).toHaveClass('hint');
   });
 });

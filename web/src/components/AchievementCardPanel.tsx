@@ -8,11 +8,11 @@ import {
   endingList,
   formatDate,
   formatMinutes,
-  requirementText,
   RUN_MODE_LABELS,
   UNLOCK_LABELS,
 } from '../labels.ts';
 import { AchievementIcon } from './AchievementIcon.tsx';
+import { RequirementNames } from './RequirementNames.tsx';
 import { TextBlocks } from './TextBlocks.tsx';
 
 export interface AchievementCardPanelProps {
@@ -42,7 +42,7 @@ function PlanSection({ plan, onOpenRoutes }: { plan: CardPlan; onOpenRoutes(): v
                 key={requirement.anyOf.map((a) => a.id).join('-')}
                 className={requirement.met ? 'requirement requirement--met' : 'requirement requirement--missing'}
               >
-                <span lang="en">{requirementText(requirement)}</span> : {requirement.met ? 'débloqué' : 'à débloquer'}
+                <RequirementNames requirements={[requirement]} /> : {requirement.met ? 'débloqué' : 'à débloquer'}
               </li>
             ))}
           </ul>

@@ -10,6 +10,8 @@ function renderRoutes(plan: RoutePlan | null = makePlan(), overrides: Partial<Ro
     state: { status: 'ready', data: { kb: plan ? KB_OK : KB_ABSENT, plan }, refreshing: false },
     onOpenSettings: vi.fn(),
     onOpenAchievement: vi.fn(),
+    onRetry: vi.fn(),
+    onResetProfile: null,
     ...overrides,
   };
   return { ...render(<Routes {...props} />), props };
@@ -174,6 +176,7 @@ describe('Routes : hors routes', () => {
       'Red Key',
       'Cracked Key',
       'Soul of Cain',
+      'Mom',
       'Red Key',
       'Home',
     ]);
@@ -196,11 +199,24 @@ describe('Routes : hors routes', () => {
 });
 
 describe('Routes : états', () => {
-  it('indique le calcul en cours et les erreurs', () => {
-    const { rerender, props } = renderRoutes(null, { state: { status: 'loading' } });
+  it('indique le calcul en cours', () => {
+    renderRoutes(null, { state: { status: 'loading' } });
     expect(screen.getByText('Calcul des routes…')).toBeInTheDocument();
-    rerender(<Routes {...props} state={{ status: 'error', message: 'Serveur indisponible' }} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Impossible de calculer les routes : Serveur indisponible');
+  });
+
+  it('propose de réessayer après une erreur, ou de revenir à son profil', async () => {
+    const user = userEvent.setup();
+    const onResetProfile = vi.fn();
+    const { rerender, props } = renderRoutes(null, { state: { status: 'error', message: 'Profil Steam privé' } });
+    const alert = screen.getByRole('alert');
+    expect(within(alert).getByRole('heading', { level: 2, name: 'Impossible de calculer les routes' })).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Profil Steam privé');
+    expect(within(alert).queryByRole('button', { name: 'Revenir à mon profil' })).not.toBeInTheDocument();
+    await user.click(within(alert).getByRole('button', { name: 'Réessayer' }));
+    expect(props.onRetry).toHaveBeenCalled();
+    rerender(<Routes {...props} onResetProfile={onResetProfile} />);
+    await user.click(screen.getByRole('button', { name: 'Revenir à mon profil' }));
+    expect(onResetProfile).toHaveBeenCalled();
   });
 
   it('mène aux paramètres sans base wiki utilisable', async () => {

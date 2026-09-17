@@ -7,7 +7,6 @@ import {
   formatMinutes,
   HOW_LABELS,
   MARK_LABELS,
-  requirementText,
   RUN_MODE_LABELS,
   UNLOCK_LABELS,
 } from '../../web/src/labels.ts';
@@ -53,14 +52,10 @@ describe('libellés du planificateur', () => {
     expect(endingList([])).toBe('Mom');
   });
 
-  it('joint les alternatives d’un prérequis', () => {
-    expect(requirementText({ anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: false })).toBe(
-      'The Polaroid ou The Negative',
-    );
-  });
-
   it('a un libellé pour chaque marque et chaque mode', () => {
     expect(Object.keys(MARK_LABELS)).toEqual([...MARK_IDS]);
+    // Aucun mot français dans un nom lu en anglais.
+    expect(MARK_LABELS.greed.name).toBe('Greed / Greedier');
     expect(Object.keys(RUN_MODE_LABELS)).toEqual(['normal', 'hard', 'greed', 'greedier']);
   });
 });
