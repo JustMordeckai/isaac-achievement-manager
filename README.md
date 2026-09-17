@@ -2,15 +2,17 @@
 
 Application web locale qui lit ta progression sur *The Binding of Isaac: Rebirth* (Repentance+) et t'aide à savoir ce qu'il te reste à débloquer.
 
-Version actuelle (jalon M1) :
+Version actuelle (jalon M2) :
 
 - lecture du cache Steam local, de la sauvegarde Repentance+ et du profil Steam public ;
 - détection des écarts entre ces sources (par exemple un secret débloqué en jeu mais absent de Steam) ;
 - tableau de bord : progression globale et par extension, derniers déblocages, écarts ;
-- liste des succès filtrable (état, extension, secrets, recherche, écarts) ;
+- liste des succès filtrable (état, extension, méthode d'obtention, personnage, secrets, recherche, écarts) ;
+- fiche détaillée de chaque succès, tirée du wiki anglais : condition, ce qu'il débloque, astuces, liens vers les pages sources ;
+- écran Paramètres : synchro du wiki avec avancement, chemins et compte détectés ;
 - consultation du profil public d'un autre joueur (SteamID64, URL de profil ou pseudo personnalisé).
 
-À venir : fiches détaillées tirées du wiki (M2), planificateur de routes (M3), conseiller IA via Ollama (M4). Le design complet est dans `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
+À venir : planificateur de routes (M3), conseiller IA via Ollama (M4). Le design complet est dans `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
 
 ## Prérequis
 
@@ -32,7 +34,9 @@ npm run build
 - Arrêt : bouton « Arrêter » dans l'interface, ou `npm run stop`.
 - Journal du serveur lancé par le `.vbs` : `data/server.log`.
 
-L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement les icônes en cache et le journal dans `data/`, et lit `data/settings.json` si l'utilisateur l'a créé.
+Au premier lancement, la base wiki n'existe pas encore : un bandeau le signale et renvoie vers l'écran Paramètres, dont le bouton « Synchroniser le wiki » la télécharge (environ 600 pages, une vingtaine de secondes). La même synchro existe en ligne de commande : `npm run sync-wiki`. Elle n'est jamais lancée automatiquement ; relance-la après une mise à jour du jeu ou du wiki.
+
+L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement dans `data/` : icônes en cache, base wiki (`kb.json`), copie des pages du wiki (`wiki-cache/`) et journal. Elle lit `data/settings.json` si l'utilisateur l'a créé.
 
 ## Dépannage
 
@@ -42,6 +46,8 @@ Si le double-clic sur `Isaac Manager.vbs` ne fait rien :
 - vérifier que `npm install` et `npm run build` ont bien été faits ;
 - lire `data/server.log` ;
 - lancer `npm start` dans un terminal pour voir l'erreur directement.
+
+Si la synchro du wiki échoue, la base précédente reste utilisée. Sans réseau, la synchro reprend les pages déjà copiées dans `data/wiki-cache/` ; le rapport indique combien.
 
 ## Réglages
 
@@ -57,6 +63,8 @@ Fichier optionnel `data/settings.json` :
 - `port` : port d'écoute local.
 - `accountId` : id de compte Steam à utiliser (sinon : compte connecté à Steam s'il a des données Isaac, puis le dernier compte connecté qui en a).
 
+L'écran Paramètres affiche les valeurs utilisées ; les modifier demande d'éditer ce fichier puis de relancer l'application.
+
 ## Sources lues
 
 | Source | Emplacement |
@@ -65,8 +73,11 @@ Fichier optionnel `data/settings.json` :
 | Succès Steam locaux | `Steam/appcache/stats/UserGameStats_<compte>_250900.bin` |
 | Sauvegarde | `Steam/userdata/<compte>/250900/remote/rep+persistentgamedata{1,2,3}.dat` |
 | Profil public | `https://steamcommunity.com/profiles/<SteamID64>/stats/250900/?xml=1` |
+| Wiki (synchro manuelle) | `https://bindingofisaacrebirth.fandom.com/api.php` |
 
 Le slot de sauvegarde affiché par défaut est le plus récemment modifié ; un sélecteur permet d'en changer.
+
+Le contenu des fiches vient du [wiki The Binding of Isaac: Rebirth](https://bindingofisaacrebirth.fandom.com/) (Fandom), sous licence CC BY-SA ; chaque fiche renvoie vers ses pages sources.
 
 ## Développement
 
@@ -74,6 +85,7 @@ Le slot de sauvegarde affiché par défaut est le plus récemment modifié ; un 
 npm run dev        # serveur + Vite (rechargement à chaud) sur http://127.0.0.1:5250/
 npm test           # tests Vitest (serveur et front)
 npm run typecheck  # vérification TypeScript
+npm run sync-wiki  # synchro du wiki sans interface
 ```
 
 Les fichiers de `tests/fixtures/` sont des copies réelles (dont un SteamID) : à anonymiser avant toute publication du dépôt.
