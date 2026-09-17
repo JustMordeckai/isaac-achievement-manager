@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { inferMarks } from '../../server/planner/marks.ts';
 import { buildPlan } from '../../server/planner/plan.ts';
 import { mergeProgress, type SaveProgress } from '../../server/sources/progress.ts';
 import { endingByName, type EndingId } from '../../shared/endings.ts';
@@ -70,13 +71,17 @@ describe('buildPlan', () => {
     expect(locked.filter((id) => !covered.has(id))).toEqual([]);
   });
 
-  it('ne rend jouable aucune run dont un succès dépend d’une run planifiée', async () => {
+  it.each([
+    ['la sauvegarde', true],
+    ['les marques déduites', false],
+  ])('ne rend jouable aucune run dont un succès dépend d’une run planifiée (%s)', async (_, withSave) => {
     const kb = await testKnowledgeBase();
-    const plan = await planFor(() => null, true);
-    const marks = merged.save?.marks;
+    const plan = await planFor(() => null, withSave);
+    const unlocked = new Set(merged.achievements.filter((a) => a.unlocked).map((a) => a.id));
+    const marks = withSave ? merged.save?.marks : inferMarks(kb, unlocked);
     if (!marks) throw new Error('La sauvegarde de la fixture doit contenir les marques.');
     const hows = new Map(kb.achievements.map((a) => [a.id, a.how]));
-    // Niveau qu'une run apporte à une marque, et fins déjà battues d'après la seule sauvegarde.
+    // Niveau qu'une run apporte à une marque, et fins déjà battues d'après le seul état réel.
     const reached = (run: PlannedRun, mark: MarkId) =>
       Math.max(
         0,
