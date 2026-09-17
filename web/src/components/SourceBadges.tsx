@@ -1,11 +1,13 @@
-import type { KbStatus, ProgressSummary, SourceKey } from '../../../shared/types.ts';
-import { formatDate, KB_STATE_LABELS, SOURCE_LABELS, STATE_LABELS } from '../labels.ts';
+import type { AdvisorStatus, KbStatus, ProgressSummary, SourceKey } from '../../../shared/types.ts';
+import { ADVISOR_STATE_LABELS, formatDate, KB_STATE_LABELS, SOURCE_LABELS, STATE_LABELS } from '../labels.ts';
 
 const ORDER: SourceKey[] = ['steamCache', 'saveFile', 'profile'];
 
 export interface SourceBadgesProps {
   sources: ProgressSummary['sources'] | null;
   wiki: KbStatus | null;
+  /** Serveur Ollama du conseiller (pastille « Conseiller », le message nomme Ollama). */
+  advisor: AdvisorStatus | null;
 }
 
 interface Badge {
@@ -16,7 +18,7 @@ interface Badge {
   message: string | undefined;
 }
 
-export function SourceBadges({ sources, wiki }: SourceBadgesProps) {
+export function SourceBadges({ sources, wiki, advisor }: SourceBadgesProps) {
   const badges: Badge[] = [];
   if (sources) {
     for (const key of ORDER) {
@@ -27,6 +29,15 @@ export function SourceBadges({ sources, wiki }: SourceBadgesProps) {
   if (wiki) {
     const synced = wiki.state === 'ok' && wiki.syncedAt ? `Synchro du ${formatDate(wiki.syncedAt)}` : undefined;
     badges.push({ key: 'wiki', label: 'Wiki', state: wiki.state, text: KB_STATE_LABELS[wiki.state], message: wiki.message ?? synced });
+  }
+  if (advisor) {
+    badges.push({
+      key: 'advisor',
+      label: 'Conseiller',
+      state: advisor.state,
+      text: ADVISOR_STATE_LABELS[advisor.state],
+      message: advisor.message ?? `${advisor.model} sur ${advisor.url}`,
+    });
   }
   if (badges.length === 0) return null;
   // Les messages des sources en défaut restent lisibles sans survol.

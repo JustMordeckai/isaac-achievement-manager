@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import type { KbStatus, ProgressSummary } from '../../../shared/types.ts';
+import type { AdvisorStatus, KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import type { ProfileQuery } from '../api.ts';
 import type { Theme } from '../theme.ts';
 import type { Tab } from '../useHashTab.ts';
@@ -9,6 +9,7 @@ import { SourceBadges } from './SourceBadges.tsx';
 export interface HeaderProps {
   summary: ProgressSummary | null;
   kb: KbStatus | null;
+  advisor: AdvisorStatus | null;
   /** SteamID64 du compte local servi sous « Mon profil », s'il est connu. */
   meSteamId: string | null;
   query: ProfileQuery;
@@ -26,6 +27,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'dashboard', label: 'Tableau de bord' },
   { id: 'achievements', label: 'Succès' },
   { id: 'routes', label: 'Routes' },
+  { id: 'advisor', label: 'Conseiller' },
   { id: 'settings', label: 'Paramètres' },
 ];
 
@@ -102,7 +104,7 @@ export function Header(props: HeaderProps) {
             </select>
           </label>
         )}
-        <SourceBadges sources={summary?.sources ?? null} wiki={props.kb} />
+        <SourceBadges sources={summary?.sources ?? null} wiki={props.kb} advisor={props.advisor} />
       </div>
     </header>
   );

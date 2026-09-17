@@ -1,6 +1,9 @@
-import type { KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
+import { type FormEvent, useState } from 'react';
+import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
+import { api } from '../api.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { formatDate } from '../labels.ts';
+import type { AdvisorStatusState } from '../useAdvisor.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
 
 export interface SettingsProps {
@@ -8,6 +11,7 @@ export interface SettingsProps {
   kb: KbStatus | null;
   sync: WikiSyncState;
   onSync(): void;
+  advisor: AdvisorStatusState;
 }
 
 function accountText({ account, forcedAccountId }: SettingsInfo): string {
@@ -97,7 +101,82 @@ function SyncProgress({ sync }: { sync: WikiSyncState }) {
   return null;
 }
 
-export function Settings({ settings, kb, sync, onSync }: SettingsProps) {
+function AdvisorStatusText({ status }: { status: AdvisorStatus | null }) {
+  if (!status) return <p className="placeholder">Vérification du serveur Ollama…</p>;
+  if (status.state === 'ok') return <p>Serveur joignable, modèle {status.model} installé.</p>;
+  return <p className="banner banner--error">{status.message ?? 'Serveur Ollama indisponible.'}</p>;
+}
+
+/** Adresse du serveur Ollama et modèle, enregistrés dans data/settings.json sans redémarrage. */
+function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
+  const { status } = advisor;
+  const [url, setUrl] = useState(status?.url ?? '');
+  const [model, setModel] = useState(status?.model ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const next = await api.saveAdvisorSettings({ url, model });
+      advisor.replace(next);
+      setUrl(next.url);
+      setModel(next.model);
+      setSaved(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const models = status?.models ?? [];
+  return (
+    <section className="card" aria-labelledby="advisor-settings-title">
+      <h2 id="advisor-settings-title">Conseiller IA</h2>
+      <AdvisorStatusText status={status} />
+      <form className="settings-form" onSubmit={save}>
+        <label className="field">
+          <span>Adresse du serveur Ollama</span>
+          <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Modèle</span>
+          <input required list="ollama-models" value={model} onChange={(e) => setModel(e.target.value)} />
+        </label>
+        <datalist id="ollama-models">
+          {models.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <div className="settings-form__actions">
+          <button type="submit" className="btn btn--primary" disabled={saving}>
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+          <button type="button" className="btn" onClick={advisor.recheck} disabled={advisor.checking}>
+            {advisor.checking ? 'Vérification…' : 'Vérifier la connexion'}
+          </button>
+        </div>
+        {saved && <p role="status">Réglages enregistrés.</p>}
+        {error && (
+          <p className="banner banner--error" role="alert">
+            Enregistrement impossible : {error}
+          </p>
+        )}
+      </form>
+      <p className="hint">
+        {models.length > 0 ? `Modèles installés : ${models.join(', ')}.` : 'Modèles installés : inconnus.'} Les
+        réglages sont écrits dans data/settings.json et s'appliquent tout de suite.
+      </p>
+    </section>
+  );
+}
+
+export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps) {
   const running = sync.kind === 'running' || kb?.running === true;
   return (
     <div className="settings">
@@ -113,6 +192,9 @@ export function Settings({ settings, kb, sync, onSync }: SettingsProps) {
         </button>
         <SyncProgress sync={sync} />
       </section>
+
+      {/* Remonté quand l'état arrive : les champs partent des réglages lus sur le serveur. */}
+      <AdvisorSettings key={advisor.status ? 'ready' : 'loading'} advisor={advisor} />
 
       <section className="card" aria-labelledby="app-title">
         <h2 id="app-title">Steam et application</h2>

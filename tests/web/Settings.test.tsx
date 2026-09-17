@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { KbStatus, WikiSyncReport } from '../../shared/types.ts';
 import { Settings, type SettingsProps } from '../../web/src/pages/Settings.tsx';
-import { KB_ABSENT, KB_OK, SETTINGS } from './factories.ts';
+import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeAdvisorState, SETTINGS } from './factories.ts';
+import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 const REPORT: WikiSyncReport = {
   achievements: 641,
@@ -21,6 +22,7 @@ function renderSettings(overrides: Partial<SettingsProps> = {}) {
     kb: KB_OK,
     sync: { kind: 'idle' },
     onSync: vi.fn(),
+    advisor: makeAdvisorState(),
     ...overrides,
   };
   const view = render(<Settings {...props} />);
@@ -28,6 +30,7 @@ function renderSettings(overrides: Partial<SettingsProps> = {}) {
 }
 
 const kbSection = () => screen.getByRole('region', { name: 'Base wiki' });
+const advisorSection = () => within(screen.getByRole('region', { name: 'Conseiller IA' }));
 
 describe('Settings', () => {
   it('affiche l’état de la base et lance la synchro', async () => {
@@ -83,11 +86,11 @@ describe('Settings', () => {
   it('liste les réglages détectés en lecture seule', () => {
     renderSettings();
     const app = within(screen.getByRole('region', { name: 'Steam et application' }));
+    expect(app.queryByRole('textbox')).not.toBeInTheDocument();
     expect(app.getByText('Dossier Steam').nextElementSibling).toHaveTextContent('c:\\program files (x86)\\steam');
     expect(app.getByText('Compte utilisé').nextElementSibling).toHaveTextContent('Player (76561198083722517)');
     expect(app.getByText('Adresse').nextElementSibling).toHaveTextContent('http://127.0.0.1:5250/');
     expect(app.getByText('Dossier des données').nextElementSibling).toHaveTextContent('C:\\isaac\\data');
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   it('précise un compte imposé, introuvable ou absent', () => {
@@ -107,5 +110,76 @@ describe('Settings', () => {
     expect(screen.getByText("Lecture de l'état de la base…")).toBeInTheDocument();
     rerender(<Settings {...props} settings={{ status: 'error', message: 'Erreur HTTP 500' }} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Réglages indisponibles : Erreur HTTP 500');
+  });
+});
+
+describe('Settings : conseiller', () => {
+  it('montre l’état du serveur et les réglages en cours', () => {
+    renderSettings();
+    const section = advisorSection();
+    expect(section.getByText('Serveur joignable, modèle qwen3.5:9b installé.')).toBeInTheDocument();
+    expect(section.getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://127.0.0.1:11434');
+    expect(section.getByLabelText('Modèle')).toHaveValue('qwen3.5:9b');
+    expect(section.getByText(/^Modèles installés : qwen3\.5:4b, qwen3\.5:9b\./)).toBeInTheDocument();
+    const options = [...document.querySelectorAll('#ollama-models option')].map((o) => o.getAttribute('value'));
+    expect(options).toEqual(['qwen3.5:4b', 'qwen3.5:9b']);
+  });
+
+  it('signale un serveur injoignable et relance la vérification', async () => {
+    const user = userEvent.setup();
+    const advisor = makeAdvisorState(ADVISOR_OFFLINE);
+    const { rerender, props } = renderSettings({ advisor });
+    const section = advisorSection();
+    expect(section.getByText('Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)')).toHaveClass('banner--error');
+    expect(section.getByText(/^Modèles installés : inconnus\./)).toBeInTheDocument();
+    await user.click(section.getByRole('button', { name: 'Vérifier la connexion' }));
+    expect(advisor.recheck).toHaveBeenCalled();
+    rerender(<Settings {...props} advisor={makeAdvisorState(ADVISOR_OFFLINE, true)} />);
+    expect(advisorSection().getByRole('button', { name: 'Vérification…' })).toBeDisabled();
+  });
+
+  it('remplit les champs quand l’état arrive', () => {
+    const { rerender, props } = renderSettings({ advisor: makeAdvisorState(null) });
+    expect(advisorSection().getByText('Vérification du serveur Ollama…')).toBeInTheDocument();
+    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('');
+    rerender(<Settings {...props} advisor={makeAdvisorState()} />);
+    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('qwen3.5:9b');
+  });
+
+  it('enregistre l’adresse et le modèle', async () => {
+    const user = userEvent.setup();
+    const saved = { ...ADVISOR_OK, url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' };
+    const mock = stubFetch({ 'POST /api/advisor/settings': () => saved });
+    const advisor = makeAdvisorState();
+    renderSettings({ advisor });
+    const section = advisorSection();
+    await user.clear(section.getByLabelText('Adresse du serveur Ollama'));
+    await user.type(section.getByLabelText('Adresse du serveur Ollama'), 'http://10.0.0.5:11434/');
+    await user.clear(section.getByLabelText('Modèle'));
+    await user.type(section.getByLabelText('Modèle'), 'qwen3.5:4b');
+    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
+    expect(await section.findByRole('status')).toHaveTextContent('Réglages enregistrés.');
+    const [, init] = mock.mock.calls[0];
+    expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor-settings');
+    expect(JSON.parse(String(init?.body))).toEqual({ url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' });
+    expect(advisor.replace).toHaveBeenCalledWith(saved);
+    expect(section.getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://10.0.0.5:11434');
+  });
+
+  it('affiche le refus du serveur', async () => {
+    const user = userEvent.setup();
+    let reply: (response: Response) => void = () => {};
+    stubFetch({ 'POST /api/advisor/settings': () => new Promise<Response>((resolve) => (reply = resolve)) });
+    const advisor = makeAdvisorState();
+    renderSettings({ advisor });
+    const section = advisorSection();
+    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
+    expect(section.getByRole('button', { name: 'Enregistrement…' })).toBeDisabled();
+    await act(async () => reply(jsonResponse({ error: 'Adresse Ollama invalide (attendu : http://hôte:port)' }, 400)));
+    expect(await section.findByRole('alert')).toHaveTextContent(
+      'Enregistrement impossible : Adresse Ollama invalide (attendu : http://hôte:port)',
+    );
+    expect(advisor.replace).not.toHaveBeenCalled();
+    expect(section.getByRole('button', { name: 'Enregistrer' })).toBeEnabled();
   });
 });

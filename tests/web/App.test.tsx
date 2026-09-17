@@ -3,7 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
 import type { WikiSyncEvent } from '../../shared/types.ts';
-import { KB_ABSENT, KB_OK, makeAchievement, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
+import {
+  ADVISOR_OFFLINE,
+  ADVISOR_OK,
+  KB_ABSENT,
+  KB_OK,
+  makeAchievement,
+  makeCard,
+  makeSummary,
+  ROUTES_OK,
+  SETTINGS,
+} from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 const ACHIEVEMENTS = [
@@ -20,6 +30,7 @@ const BASE_ROUTES = {
   'GET /api/achievement/2': () => makeCard({ achievement: ACHIEVEMENTS[1] }),
   'GET /api/achievement/45': () => makeCard({ achievement: makeAchievement(45, { name: 'Guardian Angel' }) }),
   'GET /api/routes': () => ROUTES_OK,
+  'GET /api/advisor/status': () => ADVISOR_OK,
 };
 
 function stubProgress(routes: Parameters<typeof stubFetch>[0] = {}) {
@@ -295,6 +306,28 @@ describe('App', () => {
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes?profile=76561198000000001')).toBe(2));
     await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Revenir à mon profil' }));
     expect(await screen.findByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+  });
+
+  it('enregistre les réglages Ollama depuis les paramètres et met à jour la pastille du conseiller', async () => {
+    const user = userEvent.setup();
+    let status = ADVISOR_OFFLINE;
+    stubProgress({
+      'GET /api/advisor/status': () => status,
+      'POST /api/advisor/settings': () => {
+        status = { ...ADVISOR_OK, url: 'http://10.0.0.5:11434' };
+        return status;
+      },
+    });
+    window.location.hash = '#/parametres';
+    render(<App />);
+    expect(await screen.findByText('Conseiller : injoignable')).toBeInTheDocument();
+    const section = within(screen.getByRole('region', { name: 'Conseiller IA' }));
+    const url = await section.findByDisplayValue('http://127.0.0.1:11434');
+    await user.clear(url);
+    await user.type(url, 'http://10.0.0.5:11434');
+    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('Conseiller : OK')).toBeInTheDocument();
+    expect(section.getByText('Serveur joignable, modèle qwen3.5:9b installé.')).toBeInTheDocument();
   });
 
   it('ne répète pas le compte principal dans le choix du profil', async () => {

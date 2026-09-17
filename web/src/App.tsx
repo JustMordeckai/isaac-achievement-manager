@@ -8,6 +8,7 @@ import { Dashboard, type FilterPatch } from './pages/Dashboard.tsx';
 import { Routes } from './pages/Routes.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { applyTheme, loadTheme, type Theme } from './theme.ts';
+import { useAdvisorStatus } from './useAdvisor.ts';
 import { useHashAchievement, useHashTab } from './useHashTab.ts';
 import { useProgress } from './useProgress.ts';
 import { useRoutes } from './useRoutes.ts';
@@ -29,6 +30,7 @@ export function App() {
   const routes = useRoutes(query, reloadKey);
   const kb = useKbStatus(reloadKey);
   const settings = useSettings();
+  const advisor = useAdvisorStatus(reloadKey);
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
   const [sync, startSync] = useWikiSync(reload);
@@ -86,6 +88,7 @@ export function App() {
       <Header
         summary={summary}
         kb={kb}
+        advisor={advisor.status}
         meSteamId={meSteamId}
         query={query}
         onQueryChange={setQuery}
@@ -103,7 +106,7 @@ export function App() {
             Arrêt impossible : {stop.message}
           </p>
         )}
-        {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} />}
+        {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} />}
         {tab === 'routes' && (
           <Routes
             state={routes}

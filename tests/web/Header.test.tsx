@@ -4,13 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
 import { ProfilePicker } from '../../web/src/components/ProfilePicker.tsx';
 import { rememberProfile, RECENT_PROFILES_KEY } from '../../web/src/recent-profiles.ts';
-import { KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
+import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 function renderHeader(overrides: Partial<HeaderProps> = {}) {
   const props: HeaderProps = {
     summary: makeSummary(),
     kb: null,
+    advisor: null,
     meSteamId: null,
     query: { profile: 'me', slot: null },
     onQueryChange: vi.fn(),
@@ -67,13 +68,30 @@ describe('Header', () => {
     expect(within(screen.getByRole('list', { name: 'État des sources' })).getAllByRole('listitem')).toHaveLength(1);
   });
 
-  it('propose l’onglet Routes', async () => {
+  it('ajoute l’état du conseiller', () => {
+    renderHeader({ advisor: ADVISOR_OK });
+    const ollama = screen.getByText('Conseiller : OK');
+    expect(ollama).toHaveClass('badge--ok');
+    expect(ollama).toHaveAttribute('title', 'qwen3.5:9b sur http://127.0.0.1:11434');
+  });
+
+  it('affiche le message d’un serveur Ollama injoignable', () => {
+    renderHeader({ advisor: ADVISOR_OFFLINE });
+    expect(screen.getByText('Conseiller : injoignable')).toHaveClass('badge--absent');
+    expect(
+      screen.getByText('Conseiller : Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)'),
+    ).toBeInTheDocument();
+  });
+
+  it('propose les onglets Routes et Conseiller', async () => {
     const user = userEvent.setup();
     const props = renderHeader();
     const tabs = within(screen.getByRole('navigation')).getAllByRole('button').map((b) => b.textContent);
-    expect(tabs).toEqual(['Tableau de bord', 'Succès', 'Routes', 'Paramètres']);
+    expect(tabs).toEqual(['Tableau de bord', 'Succès', 'Routes', 'Conseiller', 'Paramètres']);
     await user.click(screen.getByRole('button', { name: 'Routes' }));
     expect(props.onTabChange).toHaveBeenCalledWith('routes');
+    await user.click(screen.getByRole('button', { name: 'Conseiller' }));
+    expect(props.onTabChange).toHaveBeenCalledWith('advisor');
   });
 
   it('propose l’onglet Paramètres', async () => {
