@@ -66,6 +66,8 @@ Si la synchro du wiki échoue, la base précédente reste utilisée. Sans résea
 
 Si le conseiller ne répond pas : vérifier dans Paramètres l'adresse du serveur (bouton « Vérifier la connexion »), que le modèle est installé (`ollama pull qwen3.5:9b` sur le serveur) et que le pare-feu du serveur laisse passer le port 11434. Le reste de l'application fonctionne sans Ollama.
 
+Si les réponses n'arrivent jamais alors que le serveur répond : il traite une demande à la fois par modèle, donc une autre application qui l'occupe fait attendre la tienne. La place en mémoire vidéo compte aussi : l'application demande un contexte de 32 768 jetons, qui tient à côté du modèle ; un contexte plus grand, ou un autre modèle chargé en même temps, fait déborder le cache et la génération devient interminable. `curl http://127.0.0.1:11434/api/ps` sur le serveur montre ce qui est chargé.
+
 ## Réglages
 
 Fichier optionnel `data/settings.json` :

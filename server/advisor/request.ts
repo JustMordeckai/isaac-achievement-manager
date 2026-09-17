@@ -4,7 +4,7 @@ import { HttpError } from '../http-error.ts';
 
 export const MAX_QUESTION_CHARS = 2000;
 export const MAX_HISTORY = 10;
-export const MAX_MESSAGE_CHARS = 8000;
+export const MAX_MESSAGE_CHARS = 4000;
 
 function fields(body: unknown): Record<string, unknown> {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HttpError(400, 'Corps JSON attendu');

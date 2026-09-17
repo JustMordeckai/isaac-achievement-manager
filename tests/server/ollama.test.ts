@@ -87,7 +87,7 @@ describe('openChat', () => {
     expect(fake.chats).toEqual([
       { model: 'qwen3.5:9b', messages: USER, stream: true, think: false, options: { num_ctx: NUM_CTX, num_predict: NUM_PREDICT } },
     ]);
-    expect(NUM_CTX).toBe(65536);
+    expect(NUM_CTX).toBe(32768);
     expect(NUM_PREDICT).toBe(1500);
   });
 

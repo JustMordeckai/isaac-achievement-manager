@@ -1,8 +1,12 @@
 import { ndjsonLines } from '../../shared/ndjson.ts';
 import type { ChatMessage } from '../../shared/types.ts';
 
-/** Contexte demandé à chaque appel : sans lui, Ollama le règle selon la VRAM libre (parfois 16k). */
-export const NUM_CTX = 65536;
+/**
+ * Contexte demandé à chaque appel : sans lui, Ollama le règle selon la VRAM libre (parfois 16k).
+ * 32k suffit largement (consigne 12 000 jetons au plus, historique 12 000, réponse 1 500) et tient dans la
+ * VRAM du serveur : mesuré le 2026-09-17 sur la même question, premier jeton en 26 s à 32k, rien en 240 s à 64k.
+ */
+export const NUM_CTX = 32768;
 /** Longueur maximale d'une réponse, en jetons : un petit modèle peut boucler sans fin (environ 80 s à 18 jetons par seconde). */
 export const NUM_PREDICT = 1500;
 /** Ajouté à une réponse coupée par la limite de longueur. */

@@ -76,7 +76,7 @@ export interface AdvisorChat {
 
 /** Échanges repris comme historique (le serveur en accepte 10 messages). */
 export const HISTORY_EXCHANGES = 5;
-const MAX_MESSAGE_CHARS = 8000;
+const MAX_MESSAGE_CHARS = 4000;
 /** Note ajoutée par le serveur à une réponse coupée (TRUNCATED_NOTICE de server/advisor/ollama.ts). */
 const TRUNCATED_SUFFIX = '\n\n(Réponse coupée : limite de longueur atteinte.)';
 

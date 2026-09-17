@@ -25,6 +25,8 @@ export const MAX_CARDS = 20;
 export const TOP_RUNS = 10;
 /** Astuces du wiki gardées par fiche, en caractères. */
 export const TIPS_PER_CARD = 1200;
+/** Astuces gardées pour une fiche jointe au titre du seul contexte (personnage ou fin cité). */
+export const TIPS_CONTEXT = 300;
 
 export interface AdvisorContextInput {
   question: string;
@@ -44,8 +46,13 @@ export interface AdvisorContext {
 const RULES = [
   "Tu es le conseiller d'Isaac Achievement Manager, une application qui aide un joueur à obtenir les succès de The Binding of Isaac: Repentance+.",
   'Règles :',
-  '- Réponds en français, en texte simple : pas de Markdown (ni titres, ni gras, ni tableaux), des listes à tirets si besoin, pas de tiret long.',
+  '- Réponds en français, en texte simple : pas de Markdown (ni titres, ni gras, ni tableaux, ni astérisque), des listes à tirets si besoin, pas de tiret long.',
+  '- Réponds directement au joueur : ne parle pas de ces règles ni des données comme telles, ne les cite pas.',
   "- Appuie-toi uniquement sur les données ci-dessous. N'invente ni boss, ni objet, ni condition, ni chemin. Si une information manque, dis-le et propose d'ouvrir la fiche du succès ou le wiki.",
+  "- Ces données sont celles du joueur, à jour : elles font foi. Ne lui demande jamais de vérifier lui-même ce qu'elles disent, n'annonce pas que tu vas vérifier, et n'écris pas « si tu as déjà » à propos d'un fait qu'elles donnent.",
+  "- Une fiche dit « obtenu » ou « manquant » : reprends cet état tel quel. Sans fiche pour un succès, dis que tu n'as pas sa fiche et propose de l'ouvrir dans l'onglet Succès, sans deviner sa condition.",
+  "- Les prérequis d'une run sont ceux de sa ligne « À débloquer d'abord », ceux d'un succès ceux de sa ligne « Prérequis » : n'en ajoute aucun autre.",
+  "- Pour « comment obtenir X », réponds avec la ligne Condition de la fiche de X, ses prérequis encore à débloquer et la run du plan qui le donne. Ne recopie pas le chemin d'une autre run.",
   '- Garde les noms du jeu en anglais (personnages, boss, objets, succès) et cite chaque succès avec son numéro, par exemple Guardian Angel (#45).',
   "- Les durées et le classement des runs sont des estimations de l'application.",
 ].join('\n');
@@ -93,6 +100,9 @@ function addTerm(terms: Map<string, Target[]>, text: string, target: Target): vo
   const key = normalize(text);
   if (key.trim().length < 2) return;
   terms.set(key, [...(terms.get(key) ?? []), target]);
+  // « polaroid » vaut « The Polaroid » : le nom complet reste prioritaire, les termes longs masquant les courts.
+  const short = key.replace(/^ (the|a|an) /, ' ');
+  if (short !== key && short.trim().length >= 4) terms.set(short, [...(terms.get(short) ?? []), target]);
 }
 
 /** Succès, personnages et fins cités dans la question ; un nom long masque les noms plus courts qu'il contient. */
@@ -118,7 +128,11 @@ function mentions(question: string, achievements: AchievementState[], kb: Knowle
 }
 
 /** Succès les plus pertinents pour la question : score décroissant, manquants d'abord. */
-function pickAchievements(question: string, progress: MergedProgress, kb: KnowledgeBase | null): AchievementState[] {
+function pickAchievements(
+  question: string,
+  progress: MergedProgress,
+  kb: KnowledgeBase | null,
+): Array<{ achievement: AchievementState; score: number }> {
   const scores = new Map<number, number>();
   const add = (id: number, points: number) => scores.set(id, (scores.get(id) ?? 0) + points);
   const found = mentions(question, progress.achievements, kb);
@@ -150,8 +164,7 @@ function pickAchievements(question: string, progress: MergedProgress, kb: Knowle
         Number(a.achievement.unlocked) - Number(b.achievement.unlocked) ||
         a.achievement.id - b.achievement.id,
     )
-    .slice(0, MAX_CARDS)
-    .map((entry) => entry.achievement);
+    .slice(0, MAX_CARDS);
 }
 
 function list(items: string[]): string {
@@ -170,7 +183,7 @@ function endingsText(endings: EndingId[]): string {
   return endings.length === 0 ? 'Mom' : list(endings.map((id) => endingById(id).name));
 }
 
-function runText(run: PlannedRun, index: number | null): string {
+function runText(run: PlannedRun, index: number | null, withSteps = true): string {
   const lines = [
     `${index === null ? '-' : `${index}.`} ${characterById(run.character).name}, ${MODE_TEXT[run.mode]}, environ ${run.minutes} min : battre ${endingsText(run.endings)}.`,
   ];
@@ -178,7 +191,7 @@ function runText(run: PlannedRun, index: number | null): string {
   if (run.prepares.length > 0) lines.push(`   Run de préparation, aucun succès tout de suite ; elle rapproche de ${list(run.prepares.map(cite))}.`);
   if (run.missing.length > 0) lines.push(`   À débloquer d'abord : ${run.missing.map(requirementText).join(' ; ')}.`);
   if (run.note) lines.push(`   Rappel : ${run.note}`);
-  if (run.steps.length > 0) lines.push(`   Chemin : ${run.steps.join(' ')}`);
+  if (withSteps && run.steps.length > 0) lines.push(`   Chemin : ${run.steps.join(' ')}`);
   return lines.join('\n');
 }
 
@@ -200,6 +213,7 @@ function marksText(characters: CharacterProgress[]): string[] {
   const none = characters.filter((c) => MARK_IDS.every((m) => c.marks[m] === 0));
   const unknown = characters.filter((c) => MARK_IDS.every((m) => c.marks[m] === null));
   const lines = [
+    `Personnages débloqués : ${names(characters.filter((c) => c.unlocked))}.`,
     `Personnages verrouillés : ${names(characters.filter((c) => !c.unlocked))}.`,
     `Personnages sans aucune marque : ${names(none)}.`,
   ];
@@ -208,7 +222,7 @@ function marksText(characters: CharacterProgress[]): string[] {
   return [...lines, ...detailed.map(characterMarks)];
 }
 
-function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: KnowledgeBase | null): string {
+function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: KnowledgeBase | null, withSteps: boolean): string {
   const { summary } = progress;
   const who = summary.profile.name ?? summary.profile.steamId64;
   const lines = [
@@ -236,7 +250,7 @@ function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: Knowl
     const playable = plan.runs.filter((run) => run.missing.length === 0).length;
     lines.push(
       `Runs conseillées par l'application (les ${runs.length} premières sur ${plan.runs.length}, dont ${playable} jouables tout de suite, triées par succès obtenus par heure) :`,
-      ...runs.map((run, i) => runText(run, i + 1)),
+      ...runs.map((run, i) => runText(run, i + 1, withSteps)),
     );
   }
   const off = plan.offRoute;
@@ -247,16 +261,22 @@ function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: Knowl
   return lines.join('\n');
 }
 
-function tipsText(tips: TipSource[]): string {
+function tipsText(tips: TipSource[], limit: number): string {
   const text = tips
     .flatMap((source) => source.sections.map((section) => `${source.page}, ${section.title} : ${section.blocks.map((b) => b.text).join(' ')}`))
     .join(' / ');
-  if (text.length <= TIPS_PER_CARD) return text;
-  const cut = text.slice(0, TIPS_PER_CARD);
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 0))}…`;
 }
 
-function cardText(achievement: AchievementState, kb: KnowledgeBase | null, plan: RoutePlan | null, all: AchievementState[]): string {
+function cardText(
+  achievement: AchievementState,
+  kb: KnowledgeBase | null,
+  plan: RoutePlan | null,
+  all: AchievementState[],
+  tipsLimit: number,
+): string {
   const state = achievement.unlocked
     ? `obtenu${achievement.unlockedAt ? ` le ${achievement.unlockedAt.slice(0, 10)}` : ''}`
     : 'manquant';
@@ -279,18 +299,22 @@ function cardText(achievement: AchievementState, kb: KnowledgeBase | null, plan:
       else lines.push('Run du plan :', runText(plan.runs[index], null));
     }
   }
-  const tips = tipsText(wiki.tips);
+  const tips = tipsText(wiki.tips, tipsLimit);
   if (tips) lines.push(`Astuces du wiki : ${tips}`);
   return lines.join('\n');
 }
 
 /** Consigne système du conseiller : règles, résumé du joueur, runs conseillées et fiches liées à la question. */
 export function buildAdvisorContext({ question, progress, kb, plan }: AdvisorContextInput): AdvisorContext {
-  let system = `${RULES}\n\n${summaryText(progress, plan, kb)}`;
+  const picks = pickAchievements(question, progress, kb);
+  // Question sur un succès précis : le chemin des dix runs conseillées n'a rien à y voir et le modèle le recopie.
+  const asked = picks.some(({ score }) => score >= WEIGHT_UNLOCK);
+  let system = `${RULES}\n\n${summaryText(progress, plan, kb, !asked)}`;
   const sources: AdvisorContext['sources'] = [];
   const cards: string[] = [];
-  for (const achievement of pickAchievements(question, progress, kb)) {
-    const text = cardText(achievement, kb, plan, progress.achievements);
+  for (const { achievement, score } of picks) {
+    // Un succès cité par son nom ou son numéro garde toutes ses astuces ; joint pour le contexte, il en garde peu.
+    const text = cardText(achievement, kb, plan, progress.achievements, score >= WEIGHT_UNLOCK ? TIPS_PER_CARD : TIPS_CONTEXT);
     // Les fiches arrivent de la plus pertinente à la moins pertinente : on s'arrête à la première qui dépasse.
     if (system.length + cards.join('\n\n').length + text.length + 100 > MAX_CONTEXT_CHARS) break;
     cards.push(text);

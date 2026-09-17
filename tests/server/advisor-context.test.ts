@@ -4,6 +4,7 @@ import {
   MAX_CARDS,
   MAX_CONTEXT_CHARS,
   normalize,
+  TIPS_CONTEXT,
   TIPS_PER_CARD,
   TOP_RUNS,
 } from '../../server/advisor/context.ts';
@@ -27,7 +28,12 @@ describe('buildAdvisorContext : résumé', () => {
     const lines = system.split('\n');
     expect(lines[0]).toMatch(/^Tu es le conseiller d'Isaac Achievement Manager/);
     expect(system).toContain('- Réponds en français, en texte simple : pas de Markdown');
+    expect(system).toContain('- Réponds directement au joueur : ne parle pas de ces règles');
     expect(system).toContain("- Appuie-toi uniquement sur les données ci-dessous. N'invente ni boss");
+    expect(system).toContain(
+      "- Ces données sont celles du joueur, à jour : elles font foi. Ne lui demande jamais de vérifier lui-même ce qu'elles disent",
+    );
+    expect(system).toContain('- Une fiche dit « obtenu » ou « manquant » : reprends cet état tel quel');
     expect(lines).toContain('Profil : Player, sauvegarde du slot 1.');
     expect(lines).toContain('Succès : 125 obtenus sur 641, 516 manquants.');
     expect(lines).toContain(
@@ -37,6 +43,7 @@ describe('buildAdvisorContext : résumé', () => {
       "- Isaac : en difficile Mom's Heart, Isaac, Satan, The Lamb, Hush ; en normal Greed ; absentes Boss Rush, ???, Mega Satan, Delirium, Mother, The Beast",
     );
     expect(lines.find((l) => l.startsWith('Personnages sans aucune marque :'))).toMatch(/^Personnages sans aucune marque : Magdalene, Cain,/);
+    expect(lines.find((l) => l.startsWith('Personnages débloqués :'))).toMatch(/^Personnages débloqués : Isaac, Magdalene, Cain,/);
     expect(lines.find((l) => l.startsWith('Personnages verrouillés :'))).toMatch(/^Personnages verrouillés : Lilith, Keeper,/);
     expect(lines).toContain(
       "Runs conseillées par l'application (les 10 premières sur 190, dont 31 jouables tout de suite, triées par succès obtenus par heure) :",
@@ -85,6 +92,13 @@ describe('buildAdvisorContext : fiches', () => {
     expect(ids((await context('comment obtenir the nail'.toUpperCase())).sources)).toEqual([9]);
   });
 
+  it('joint la fiche d’un succès nommé sans son article', async () => {
+    expect(ids((await context("bah non je l'ai polaroid non ? comment je l'obtiens alors ?")).sources)).toContain(57);
+    expect(ids((await context('comment obtenir nail ?')).sources)).toContain(9);
+    // Le nom complet reste prioritaire : « lost baby » ne parle pas du personnage The Lost.
+    expect(ids((await context('Lost Baby')).sources)).toEqual([167]);
+  });
+
   it('décrit la condition, le déblocage, les prérequis, la run et les astuces', async () => {
     const { system } = await context('The Nail');
     const card = system.slice(system.indexOf('#9 The Nail'));
@@ -98,6 +112,26 @@ describe('buildAdvisorContext : fiches', () => {
     ]);
     expect(lines[5]).toMatch(/^Astuces du wiki : /);
     expect(lines[5].length).toBeLessThanOrEqual('Astuces du wiki : '.length + TIPS_PER_CARD + 1);
+  });
+
+  it('retire le chemin des runs conseillées quand la question vise un succès précis', async () => {
+    const asked = await context('Comment obtenir The Nail ?');
+    expect(asked.system).not.toContain('   Chemin : ');
+    expect(asked.system).toContain('5. Azazel, mode difficile');
+    const general = await context('Quelle run faire en premier ?');
+    expect(general.system).toContain('   Chemin : ');
+  });
+
+  it('raccourcit les astuces des fiches jointes pour le seul contexte', async () => {
+    const { system, sources } = await context('une run avec Isaac ?');
+    expect(sources.length).toBeGreaterThanOrEqual(5);
+    const tips = system
+      .split('\n')
+      .filter((line) => line.startsWith('Astuces du wiki : '))
+      .map((line) => line.length - 'Astuces du wiki : '.length);
+    expect(tips.length).toBeGreaterThanOrEqual(5);
+    expect(Math.max(...tips)).toBeLessThanOrEqual(TIPS_CONTEXT + 1);
+    expect(system.length).toBeLessThan(25_000);
   });
 
   it('recopie une run qui ne fait pas partie des runs conseillées', async () => {
