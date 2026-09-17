@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type Tab = 'dashboard' | 'achievements' | 'routes' | 'settings';
+export type Tab = 'dashboard' | 'achievements' | 'routes' | 'advisor' | 'settings';
 
 const HASHES: Record<Tab, string> = {
   dashboard: '#/',
   achievements: '#/succes',
   routes: '#/routes',
+  advisor: '#/conseiller',
   settings: '#/parametres',
 };
 const CARD_HASH = /^#\/succes\/(\d+)$/;
@@ -13,6 +14,7 @@ const CARD_HASH = /^#\/succes\/(\d+)$/;
 function tabFromHash(hash: string): Tab {
   if (hash.startsWith(HASHES.achievements)) return 'achievements';
   if (hash.startsWith(HASHES.routes)) return 'routes';
+  if (hash.startsWith(HASHES.advisor)) return 'advisor';
   if (hash.startsWith(HASHES.settings)) return 'settings';
   return 'dashboard';
 }

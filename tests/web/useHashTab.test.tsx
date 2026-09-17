@@ -56,6 +56,17 @@ describe('useHashTab : routes', () => {
   });
 });
 
+describe('useHashTab : conseiller', () => {
+  it('reconnaît l’onglet Conseiller', () => {
+    window.location.hash = '#/conseiller';
+    const { result } = renderHook(() => useHashTab());
+    expect(result.current[0]).toBe('advisor');
+    act(() => result.current[1]('settings'));
+    act(() => result.current[1]('advisor'));
+    expect(window.location.hash).toBe('#/conseiller');
+  });
+});
+
 describe('useHashAchievement', () => {
   it('lit la fiche ouverte depuis l’adresse', () => {
     window.location.hash = '#/succes/42';

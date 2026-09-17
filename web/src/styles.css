@@ -50,7 +50,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -937,6 +938,10 @@ html {
   padding-left: 20px;
 }
 
+.run__ask {
+  margin-top: 8px;
+}
+
 .off-route {
   display: grid;
   gap: 8px;
@@ -986,6 +991,142 @@ html {
 
 .requirement--met {
   color: var(--text-muted);
+}
+
+.ach-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Conseiller */
+.advisor {
+  display: grid;
+  gap: 16px;
+}
+
+.advisor .card > p {
+  margin: 0 0 8px;
+}
+
+.advisor .banner {
+  margin: 8px 0 0;
+}
+
+.advisor__server p {
+  margin: 0 0 8px;
+}
+
+.chat,
+.chat__suggestions {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.chat {
+  display: grid;
+  gap: 16px;
+}
+
+.chat__exchange {
+  display: grid;
+  gap: 8px;
+}
+
+.chat__message {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.chat__message--user {
+  background: var(--bg-sunk);
+}
+
+.chat__message--advisor {
+  border-left: 3px solid var(--accent);
+}
+
+.chat__author {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chat__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat__message .placeholder,
+.chat__message .hint {
+  margin: 0;
+}
+
+.chat__message .banner {
+  margin: 8px 0 0;
+}
+
+.chat__sources {
+  margin-top: 8px;
+}
+
+.chat__sources .hint {
+  margin: 0 0 4px;
+}
+
+.chat__suggestions {
+  display: grid;
+  gap: 4px;
+}
+
+.chat__form {
+  display: grid;
+  gap: 6px;
+}
+
+.chat__label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.chat__form textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-sunk);
+  resize: vertical;
+}
+
+.chat__form .hint {
+  margin: 0;
+}
+
+.chat__actions,
+.settings-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Paramètres du conseiller */
+.settings-form {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.settings-form .field input {
+  width: 100%;
+}
+
+.settings-form p {
+  margin: 0;
 }
 
 @media (max-width: 980px) {
