@@ -4,10 +4,22 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Desync, ProgressSummary } from '../../shared/types.ts';
 import { AchievementIcon } from '../../web/src/components/AchievementIcon.tsx';
 import { Dashboard, type DashboardProps } from '../../web/src/pages/Dashboard.tsx';
-import { KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
+import type { RoutesState } from '../../web/src/useRoutes.ts';
+import { KB_ABSENT, KB_OK, makePlan, makeRun, makeSummary, ROUTES_OK } from './factories.ts';
+
+const ROUTES_READY: RoutesState = { status: 'ready', data: ROUTES_OK, refreshing: false };
 
 function renderDashboard(summary: ProgressSummary = makeSummary(), overrides: Partial<DashboardProps> = {}) {
-  const props: DashboardProps = { summary, kb: KB_OK, onShowAchievements: vi.fn(), onOpenSettings: vi.fn(), ...overrides };
+  const props: DashboardProps = {
+    summary,
+    kb: KB_OK,
+    routes: ROUTES_READY,
+    onShowAchievements: vi.fn(),
+    onOpenSettings: vi.fn(),
+    onShowRoutes: vi.fn(),
+    onOpenAchievement: vi.fn(),
+    ...overrides,
+  };
   return { ...render(<Dashboard {...props} />), props };
 }
 
@@ -126,6 +138,57 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('button', { name: 'Ouvrir les paramètres' })).not.toBeInTheDocument();
     rerender(<Dashboard {...props} kb={null} />);
     expect(screen.queryByRole('button', { name: 'Ouvrir les paramètres' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Dashboard : plan de routes', () => {
+  it('montre les meilleures runs jouables et ouvre les routes ou une fiche', async () => {
+    const user = userEvent.setup();
+    const { props } = renderDashboard();
+    const section = screen.getByRole('region', { name: 'Meilleures runs' });
+    const runs = within(section).getAllByRole('article');
+    expect(runs.map((r) => within(r).getByRole('heading', { level: 3 }).textContent)).toEqual(['Magdalene', 'Isaac']);
+    await user.click(within(section).getByRole('button', { name: 'Guardian Angel' }));
+    expect(props.onOpenAchievement).toHaveBeenCalledWith(45);
+    await user.click(within(section).getByRole('button', { name: 'Voir toutes les routes' }));
+    expect(props.onShowRoutes).toHaveBeenCalled();
+  });
+
+  it('se limite à trois runs jouables', () => {
+    const runs = ['a', 'b', 'c', 'd'].map((id) => makeRun({ id }));
+    renderDashboard(makeSummary(), { routes: { ...ROUTES_READY, data: { ...ROUTES_OK, plan: makePlan({ runs }) } } });
+    expect(within(screen.getByRole('region', { name: 'Meilleures runs' })).getAllByRole('article')).toHaveLength(3);
+  });
+
+  it('affiche la grille des marques après les meilleures runs', () => {
+    renderDashboard();
+    const grid = screen.getByRole('region', { name: 'Marques de complétion' });
+    expect(within(grid).getAllByRole('row')).toHaveLength(35);
+    const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(titles.indexOf('Meilleures runs')).toBeLessThan(titles.indexOf('Marques de complétion'));
+    expect(titles.indexOf('Marques de complétion')).toBeLessThan(titles.indexOf('Écarts entre sources'));
+  });
+
+  it('signale l’absence de run jouable', () => {
+    const plan = makePlan({ runs: [makeRun({ missing: [{ anyOf: [{ id: 1, name: 'Magdalene' }], met: false }] })] });
+    renderDashboard(makeSummary(), { routes: { ...ROUTES_READY, data: { ...ROUTES_OK, plan } } });
+    expect(screen.getByText("Aucune run jouable : débloque d'abord les prérequis indiqués dans les routes.")).toBeInTheDocument();
+    renderDashboard(makeSummary(), { routes: { ...ROUTES_READY, data: { ...ROUTES_OK, plan: makePlan({ runs: [] }) } } });
+    expect(screen.getByText('Aucune run à proposer.')).toBeInTheDocument();
+  });
+
+  it('indique le calcul en cours et les erreurs', () => {
+    const { props, rerender } = renderDashboard(makeSummary(), { routes: { status: 'loading' } });
+    expect(within(screen.getByRole('region', { name: 'Meilleures runs' })).getByText('Calcul des routes…')).toBeInTheDocument();
+    rerender(<Dashboard {...props} routes={{ status: 'error', message: 'Serveur indisponible' }} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Impossible de calculer les routes : Serveur indisponible');
+    expect(screen.queryByRole('region', { name: 'Meilleures runs' })).not.toBeInTheDocument();
+  });
+
+  it('masque le plan sans base wiki', () => {
+    renderDashboard(makeSummary(), { kb: KB_ABSENT, routes: { ...ROUTES_READY, data: { kb: KB_ABSENT, plan: null } } });
+    expect(screen.queryByRole('region', { name: 'Meilleures runs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Marques de complétion' })).not.toBeInTheDocument();
   });
 });
 

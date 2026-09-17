@@ -5,10 +5,12 @@ import { Header } from './components/Header.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
 import { Dashboard, type FilterPatch } from './pages/Dashboard.tsx';
+import { Routes } from './pages/Routes.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { applyTheme, loadTheme, type Theme } from './theme.ts';
 import { useHashAchievement, useHashTab } from './useHashTab.ts';
 import { useProgress } from './useProgress.ts';
+import { useRoutes } from './useRoutes.ts';
 import { useKbStatus, useSettings, useWikiSync } from './useWiki.ts';
 
 type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; message: string };
@@ -24,6 +26,7 @@ export function App() {
   const [tab, setTab] = useHashTab();
   const [cardId, setCardId] = useHashAchievement();
   const state = useProgress(query, reloadKey);
+  const routes = useRoutes(query, reloadKey);
   const kb = useKbStatus(reloadKey);
   const settings = useSettings();
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
@@ -70,6 +73,7 @@ export function App() {
   const busy = state.status === 'loading' || (state.status === 'ready' && state.refreshing);
   const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
   const openSettings = () => setTab('settings');
+  const openRoutes = () => setTab('routes');
 
   return (
     <div className="app">
@@ -93,9 +97,9 @@ export function App() {
             Arrêt impossible : {stop.message}
           </p>
         )}
-        {tab === 'settings' ? (
-          <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} />
-        ) : (
+        {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} />}
+        {tab === 'routes' && <Routes state={routes} onOpenSettings={openSettings} onOpenAchievement={setCardId} />}
+        {(tab === 'dashboard' || tab === 'achievements') && (
           <>
             {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
             {state.status === 'error' && (
@@ -118,8 +122,11 @@ export function App() {
               <Dashboard
                 summary={state.data.summary}
                 kb={kb}
+                routes={routes}
                 onShowAchievements={showAchievements}
                 onOpenSettings={openSettings}
+                onShowRoutes={openRoutes}
+                onOpenAchievement={setCardId}
               />
             )}
             {state.status === 'ready' && tab === 'achievements' && (
@@ -139,6 +146,7 @@ export function App() {
                       reloadKey={reloadKey}
                       onClose={() => setCardId(null)}
                       onOpenSettings={openSettings}
+                      onOpenRoutes={openRoutes}
                     />
                   )
                 }

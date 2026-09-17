@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
 import type { WikiSyncEvent } from '../../shared/types.ts';
-import { KB_ABSENT, KB_OK, makeAchievement, makeCard, makeSummary, SETTINGS } from './factories.ts';
+import { KB_ABSENT, KB_OK, makeAchievement, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 const ACHIEVEMENTS = [
@@ -18,6 +18,8 @@ const BASE_ROUTES = {
   'GET /api/wiki/status': () => KB_OK,
   'GET /api/settings': () => SETTINGS,
   'GET /api/achievement/2': () => makeCard({ achievement: ACHIEVEMENTS[1] }),
+  'GET /api/achievement/45': () => makeCard({ achievement: makeAchievement(45, { name: 'Guardian Angel' }) }),
+  'GET /api/routes': () => ROUTES_OK,
 };
 
 function stubProgress(routes: Parameters<typeof stubFetch>[0] = {}) {
@@ -74,6 +76,33 @@ describe('App', () => {
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
     expect(await screen.findByRole('button', { name: 'Actualiser' })).toBeEnabled();
     expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+  });
+
+  it('ouvre les routes depuis le tableau de bord, puis une fiche depuis une run', async () => {
+    const user = userEvent.setup();
+    stubProgress();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Voir toutes les routes' }));
+    expect(window.location.hash).toBe('#/routes');
+    expect(screen.getByRole('button', { name: 'Routes' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Progression' })).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Guardian Angel' })[0]);
+    expect(window.location.hash).toBe('#/succes/45');
+    expect(await screen.findByRole('complementary', { name: 'Guardian Angel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Succès' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('recharge aussi les routes avec Actualiser', async () => {
+    const user = userEvent.setup();
+    const mock = stubProgress();
+    window.location.hash = '#/routes';
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    expect(callsTo(mock, '/api/routes')).toBe(1);
+    await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
+    await vi.waitFor(() => expect(callsTo(mock, '/api/routes')).toBe(2));
+    expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
   });
 
   it('recharge avec le slot choisi', async () => {

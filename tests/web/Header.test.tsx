@@ -44,6 +44,7 @@ describe('Header', () => {
     // Les messages des sources en défaut sont visibles sans survol.
     expect(screen.getByText('Cache Steam : Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
     expect(screen.getByText('Sauvegarde : En-tête inconnu')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Messages des sources' })).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.queryByText('Sauvegarde : Slot 1')).not.toBeInTheDocument();
   });
 
@@ -64,6 +65,15 @@ describe('Header', () => {
   it('montre l’état du wiki même sans résumé de progression', () => {
     renderHeader({ summary: null, kb: KB_ABSENT });
     expect(within(screen.getByRole('list', { name: 'État des sources' })).getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('propose l’onglet Routes', async () => {
+    const user = userEvent.setup();
+    const props = renderHeader();
+    const tabs = within(screen.getByRole('navigation')).getAllByRole('button').map((b) => b.textContent);
+    expect(tabs).toEqual(['Tableau de bord', 'Succès', 'Routes', 'Paramètres']);
+    await user.click(screen.getByRole('button', { name: 'Routes' }));
+    expect(props.onTabChange).toHaveBeenCalledWith('routes');
   });
 
   it('propose l’onglet Paramètres', async () => {

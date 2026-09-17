@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { AchievementCard } from '../../shared/types.ts';
+import type { AchievementCard, CardPlan } from '../../shared/types.ts';
 import type { ProfileQuery } from '../../web/src/api.ts';
 import { AchievementCardPanel } from '../../web/src/components/AchievementCardPanel.tsx';
 import { KB_ABSENT, KB_OK, makeAchievement, makeCard } from './factories.ts';
@@ -13,9 +13,17 @@ function renderPanel(card: AchievementCard | Response, overrides: { query?: Prof
   const fetchMock = stubFetch({ 'GET /api/achievement/9': () => card });
   const onClose = vi.fn();
   const onOpenSettings = vi.fn();
-  const props = { id: 9, query: overrides.query ?? ME, reloadKey: overrides.reloadKey ?? 0, onClose, onOpenSettings };
+  const onOpenRoutes = vi.fn();
+  const props = {
+    id: 9,
+    query: overrides.query ?? ME,
+    reloadKey: overrides.reloadKey ?? 0,
+    onClose,
+    onOpenSettings,
+    onOpenRoutes,
+  };
   const view = render(<AchievementCardPanel {...props} />);
-  return { ...view, props, fetchMock, onClose, onOpenSettings };
+  return { ...view, props, fetchMock, onClose, onOpenSettings, onOpenRoutes };
 }
 
 describe('AchievementCardPanel', () => {
@@ -58,6 +66,40 @@ describe('AchievementCardPanel', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: 'Fermer la fiche' }));
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('indique les prérequis et les runs du plan, et ouvre les routes', async () => {
+    const user = userEvent.setup();
+    const plan: CardPlan = {
+      requirements: [
+        { anyOf: [{ id: 79, name: 'Azazel' }], met: true },
+        { anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: false },
+      ],
+      runs: [{ id: 'azazel-1', character: 'azazel', mode: 'hard', endings: ['bossRush', 'momsHeart'], minutes: 38 }],
+    };
+    const { onOpenRoutes } = renderPanel(makeCard({ plan }));
+    const section = await screen.findByRole('region', { name: "Pour l'obtenir" });
+    const items = within(section).getAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual([
+      'Azazel : débloqué',
+      'The Polaroid ou The Negative : à débloquer',
+      "Run Azazel (Difficile) : battre Boss Rush, Mom's Heart, environ 38 min",
+    ]);
+    expect(within(section).getByRole('heading', { level: 4, name: 'Run du plan' })).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Voir les routes' }));
+    expect(onOpenRoutes).toHaveBeenCalled();
+  });
+
+  it('masque le plan d’un succès débloqué ou sans méthode planifiable', async () => {
+    const plan: CardPlan = { requirements: [{ anyOf: [{ id: 79, name: 'Azazel' }], met: true }], runs: [] };
+    const achievement = makeAchievement(9, { name: 'The Nail', unlocked: true, unlockedAt: null });
+    const { unmount } = renderPanel(makeCard({ achievement, plan }));
+    await screen.findByText('Débloqué');
+    expect(screen.queryByRole('region', { name: "Pour l'obtenir" })).not.toBeInTheDocument();
+    unmount();
+    renderPanel(makeCard({ plan: { requirements: [], runs: [] } }));
+    await screen.findByRole('heading', { level: 3, name: 'Condition' });
+    expect(screen.queryByRole('region', { name: "Pour l'obtenir" })).not.toBeInTheDocument();
   });
 
   it('transmet le profil et le slot, et relit la fiche après une actualisation', async () => {

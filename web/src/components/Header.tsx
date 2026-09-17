@@ -25,6 +25,7 @@ export interface HeaderProps {
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'dashboard', label: 'Tableau de bord' },
   { id: 'achievements', label: 'Succès' },
+  { id: 'routes', label: 'Routes' },
   { id: 'settings', label: 'Paramètres' },
 ];
 

@@ -41,7 +41,7 @@ export function SourceBadges({ sources, wiki }: SourceBadgesProps) {
         ))}
       </ul>
       {notes.length > 0 && (
-        <ul className="source-notes">
+        <ul className="source-notes" aria-label="Messages des sources">
           {notes.map((b) => (
             <li key={b.key}>
               {`${b.label} : ${b.message}`}

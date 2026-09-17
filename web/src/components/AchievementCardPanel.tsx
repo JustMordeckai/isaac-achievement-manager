@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AchievementCard, AchievementWiki, KbStatus } from '../../../shared/types.ts';
+import type { AchievementCard, AchievementWiki, CardPlan, KbStatus } from '../../../shared/types.ts';
 import { api, type ProfileQuery } from '../api.ts';
-import { DLC_LABELS, describeHow, formatDate, UNLOCK_LABELS } from '../labels.ts';
+import {
+  characterName,
+  DLC_LABELS,
+  describeHow,
+  endingList,
+  formatDate,
+  formatMinutes,
+  requirementText,
+  RUN_MODE_LABELS,
+  UNLOCK_LABELS,
+} from '../labels.ts';
 import { AchievementIcon } from './AchievementIcon.tsx';
 import { TextBlocks } from './TextBlocks.tsx';
 
@@ -12,11 +22,60 @@ export interface AchievementCardPanelProps {
   reloadKey: number;
   onClose(): void;
   onOpenSettings(): void;
+  onOpenRoutes(): void;
 }
 
 type CardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; card: AchievementCard };
 
-function WikiSection({ wiki, syncedAt }: { wiki: AchievementWiki; syncedAt: string | null }) {
+/** Prérequis et runs du planificateur pour un succès encore manquant. */
+function PlanSection({ plan, onOpenRoutes }: { plan: CardPlan; onOpenRoutes(): void }) {
+  if (plan.requirements.length === 0 && plan.runs.length === 0) return null;
+  return (
+    <section aria-labelledby="ach-card-plan">
+      <h3 id="ach-card-plan">Pour l'obtenir</h3>
+      {plan.requirements.length > 0 && (
+        <>
+          <h4>Prérequis</h4>
+          <ul className="requirement-list">
+            {plan.requirements.map((requirement) => (
+              <li
+                key={requirement.anyOf.map((a) => a.id).join('-')}
+                className={requirement.met ? 'requirement requirement--met' : 'requirement requirement--missing'}
+              >
+                <span lang="en">{requirementText(requirement)}</span> : {requirement.met ? 'débloqué' : 'à débloquer'}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {plan.runs.length > 0 && (
+        <>
+          <h4>{plan.runs.length === 1 ? 'Run du plan' : 'Runs du plan'}</h4>
+          <ul className="plan-runs">
+            {plan.runs.map((run) => (
+              <li key={run.id}>
+                Run <span lang="en">{characterName(run.character)}</span> ({RUN_MODE_LABELS[run.mode]}) : battre{' '}
+                <span lang="en">{endingList(run.endings)}</span>, environ {formatMinutes(run.minutes)}
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn" onClick={onOpenRoutes}>
+            Voir les routes
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+interface WikiSectionProps {
+  wiki: AchievementWiki;
+  syncedAt: string | null;
+  plan: CardPlan | null;
+  onOpenRoutes(): void;
+}
+
+function WikiSection({ wiki, syncedAt, plan, onOpenRoutes }: WikiSectionProps) {
   const how = describeHow(wiki.how);
   const page = wiki.unlockPage;
   return (
@@ -26,6 +85,8 @@ function WikiSection({ wiki, syncedAt }: { wiki: AchievementWiki; syncedAt: stri
         <p lang="en">{wiki.condition}</p>
         {how && <p className="muted">{how}</p>}
       </section>
+
+      {plan && <PlanSection plan={plan} onOpenRoutes={onOpenRoutes} />}
 
       <section aria-labelledby="ach-card-unlocks">
         <h3 id="ach-card-unlocks">Débloque</h3>
@@ -104,7 +165,14 @@ function MissingWiki({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): v
 }
 
 /** Fiche détaillée d'un succès, affichée à côté de la liste. */
-export function AchievementCardPanel({ id, query, reloadKey, onClose, onOpenSettings }: AchievementCardPanelProps) {
+export function AchievementCardPanel({
+  id,
+  query,
+  reloadKey,
+  onClose,
+  onOpenSettings,
+  onOpenRoutes,
+}: AchievementCardPanelProps) {
   const [state, setState] = useState<CardState>({ status: 'loading' });
   const heading = useRef<HTMLHeadingElement>(null);
   const { profile, slot } = query;
@@ -179,7 +247,12 @@ export function AchievementCardPanel({ id, query, reloadKey, onClose, onOpenSett
           </div>
           <p lang="en">{achievement.description}</p>
           {state.card.wiki ? (
-            <WikiSection wiki={state.card.wiki} syncedAt={state.card.kb.syncedAt} />
+            <WikiSection
+              wiki={state.card.wiki}
+              syncedAt={state.card.kb.syncedAt}
+              plan={achievement.unlocked ? null : state.card.plan}
+              onOpenRoutes={onOpenRoutes}
+            />
           ) : (
             <MissingWiki kb={state.card.kb} onOpenSettings={onOpenSettings} />
           )}

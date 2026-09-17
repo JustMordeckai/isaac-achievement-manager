@@ -1,8 +1,11 @@
 import { DLC_ORDER } from '../../../shared/dlc.ts';
 import type { Desync, DesyncKind, Dlc, KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import { AchievementIcon } from '../components/AchievementIcon.tsx';
+import { CharacterGrid } from '../components/CharacterGrid.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
+import { RunCard } from '../components/RunCard.tsx';
 import { DESYNC_LABELS, DLC_LABELS, formatDate, percent } from '../labels.ts';
+import type { RoutesState } from '../useRoutes.ts';
 
 export interface FilterPatch {
   status?: 'all' | 'unlocked' | 'missing';
@@ -13,8 +16,64 @@ export interface FilterPatch {
 export interface DashboardProps {
   summary: ProgressSummary;
   kb: KbStatus | null;
+  routes: RoutesState;
   onShowAchievements(patch: FilterPatch): void;
   onOpenSettings(): void;
+  onShowRoutes(): void;
+  onOpenAchievement(id: number): void;
+}
+
+const BEST_RUNS = 3;
+
+/** Meilleures runs jouables et note des personnages ; rien sans base wiki (le bandeau le signale déjà). */
+function PlanSections({
+  routes,
+  onShowRoutes,
+  onOpenAchievement,
+}: Pick<DashboardProps, 'routes' | 'onShowRoutes' | 'onOpenAchievement'>) {
+  if (routes.status === 'loading') {
+    return (
+      <section className="card wide" aria-labelledby="best-runs-title">
+        <h2 id="best-runs-title">Meilleures runs</h2>
+        <p className="placeholder">Calcul des routes…</p>
+      </section>
+    );
+  }
+  if (routes.status === 'error') {
+    return (
+      <p className="banner banner--error wide" role="alert">
+        Impossible de calculer les routes : {routes.message}
+      </p>
+    );
+  }
+  const plan = routes.data.plan;
+  if (!plan) return null;
+  const best = plan.runs.filter((r) => r.missing.length === 0).slice(0, BEST_RUNS);
+  return (
+    <>
+      <section className="card wide" aria-labelledby="best-runs-title">
+        <h2 id="best-runs-title">Meilleures runs</h2>
+        {best.length === 0 ? (
+          <p className="muted">
+            {plan.runs.length === 0 ? 'Aucune run à proposer.' : "Aucune run jouable : débloque d'abord les prérequis indiqués dans les routes."}
+          </p>
+        ) : (
+          <div className="run-list run-list--compact">
+            {best.map((run) => (
+              <RunCard key={run.id} run={run} onOpenAchievement={onOpenAchievement} />
+            ))}
+          </div>
+        )}
+        <button type="button" className="btn" onClick={onShowRoutes}>
+          Voir toutes les routes
+        </button>
+      </section>
+      <section className="card wide" aria-labelledby="marks-title">
+        <h2 id="marks-title">Marques de complétion</h2>
+        <CharacterGrid characters={plan.characters} source={plan.marksSource} />
+      </section>
+    </>
+  );
 }
 
 const DESYNC_ORDER: DesyncKind[] = ['saveOnly', 'steamOnly', 'profileAhead', 'cacheAhead'];
@@ -65,7 +124,15 @@ function KbBanner({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): void
   );
 }
 
-export function Dashboard({ summary, kb, onShowAchievements, onOpenSettings }: DashboardProps) {
+export function Dashboard({
+  summary,
+  kb,
+  routes,
+  onShowAchievements,
+  onOpenSettings,
+  onShowRoutes,
+  onOpenAchievement,
+}: DashboardProps) {
   const missing = summary.total - summary.unlocked;
   const dlcs = DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0);
 
@@ -133,6 +200,8 @@ export function Dashboard({ summary, kb, onShowAchievements, onOpenSettings }: D
           </ol>
         )}
       </section>
+
+      <PlanSections routes={routes} onShowRoutes={onShowRoutes} onOpenAchievement={onOpenAchievement} />
 
       <section className="card" aria-labelledby="desync-title">
         <h2 id="desync-title">Écarts entre sources</h2>
