@@ -1,4 +1,5 @@
 import { DLC_ORDER, dlcForId } from '../../shared/dlc.ts';
+import type { CompletionMarks } from '../../shared/marks.ts';
 import type {
   AchievementDef,
   AchievementState,
@@ -10,6 +11,7 @@ import type {
   SourceStatus,
 } from '../../shared/types.ts';
 import type { SaveFileData } from './save-file.ts';
+import { readCompletionMarks } from './save-marks.ts';
 import type { UnlockMap } from './steam-cache.ts';
 import type { ProfileStats } from './steam-profile.ts';
 
@@ -29,9 +31,17 @@ export interface MergeInput {
   accounts: LocalAccount[];
 }
 
+/** Données de la sauvegarde utiles au planificateur (profil local seulement). */
+export interface SaveProgress {
+  counters: number[];
+  /** null si le bloc des compteurs ne contient pas les marques. */
+  marks: CompletionMarks | null;
+}
+
 export interface MergedProgress {
   summary: ProgressSummary;
   achievements: AchievementState[];
+  save: SaveProgress | null;
 }
 
 const RECENT_COUNT = 10;
@@ -123,8 +133,12 @@ export function mergeProgress(input: MergeInput): MergedProgress {
     .sort((a, b) => b.unlockedAt.localeCompare(a.unlockedAt))
     .slice(0, RECENT_COUNT);
 
+  const saveData = input.profile.isLocal ? input.save.data : null;
+  const save = saveData ? { counters: saveData.counters, marks: readCompletionMarks(saveData.counters) } : null;
+
   return {
     achievements,
+    save,
     summary: {
       profile: input.profile,
       total: achievements.length,

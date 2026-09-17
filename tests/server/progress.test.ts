@@ -12,7 +12,7 @@ function onlineStats(input: MergeInput): ProfileStats {
 
 describe("mergeProgress", () => {
   it("fusionne les sources locales de Player", () => {
-    const { summary, achievements } = mergeProgress(fixtureMergeInput());
+    const { summary, achievements, save } = mergeProgress(fixtureMergeInput());
     expect(summary.total).toBe(641);
     expect(summary.unlocked).toBe(125);
     expect(summary.sources).toEqual({
@@ -35,6 +35,8 @@ describe("mergeProgress", () => {
     expect(summary.profile).toEqual({ steamId64: '76561198083722517', name: 'Player', isLocal: true });
     expect(achievements.find((a) => a.id === 638)).toMatchObject({ unlocked: false, inSave: true, unlockedAt: null, dlc: 'repentance' });
     expect(achievements.find((a) => a.id === 1)).toMatchObject({ unlocked: true, inSave: true, unlockedAt: '2023-02-20T20:15:25.000Z' });
+    expect(save?.counters[1]).toBe(16);
+    expect(save?.marks?.isaac).toMatchObject({ momsHeart: 2, lamb: 2, greed: 1, bossRush: 0 });
   });
 
   it("signale un cache local en retard sur le profil en ligne", () => {
@@ -93,9 +95,10 @@ describe("mergeProgress", () => {
 
   it("ignore la sauvegarde pour un profil distant", () => {
     const base = fixtureMergeInput();
-    const { summary, achievements } = mergeProgress({ ...base, profile: { steamId64: OTHER_ID64, name: null, isLocal: false } });
+    const { summary, achievements, save } = mergeProgress({ ...base, profile: { steamId64: OTHER_ID64, name: null, isLocal: false } });
     expect(summary.desyncs).toEqual([]);
     expect(achievements.every((a) => a.inSave === null)).toBe(true);
+    expect(save).toBeNull();
   });
 
   it("ne calcule aucun écart de sauvegarde sans source Steam", () => {
