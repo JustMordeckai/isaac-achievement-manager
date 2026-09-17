@@ -1,5 +1,6 @@
 import type { CharacterId } from './characters.ts';
 import type { EndingId } from './endings.ts';
+import type { MarkId, MarkLevel } from './marks.ts';
 
 export type Dlc = 'rebirth' | 'afterbirth' | 'afterbirthPlus' | 'repentance' | 'repentancePlus';
 
@@ -199,4 +200,109 @@ export interface SettingsInfo {
   steamPath: string | null;
   account: { accountId: number; steamId64: string; personaName: string | null } | null;
   forcedAccountId: number | null;
+}
+
+/** Origine des marques de complétion : lues dans la sauvegarde ou déduites des succès. */
+export type MarksSource = 'save' | 'inferred';
+
+/** Marques d'un personnage ; null quand aucune source ne permet de savoir (marques déduites). */
+export type KnownMarks = Record<MarkId, MarkLevel | null>;
+
+export interface CharacterProgress {
+  id: CharacterId;
+  unlocked: boolean;
+  marks: KnownMarks;
+  /** Succès « toutes les marques en difficile » : obtenu ou non, null si le personnage n'en a pas. */
+  hardAll: boolean | null;
+}
+
+/** Succès à débloquer avant une run ; un seul des succès de `anyOf` suffit. */
+export interface Requirement {
+  anyOf: Array<{ id: number; name: string }>;
+  met: boolean;
+}
+
+export type RunMode = 'normal' | 'hard' | 'greed' | 'greedier';
+
+export interface PlannedRun {
+  id: string;
+  character: CharacterId;
+  mode: RunMode;
+  /** Fins de run, dans l'ordre où on les atteint. */
+  endings: EndingId[];
+  /** Chemin en étapes, en français. */
+  steps: string[];
+  /** Succès obtenus par cette run. */
+  achievements: Array<{ id: number; name: string }>;
+  minutes: number;
+  score: number;
+  /** Prérequis encore manquants (vide si la run est jouable). */
+  missing: Requirement[];
+  /** Rappel propre au personnage (ex. Eden Tokens), null sinon. */
+  note: string | null;
+}
+
+export interface ChallengeTodo {
+  id: number;
+  name: string;
+  number: number;
+  /** Titre de la page du défi, null s'il manque dans la base. */
+  title: string | null;
+  character: string | null;
+  goal: string | null;
+  curse: string | null;
+  startingItems: string[];
+  /** Succès qui rend le défi disponible, null s'il l'est d'emblée. */
+  requirement: Requirement | null;
+}
+
+export interface CounterTodo {
+  id: number;
+  name: string;
+  condition: string;
+  total: number;
+  /** Valeur du compteur dans la sauvegarde, null si inconnue. */
+  value: number | null;
+}
+
+export interface ClosetTodo {
+  id: number;
+  name: string;
+  character: CharacterId;
+}
+
+export interface MiscTodo {
+  id: number;
+  name: string;
+  condition: string;
+  dlc: Dlc;
+}
+
+/** Succès qui ne passent pas par une run planifiée. */
+export interface OffRoute {
+  challenges: ChallengeTodo[];
+  counters: CounterTodo[];
+  closets: ClosetTodo[];
+  /** Red Key débloquée (sinon le premier passage à Home la donne). */
+  redKey: boolean;
+  misc: MiscTodo[];
+}
+
+export interface RoutePlan {
+  marksSource: MarksSource;
+  characters: CharacterProgress[];
+  runs: PlannedRun[];
+  offRoute: OffRoute;
+}
+
+/** Réponse de GET /api/routes ; `plan` vaut null sans base wiki. */
+export interface RoutesResponse {
+  kb: KbStatus;
+  plan: RoutePlan | null;
+}
+
+/** Partie planificateur de la fiche d'un succès. */
+export interface CardPlan {
+  requirements: Requirement[];
+  runs: Array<Pick<PlannedRun, 'id' | 'character' | 'mode' | 'endings' | 'minutes'>>;
 }
