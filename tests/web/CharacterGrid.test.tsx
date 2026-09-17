@@ -22,6 +22,7 @@ describe('CharacterGrid', () => {
     expect(isaac).toHaveLength(12);
     expect(isaac[0]).toHaveTextContent("Mom's Heart : difficile");
     expect(isaac[0]).toHaveClass('mark--hard');
+    expect(within(isaac[0]).getByText("Mom's Heart")).toHaveAttribute('lang', 'en');
     expect(isaac[1]).toHaveTextContent('Isaac : absente');
     expect(isaac[1]).toHaveClass('mark--none');
     expect(isaac[2]).toHaveTextContent('Satan : normal');

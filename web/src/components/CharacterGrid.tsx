@@ -62,7 +62,7 @@ export function CharacterGrid({ characters, source }: CharacterGridProps) {
                   return (
                     <td key={mark} className={`mark ${levelClass(level)}`} title={`${MARK_LABELS[mark].name} : ${text}`}>
                       <span className="visually-hidden">
-                        {MARK_LABELS[mark].name} : {text}
+                        <span lang="en">{MARK_LABELS[mark].name}</span> : {text}
                       </span>
                       {level === null && <span aria-hidden="true">?</span>}
                     </td>
