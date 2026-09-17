@@ -1,12 +1,17 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type {
   AchievementCard,
+  AdvisorEvent,
   ApiError,
   RoutesResponse,
   SettingsInfo,
   StatusResponse,
   WikiSyncEvent,
 } from '../shared/types.ts';
+import { buildAdvisorContext } from './advisor/context.ts';
+import { OllamaError, type OllamaErrorKind, type OllamaMessage } from './advisor/ollama.ts';
+import { parseAdvisorRequest, parseOllamaSettings } from './advisor/request.ts';
+import type { AdvisorService } from './advisor/service.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
 import type { KbService } from './kb-service.ts';
@@ -23,6 +28,7 @@ export interface AppDeps {
   profiles: ProfileClient;
   icons: IconCache;
   kb: KbService;
+  advisor: AdvisorService;
   settings: SettingsInfo;
   /** Appelé une fois la réponse de POST /api/shutdown envoyée. */
   onShutdown?: () => void;
@@ -35,6 +41,29 @@ function readQuery(req: Request): { profile: string; slot: number | null } {
   const value = typeof slot === 'string' && /^\d+$/.test(slot) ? Number(slot) : Number.NaN;
   if (!(value >= 1 && value <= 3)) throw new HttpError(400, 'Paramètre slot invalide (1 à 3)');
   return { profile: selected, slot: value };
+}
+
+/**
+ * Exige l'en-tête d'action d'une requête POST, avant toute lecture du corps : un site tiers ne peut pas
+ * l'envoyer sans requête CORS préalable, jamais autorisée ici ; le contrôle d'hôte bloque le rebinding DNS.
+ */
+function requireAction(action: string) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    next(req.get('X-IAM-Action') === action ? undefined : new HttpError(403, `En-tête X-IAM-Action: ${action} requis`));
+  };
+}
+
+const GATEWAY_STATUS: Partial<Record<OllamaErrorKind, number>> = { unreachable: 503, timeout: 504 };
+
+const parseJson = express.json({ limit: '256kb' });
+
+/** Corps JSON, avec des erreurs en français (400 illisible, 413 trop gros). */
+function jsonBody(req: Request, res: Response, next: NextFunction): void {
+  parseJson(req, res, (error?: unknown) => {
+    if (!error) return next();
+    const tooLarge = (error as { status?: unknown }).status === 413;
+    next(new HttpError(tooLarge ? 413 : 400, tooLarge ? 'Requête trop volumineuse' : 'Corps JSON illisible'));
+  });
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -116,9 +145,7 @@ export function createApp(deps: AppDeps): express.Express {
     res.json(await deps.kb.status());
   });
 
-  api.post('/wiki/sync', async (req, res) => {
-    // Même garde que /shutdown : un site tiers ne peut pas envoyer cet en-tête sans requête CORS préalable.
-    if (req.get('X-IAM-Action') !== 'wiki-sync') throw new HttpError(403, 'En-tête X-IAM-Action: wiki-sync requis');
+  api.post('/wiki/sync', requireAction('wiki-sync'), async (_req, res) => {
     if (deps.kb.isRunning()) throw new HttpError(409, 'Une synchro du wiki est déjà en cours');
     res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.flushHeaders();
@@ -135,10 +162,55 @@ export function createApp(deps: AppDeps): express.Express {
     if (!res.destroyed) res.end();
   });
 
-  api.post('/shutdown', (req, res) => {
-    // L'en-tête personnalisé bloque les requêtes cross-origin (un site tiers ne peut pas l'envoyer sans
-    // requête CORS préalable, jamais autorisée ici) ; le contrôle d'hôte au-dessus bloque le rebinding DNS.
-    if (req.get('X-IAM-Action') !== 'shutdown') throw new HttpError(403, 'En-tête X-IAM-Action: shutdown requis');
+  api.get('/advisor/status', async (_req, res) => {
+    res.json(await deps.advisor.status());
+  });
+
+  api.post('/advisor/settings', requireAction('advisor-settings'), jsonBody, async (req, res) => {
+    res.json(await deps.advisor.configure(parseOllamaSettings(req.body)));
+  });
+
+  api.post('/advisor', requireAction('advisor'), jsonBody, async (req, res) => {
+    const request = parseAdvisorRequest(req.body);
+    const [progress, kb] = await Promise.all([deps.progress.get(request.profile, request.slot), deps.kb.get()]);
+    const plan = kb ? buildPlan({ kb, ...progress }) : null;
+    const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
+    const controller = new AbortController();
+    // Navigateur parti (bouton Arrêter, onglet fermé) : on coupe aussi la génération sur Ollama.
+    res.on('close', () => {
+      if (!res.writableFinished) controller.abort();
+    });
+    const messages: OllamaMessage[] = [
+      { role: 'system', content: context.system },
+      ...request.history,
+      { role: 'user', content: request.question },
+    ];
+    let reply: AsyncGenerator<string>;
+    try {
+      reply = await deps.advisor.chat(messages, controller.signal);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      // Avant tout texte, un vrai statut HTTP : 503 serveur injoignable, 504 aucune réponse, 502 sinon (modèle absent...).
+      if (error instanceof OllamaError) throw new HttpError(GATEWAY_STATUS[error.kind] ?? 502, error.message);
+      throw error;
+    }
+    res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.flushHeaders();
+    res.on('error', () => {});
+    const send = (event: AdvisorEvent) => {
+      if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
+    };
+    send({ kind: 'context', sources: context.sources });
+    try {
+      for await (const text of reply) send({ kind: 'delta', text });
+      send({ kind: 'done' });
+    } catch (error) {
+      if (!controller.signal.aborted) send({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+    if (!res.destroyed) res.end();
+  });
+
+  api.post('/shutdown', requireAction('shutdown'), (_req, res) => {
     const { onShutdown } = deps;
     if (!onShutdown) throw new HttpError(404, 'Arrêt indisponible');
     res.on('finish', onShutdown);

@@ -2,13 +2,15 @@ import { once } from 'node:events';
 import http, { type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
+import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
+import { type AdvisorService, createAdvisorService } from '../../server/advisor/service.ts';
 import { createApp, type AppDeps } from '../../server/app.ts';
 import { HttpError } from '../../server/http-error.ts';
 import type { KbService } from '../../server/kb-service.ts';
 import { mergeProgress } from '../../server/sources/progress.ts';
 import { ProfileError } from '../../server/sources/steam-profile.ts';
 import type { KnowledgeBase } from '../../server/wiki/kb-types.ts';
+import { chatLines, closedUrl, type FakeOllama, startFakeOllama } from './helpers/fake-ollama.ts';
 import { ME_ID64, OTHER_ID64 } from './helpers/fixtures.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
@@ -34,6 +36,20 @@ function fakeKb(kb: KnowledgeBase | null = null, overrides: Partial<KbService> =
     ...overrides,
   };
 }
+
+const ADVISOR_OK: AdvisorStatus = { state: 'ok', url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b', models: ['qwen3.5:9b'] };
+
+function fakeAdvisor(overrides: Partial<AdvisorService> = {}): AdvisorService {
+  return {
+    status: vi.fn(async () => ADVISOR_OK),
+    configure: vi.fn(async () => ADVISOR_OK),
+    chat: vi.fn(async () => {
+      throw new Error('non simulé');
+    }),
+    ...overrides,
+  };
+}
+
 let server: Server | null = null;
 
 afterEach(async () => {
@@ -54,6 +70,7 @@ async function start(overrides: Partial<AppDeps> = {}): Promise<string> {
     },
     icons: { get: vi.fn(async () => new Uint8Array([0xff, 0xd8])) },
     kb: fakeKb(),
+    advisor: fakeAdvisor(),
     settings: SETTINGS,
     ...overrides,
   });
@@ -398,5 +415,173 @@ describe('API wiki', () => {
     const res = await fetch(`${base}/api/wiki/sync`, { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: 'Une synchro du wiki est déjà en cours' });
+  });
+});
+
+describe('API conseiller', () => {
+  let ollama: FakeOllama | null = null;
+
+  afterEach(async () => {
+    await ollama?.close();
+    ollama = null;
+  });
+
+  async function startWithOllama(overrides: Partial<AppDeps> = {}, model = 'qwen3.5:9b') {
+    ollama ??= await startFakeOllama();
+    const advisor = createAdvisorService({ settings: { url: ollama.url, model }, save: vi.fn(async () => {}) });
+    return start({ advisor, kb: fakeKb(await testKnowledgeBase()), ...overrides });
+  }
+
+  const ask = (base: string, body: unknown, headers: Record<string, string> = { 'X-IAM-Action': 'advisor' }) =>
+    fetch(`${base}/api/advisor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    });
+
+  const lines = async (res: Response) =>
+    (await res.text())
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+
+  const QUESTION = { question: 'Comment obtenir The Nail (#9) ?', history: [], profile: 'me', slot: null };
+
+  it('expose l’état du conseiller', async () => {
+    const base = await start();
+    expect(await (await fetch(`${base}/api/advisor/status`)).json()).toEqual(ADVISOR_OK);
+  });
+
+  it('enregistre les réglages Ollama avec l’en-tête dédié', async () => {
+    const configure = vi.fn(async () => ADVISOR_OK);
+    const base = await start({ advisor: fakeAdvisor({ configure }) });
+    const post = (body: unknown, headers: Record<string, string> = { 'X-IAM-Action': 'advisor-settings' }) =>
+      fetch(`${base}/api/advisor/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+    const refused = await post({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' }, {});
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toEqual({ error: 'En-tête X-IAM-Action: advisor-settings requis' });
+    const invalid = await post({ url: 'nas', model: 'qwen3.5:4b' });
+    expect(invalid.status).toBe(400);
+    expect(configure).not.toHaveBeenCalled();
+    const saved = await post({ url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' });
+    expect(await saved.json()).toEqual(ADVISOR_OK);
+    expect(configure).toHaveBeenCalledWith({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' });
+  });
+
+  it('refuse une question sans en-tête, illisible, invalide ou trop grosse', async () => {
+    const base = await start();
+    const refused = await ask(base, QUESTION, {});
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toEqual({ error: 'En-tête X-IAM-Action: advisor requis' });
+    const unreadable = await ask(base, '{"question":');
+    expect(unreadable.status).toBe(400);
+    expect(await unreadable.json()).toEqual({ error: 'Corps JSON illisible' });
+    const empty = await ask(base, { ...QUESTION, question: ' ' });
+    expect(empty.status).toBe(400);
+    expect(await empty.json()).toEqual({ error: 'Question vide' });
+    const hugeBody = { ...QUESTION, history: [{ role: 'user', content: 'x'.repeat(300_000) }] };
+    const huge = await ask(base, hugeBody);
+    expect(huge.status).toBe(413);
+    expect(await huge.json()).toEqual({ error: 'Requête trop volumineuse' });
+    // L'en-tête est contrôlé avant la lecture du corps.
+    expect((await ask(base, hugeBody, {})).status).toBe(403);
+  });
+
+  it('diffuse les fiches consultées puis la réponse d’Ollama', async () => {
+    const get = vi.fn(async () => merged);
+    const base = await startWithOllama({ progress: { get } });
+    const history = [
+      { role: 'user', content: 'Bonjour' },
+      { role: 'assistant', content: 'Bonjour !' },
+    ];
+    const res = await ask(base, { ...QUESTION, history, profile: OTHER_ID64, slot: 2 });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/x-ndjson; charset=utf-8');
+    expect(await lines(res)).toEqual([
+      { kind: 'context', sources: [{ id: 9, name: 'The Nail' }] },
+      { kind: 'delta', text: 'Bonjour' },
+      { kind: 'delta', text: ' Player.' },
+      { kind: 'done' },
+    ]);
+    expect(get).toHaveBeenCalledWith(OTHER_ID64, 2);
+    const [chat] = ollama?.chats as Array<{ messages: Array<{ role: string; content: string }> }>;
+    expect(chat.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(chat.messages[0].content).toContain('#9 The Nail : manquant');
+    expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Bonjour', 'Bonjour !', 'Comment obtenir The Nail (#9) ?']);
+  });
+
+  it('prévient le modèle quand la base wiki manque', async () => {
+    const base = await startWithOllama({ kb: fakeKb() });
+    const [context] = await lines(await ask(base, QUESTION));
+    expect(context).toEqual({ kind: 'context', sources: [{ id: 9, name: 'The Nail' }] });
+    const [chat] = ollama?.chats as Array<{ messages: Array<{ content: string }> }>;
+    expect(chat.messages[0].content).toContain('Base wiki absente');
+  });
+
+  it('répond 503 quand Ollama est injoignable', async () => {
+    const url = await closedUrl();
+    const base = await start({ advisor: createAdvisorService({ settings: { url, model: 'qwen3.5:9b' }, save: vi.fn() }) });
+    const res = await ask(base, QUESTION);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: `Ollama injoignable sur ${url} (ECONNREFUSED)` });
+  });
+
+  it('répond 502 quand le modèle manque', async () => {
+    const base = await startWithOllama({}, 'mistral:7b');
+    const res = await ask(base, QUESTION);
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: 'Modèle mistral:7b absent du serveur Ollama : lance « ollama pull mistral:7b » sur ce serveur',
+    });
+  });
+
+  it('répond 504 quand Ollama ne répond pas', async () => {
+    ollama = await startFakeOllama({
+      'POST /api/chat': () => {
+        // Aucune réponse : le serveur est occupé.
+      },
+    });
+    const advisor = createAdvisorService({ settings: { url: ollama.url, model: 'qwen3.5:9b' }, save: vi.fn(), idleTimeoutMs: 100 });
+    const base = await start({ advisor, kb: fakeKb(await testKnowledgeBase()) });
+    const res = await ask(base, QUESTION);
+    expect(res.status).toBe(504);
+    expect((await res.json()).error).toMatch(/^Ollama ne répond plus \(rien reçu depuis 1 s\)/);
+  });
+
+  it('termine le flux par l’erreur envoyée par Ollama en cours de route', async () => {
+    ollama = await startFakeOllama({
+      'POST /api/chat': (_req, res) => {
+        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.end(`${JSON.stringify({ error: 'out of memory' })}\n`);
+      },
+    });
+    const base = await startWithOllama();
+    expect((await lines(await ask(base, QUESTION))).slice(1)).toEqual([
+      { kind: 'delta', text: 'Début' },
+      { kind: 'error', message: "Erreur d'Ollama : out of memory" },
+    ]);
+  });
+
+  it('coupe la génération quand le navigateur abandonne', async () => {
+    ollama = await startFakeOllama({
+      'POST /api/chat': (_req, res) => {
+        res.write(`${chatLines(['Début'])[0]}\n`);
+      },
+    });
+    const base = await startWithOllama();
+    const controller = new AbortController();
+    const res = await fetch(`${base}/api/advisor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'advisor' },
+      body: JSON.stringify(QUESTION),
+      signal: controller.signal,
+    });
+    await res.body?.getReader().read();
+    controller.abort();
+    await expect.poll(() => ollama?.aborted()).toBe(1);
   });
 });

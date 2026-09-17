@@ -4,8 +4,9 @@ import http from 'node:http';
 import path from 'node:path';
 import { format } from 'node:util';
 import express from 'express';
+import { createAdvisorService } from './advisor/service.ts';
 import { APP_NAME, createApp } from './app.ts';
-import { chooseAccount, detectSteamEnv, loadSettings } from './config.ts';
+import { chooseAccount, detectSteamEnv, loadSettings, saveOllamaSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
 import { createProgressService } from './progress-service.ts';
@@ -54,6 +55,7 @@ const app = createApp({
   profiles,
   icons: createIconCache(path.join(DATA_DIR, 'icons')),
   kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
+  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveOllamaSettings(DATA_DIR, ollama) }),
   settings: {
     port: settings.port,
     dataDir: DATA_DIR,
