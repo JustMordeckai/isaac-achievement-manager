@@ -18,6 +18,7 @@ function renderDashboard(summary: ProgressSummary = makeSummary(), overrides: Pa
     onOpenSettings: vi.fn(),
     onShowRoutes: vi.fn(),
     onOpenAchievement: vi.fn(),
+    onAsk: vi.fn(),
     ...overrides,
   };
   return { ...render(<Dashboard {...props} />), props };
@@ -152,6 +153,10 @@ describe('Dashboard : plan de routes', () => {
     expect(props.onOpenAchievement).toHaveBeenCalledWith(45);
     await user.click(within(section).getByRole('button', { name: 'Voir toutes les routes' }));
     expect(props.onShowRoutes).toHaveBeenCalled();
+    await user.click(within(runs[1]).getByRole('button', { name: 'Demander au conseiller' }));
+    expect(props.onAsk).toHaveBeenCalledWith(
+      'Comment réussir cette run avec Isaac en mode Greed (battre Ultra Greed) ? Elle doit donner Censer (#193).',
+    );
   });
 
   it('se limite à trois runs jouables', () => {

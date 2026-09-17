@@ -12,6 +12,7 @@ export interface RoutesProps {
   state: RoutesState;
   onOpenSettings(): void;
   onOpenAchievement(id: number): void;
+  onAsk(question: string): void;
   onRetry(): void;
   /** Revenir au profil local après l'échec d'un autre profil, null si c'est déjà le cas. */
   onResetProfile: (() => void) | null;
@@ -150,7 +151,13 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
   );
 }
 
-function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }) {
+interface RunListProps {
+  plan: RoutePlan;
+  onOpen(id: number): void;
+  onAsk(question: string): void;
+}
+
+function RunList({ plan, onOpen, onAsk }: RunListProps) {
   const [character, setCharacter] = useState<CharacterId | 'all'>('all');
   const [withLocked, setWithLocked] = useState(false);
   const [shown, setShown] = useState(PAGE_SIZE);
@@ -211,7 +218,7 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
       ) : (
         <div className="run-list">
           {runs.slice(0, shown).map((run) => (
-            <RunCard key={run.id} run={run} onOpenAchievement={onOpen} />
+            <RunCard key={run.id} run={run} onOpenAchievement={onOpen} onAsk={onAsk} />
           ))}
         </div>
       )}
@@ -240,7 +247,7 @@ function KbMissing({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): voi
 }
 
 /** Écran Routes : runs conseillées puis succès hors routes. */
-export function Routes({ state, onOpenSettings, onOpenAchievement, onRetry, onResetProfile }: RoutesProps) {
+export function Routes({ state, onOpenSettings, onOpenAchievement, onAsk, onRetry, onResetProfile }: RoutesProps) {
   if (state.status === 'loading') return <p className="placeholder">Calcul des routes…</p>;
   if (state.status === 'error') {
     return (
@@ -264,7 +271,7 @@ export function Routes({ state, onOpenSettings, onOpenAchievement, onRetry, onRe
   if (!plan) return <KbMissing kb={kb} onOpenSettings={onOpenSettings} />;
   return (
     <div className="routes">
-      <RunList plan={plan} onOpen={onOpenAchievement} />
+      <RunList plan={plan} onOpen={onOpenAchievement} onAsk={onAsk} />
       <OffRouteSections offRoute={plan.offRoute} onOpen={onOpenAchievement} />
     </div>
   );

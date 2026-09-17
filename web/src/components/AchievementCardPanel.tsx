@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AchievementCard, AchievementWiki, CardPlan, KbStatus } from '../../../shared/types.ts';
+import { achievementQuestion } from '../advisor-question.ts';
 import { api, type ProfileQuery } from '../api.ts';
 import {
   characterName,
@@ -23,16 +24,26 @@ export interface AchievementCardPanelProps {
   onClose(): void;
   onOpenSettings(): void;
   onOpenRoutes(): void;
+  /** Ouvre le conseiller avec une question sur ce succès. */
+  onAsk(question: string): void;
 }
 
 type CardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; card: AchievementCard };
 
-/** Prérequis et runs du planificateur pour un succès encore manquant. */
-function PlanSection({ plan, onOpenRoutes }: { plan: CardPlan; onOpenRoutes(): void }) {
-  if (plan.requirements.length === 0 && plan.runs.length === 0) return null;
+interface PlanSectionProps {
+  plan: CardPlan;
+  onOpenRoutes(): void;
+  onAsk(): void;
+}
+
+/** Prérequis et runs du planificateur pour un succès encore manquant, et accès au conseiller. */
+function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
   return (
     <section aria-labelledby="ach-card-plan">
       <h3 id="ach-card-plan">Pour l'obtenir</h3>
+      {plan.requirements.length === 0 && plan.runs.length === 0 && (
+        <p className="muted">Aucun prérequis connu et aucune run planifiée pour ce succès.</p>
+      )}
       {plan.requirements.length > 0 && (
         <>
           <h4>Prérequis</h4>
@@ -61,11 +72,18 @@ function PlanSection({ plan, onOpenRoutes }: { plan: CardPlan; onOpenRoutes(): v
               </li>
             ))}
           </ul>
+        </>
+      )}
+      <div className="ach-card__actions">
+        {plan.runs.length > 0 && (
           <button type="button" className="btn" onClick={onOpenRoutes}>
             Voir les routes
           </button>
-        </>
-      )}
+        )}
+        <button type="button" className="btn" onClick={onAsk}>
+          Demander au conseiller
+        </button>
+      </div>
     </section>
   );
 }
@@ -75,9 +93,10 @@ interface WikiSectionProps {
   syncedAt: string | null;
   plan: CardPlan | null;
   onOpenRoutes(): void;
+  onAsk(): void;
 }
 
-function WikiSection({ wiki, syncedAt, plan, onOpenRoutes }: WikiSectionProps) {
+function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionProps) {
   const how = describeHow(wiki.how);
   const page = wiki.unlockPage;
   return (
@@ -88,7 +107,7 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes }: WikiSectionProps) {
         {how && <p className="muted">{how}</p>}
       </section>
 
-      {plan && <PlanSection plan={plan} onOpenRoutes={onOpenRoutes} />}
+      {plan && <PlanSection plan={plan} onOpenRoutes={onOpenRoutes} onAsk={onAsk} />}
 
       <section aria-labelledby="ach-card-unlocks">
         <h3 id="ach-card-unlocks">Débloque</h3>
@@ -174,6 +193,7 @@ export function AchievementCardPanel({
   onClose,
   onOpenSettings,
   onOpenRoutes,
+  onAsk,
 }: AchievementCardPanelProps) {
   const [state, setState] = useState<CardState>({ status: 'loading' });
   const heading = useRef<HTMLHeadingElement>(null);
@@ -254,6 +274,7 @@ export function AchievementCardPanel({
               syncedAt={state.card.kb.syncedAt}
               plan={achievement.unlocked ? null : state.card.plan}
               onOpenRoutes={onOpenRoutes}
+              onAsk={() => onAsk(achievementQuestion(achievement))}
             />
           ) : (
             <MissingWiki kb={state.card.kb} onOpenSettings={onOpenSettings} />

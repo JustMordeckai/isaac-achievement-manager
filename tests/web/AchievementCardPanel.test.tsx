@@ -14,6 +14,7 @@ function renderPanel(card: AchievementCard | Response, overrides: { query?: Prof
   const onClose = vi.fn();
   const onOpenSettings = vi.fn();
   const onOpenRoutes = vi.fn();
+  const onAsk = vi.fn();
   const props = {
     id: 9,
     query: overrides.query ?? ME,
@@ -21,9 +22,10 @@ function renderPanel(card: AchievementCard | Response, overrides: { query?: Prof
     onClose,
     onOpenSettings,
     onOpenRoutes,
+    onAsk,
   };
   const view = render(<AchievementCardPanel {...props} />);
-  return { ...view, props, fetchMock, onClose, onOpenSettings, onOpenRoutes };
+  return { ...view, props, fetchMock, onClose, onOpenSettings, onOpenRoutes, onAsk };
 }
 
 describe('AchievementCardPanel', () => {
@@ -124,16 +126,23 @@ describe('AchievementCardPanel', () => {
     expect(within(section).getByRole('heading', { level: 4, name: 'Runs du plan' })).toBeInTheDocument();
   });
 
-  it('masque le plan d’un succès débloqué ou sans méthode planifiable', async () => {
+  it('masque le plan d’un succès débloqué', async () => {
     const plan: CardPlan = { requirements: [{ anyOf: [{ id: 79, name: 'Azazel' }], met: true }], runs: [] };
     const achievement = makeAchievement(9, { name: 'The Nail', unlocked: true, unlockedAt: null });
-    const { unmount } = renderPanel(makeCard({ achievement, plan }));
+    renderPanel(makeCard({ achievement, plan }));
     await screen.findByText('Débloqué');
     expect(screen.queryByRole('region', { name: "Pour l'obtenir" })).not.toBeInTheDocument();
-    unmount();
-    renderPanel(makeCard({ plan: { requirements: [], runs: [] } }));
-    await screen.findByRole('heading', { level: 3, name: 'Condition' });
-    expect(screen.queryByRole('region', { name: "Pour l'obtenir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Demander au conseiller' })).not.toBeInTheDocument();
+  });
+
+  it('propose le conseiller pour un succès manquant, même sans méthode planifiable', async () => {
+    const user = userEvent.setup();
+    const { onAsk } = renderPanel(makeCard({ plan: { requirements: [], runs: [] } }));
+    const section = await screen.findByRole('region', { name: "Pour l'obtenir" });
+    expect(within(section).getByText('Aucun prérequis connu et aucune run planifiée pour ce succès.')).toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Voir les routes' })).not.toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Demander au conseiller' }));
+    expect(onAsk).toHaveBeenCalledWith('Comment obtenir The Nail (#9) ?');
   });
 
   it('transmet le profil et le slot, et relit la fiche après une actualisation', async () => {

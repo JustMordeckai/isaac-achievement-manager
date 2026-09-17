@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
-import type { WikiSyncEvent } from '../../shared/types.ts';
+import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
 import {
   ADVISOR_OFFLINE,
   ADVISOR_OK,
@@ -306,6 +306,52 @@ describe('App', () => {
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes?profile=76561198000000001')).toBe(2));
     await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Revenir à mon profil' }));
     expect(await screen.findByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+  });
+
+  it('pose au conseiller la question d’une run et garde la conversation entre les onglets', async () => {
+    const user = userEvent.setup();
+    const events: AdvisorEvent[] = [
+      { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
+      { kind: 'delta', text: 'Fais Boss Rush avant 20 minutes.' },
+      { kind: 'done' },
+    ];
+    const bodies: unknown[] = [];
+    stubProgress({
+      'POST /api/advisor': (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        return new Response(events.map((e) => `${JSON.stringify(e)}\n`).join(''));
+      },
+    });
+    window.location.hash = '#/routes';
+    render(<App />);
+    const [magdalene] = within(await screen.findByRole('region', { name: 'Runs conseillées' })).getAllByRole('article');
+    await user.click(within(magdalene).getByRole('button', { name: 'Demander au conseiller' }));
+    expect(window.location.hash).toBe('#/conseiller');
+    expect(screen.getByRole('button', { name: 'Conseiller' })).toHaveAttribute('aria-current', 'page');
+    const field = screen.getByLabelText<HTMLTextAreaElement>('Ta question');
+    expect(field.value).toMatch(/^Comment réussir cette run avec Magdalene en mode difficile/);
+    expect(field).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Envoyer' }));
+    expect(await screen.findByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
+    expect(bodies).toEqual([{ question: expect.stringMatching(/^Comment réussir/), history: [], profile: 'me', slot: null }]);
+    expect(screen.getByText('Conseiller : OK')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
+    await user.click(screen.getByRole('button', { name: 'Conseiller' }));
+    expect(screen.getByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Guardian Angel' }));
+    expect(window.location.hash).toBe('#/succes/45');
+  });
+
+  it('pose au conseiller la question d’une fiche', async () => {
+    const user = userEvent.setup();
+    const plan = { requirements: [], runs: [] };
+    stubProgress({ 'GET /api/achievement/2': () => makeCard({ achievement: ACHIEVEMENTS[1], plan }) });
+    window.location.hash = '#/succes/2';
+    render(<App />);
+    const panel = await screen.findByRole('complementary', { name: 'Cain' });
+    await user.click(within(panel).getByRole('button', { name: 'Demander au conseiller' }));
+    expect(window.location.hash).toBe('#/conseiller');
+    expect(screen.getByLabelText('Ta question')).toHaveValue('Comment obtenir Cain (#2) ?');
   });
 
   it('enregistre les réglages Ollama depuis les paramètres et met à jour la pastille du conseiller', async () => {

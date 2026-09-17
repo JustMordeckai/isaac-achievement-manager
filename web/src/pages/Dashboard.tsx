@@ -21,6 +21,7 @@ export interface DashboardProps {
   onOpenSettings(): void;
   onShowRoutes(): void;
   onOpenAchievement(id: number): void;
+  onAsk(question: string): void;
 }
 
 const BEST_RUNS = 3;
@@ -30,7 +31,8 @@ function PlanSections({
   routes,
   onShowRoutes,
   onOpenAchievement,
-}: Pick<DashboardProps, 'routes' | 'onShowRoutes' | 'onOpenAchievement'>) {
+  onAsk,
+}: Pick<DashboardProps, 'routes' | 'onShowRoutes' | 'onOpenAchievement' | 'onAsk'>) {
   if (routes.status === 'loading') {
     return (
       <section className="card wide" aria-labelledby="best-runs-title">
@@ -60,7 +62,7 @@ function PlanSections({
         ) : (
           <div className="run-list run-list--compact">
             {best.map((run) => (
-              <RunCard key={run.id} run={run} onOpenAchievement={onOpenAchievement} />
+              <RunCard key={run.id} run={run} onOpenAchievement={onOpenAchievement} onAsk={onAsk} />
             ))}
           </div>
         )}
@@ -132,6 +134,7 @@ export function Dashboard({
   onOpenSettings,
   onShowRoutes,
   onOpenAchievement,
+  onAsk,
 }: DashboardProps) {
   const missing = summary.total - summary.unlocked;
   const dlcs = DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0);
@@ -201,7 +204,7 @@ export function Dashboard({
         )}
       </section>
 
-      <PlanSections routes={routes} onShowRoutes={onShowRoutes} onOpenAchievement={onOpenAchievement} />
+      <PlanSections routes={routes} onShowRoutes={onShowRoutes} onOpenAchievement={onOpenAchievement} onAsk={onAsk} />
 
       <section className="card" aria-labelledby="desync-title">
         <h2 id="desync-title">Écarts entre sources</h2>

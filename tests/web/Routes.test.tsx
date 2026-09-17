@@ -10,6 +10,7 @@ function renderRoutes(plan: RoutePlan | null = makePlan(), overrides: Partial<Ro
     state: { status: 'ready', data: { kb: plan ? KB_OK : KB_ABSENT, plan }, refreshing: false },
     onOpenSettings: vi.fn(),
     onOpenAchievement: vi.fn(),
+    onAsk: vi.fn(),
     onRetry: vi.fn(),
     onResetProfile: null,
     ...overrides,
@@ -106,6 +107,16 @@ describe('Routes : runs conseillées', () => {
     const { props } = renderRoutes();
     await user.click(screen.getByRole('button', { name: 'Censer' }));
     expect(props.onOpenAchievement).toHaveBeenCalledWith(193);
+  });
+
+  it('pose au conseiller la question d’une run', async () => {
+    const user = userEvent.setup();
+    const { props } = renderRoutes();
+    const [magdalene] = within(screen.getByRole('region', { name: 'Runs conseillées' })).getAllByRole('article');
+    await user.click(within(magdalene).getByRole('button', { name: 'Demander au conseiller' }));
+    expect(props.onAsk).toHaveBeenCalledWith(
+      expect.stringMatching(/^Comment réussir cette run avec Magdalene en mode difficile/),
+    );
   });
 });
 

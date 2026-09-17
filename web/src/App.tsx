@@ -4,11 +4,12 @@ import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
+import { Advisor } from './pages/Advisor.tsx';
 import { Dashboard, type FilterPatch } from './pages/Dashboard.tsx';
 import { Routes } from './pages/Routes.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { applyTheme, loadTheme, type Theme } from './theme.ts';
-import { useAdvisorStatus } from './useAdvisor.ts';
+import { useAdvisorChat, useAdvisorStatus } from './useAdvisor.ts';
 import { useHashAchievement, useHashTab } from './useHashTab.ts';
 import { useProgress } from './useProgress.ts';
 import { useRoutes } from './useRoutes.ts';
@@ -24,6 +25,7 @@ export function App() {
   const [filter, setFilter] = useState<AchievementFilter>(DEFAULT_FILTER);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [stop, setStop] = useState<StopState>({ kind: 'running' });
+  const [draft, setDraft] = useState('');
   const [tab, setTab] = useHashTab();
   const [cardId, setCardId] = useHashAchievement();
   const state = useProgress(query, reloadKey);
@@ -31,6 +33,7 @@ export function App() {
   const kb = useKbStatus(reloadKey);
   const settings = useSettings();
   const advisor = useAdvisorStatus(reloadKey);
+  const chat = useAdvisorChat();
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
   const [sync, startSync] = useWikiSync(reload);
@@ -82,6 +85,11 @@ export function App() {
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');
   const resetProfile = query.profile !== 'me' ? () => setQuery({ profile: 'me', slot: null }) : null;
+  // « Demander au conseiller » : la question attend dans le champ, l'utilisateur la relit avant d'envoyer.
+  const askAdvisor = (question: string) => {
+    setDraft(question);
+    setTab('advisor');
+  };
 
   return (
     <div className="app">
@@ -112,8 +120,23 @@ export function App() {
             state={routes}
             onOpenSettings={openSettings}
             onOpenAchievement={setCardId}
+            onAsk={askAdvisor}
             onRetry={reload}
             onResetProfile={resetProfile}
+          />
+        )}
+        {tab === 'advisor' && (
+          <Advisor
+            chat={chat}
+            query={query}
+            status={advisor.status}
+            checking={advisor.checking}
+            kb={kb}
+            draft={draft}
+            onDraftChange={setDraft}
+            onRecheck={advisor.recheck}
+            onOpenSettings={openSettings}
+            onOpenAchievement={setCardId}
           />
         )}
         {(tab === 'dashboard' || tab === 'achievements') && (
@@ -144,6 +167,7 @@ export function App() {
                 onOpenSettings={openSettings}
                 onShowRoutes={openRoutes}
                 onOpenAchievement={setCardId}
+                onAsk={askAdvisor}
               />
             )}
             {state.status === 'ready' && tab === 'achievements' && (
@@ -164,6 +188,7 @@ export function App() {
                       onClose={() => setCardId(null)}
                       onOpenSettings={openSettings}
                       onOpenRoutes={openRoutes}
+                      onAsk={askAdvisor}
                     />
                   )
                 }
