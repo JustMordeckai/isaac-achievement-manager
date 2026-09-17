@@ -4,6 +4,7 @@ import type {
   KbStatus,
   ProgressSummary,
   ResolvedProfile,
+  RoutesResponse,
   SettingsInfo,
   WikiSyncEvent,
 } from '../../shared/types.ts';
@@ -85,6 +86,8 @@ export const api = {
     request<ProgressSummary>(`/api/progress?${profileParams(query)}`, { signal }),
   achievements: (query: ProfileQuery, signal?: AbortSignal) =>
     request<AchievementEntry[]>(`/api/achievements?${profileParams(query)}`, { signal }),
+  routes: (query: ProfileQuery, signal?: AbortSignal) =>
+    request<RoutesResponse>(`/api/routes?${profileParams(query)}`, { signal }),
   achievement: (id: number, query: ProfileQuery, signal?: AbortSignal) =>
     request<AchievementCard>(`/api/achievement/${id}?${profileParams(query)}`, { signal }),
   wikiStatus: (signal?: AbortSignal) => request<KbStatus>('/api/wiki/status', { signal }),

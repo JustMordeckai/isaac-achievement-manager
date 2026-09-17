@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type Tab = 'dashboard' | 'achievements' | 'settings';
+export type Tab = 'dashboard' | 'achievements' | 'routes' | 'settings';
 
-const HASHES: Record<Tab, string> = { dashboard: '#/', achievements: '#/succes', settings: '#/parametres' };
+const HASHES: Record<Tab, string> = {
+  dashboard: '#/',
+  achievements: '#/succes',
+  routes: '#/routes',
+  settings: '#/parametres',
+};
 const CARD_HASH = /^#\/succes\/(\d+)$/;
 
 function tabFromHash(hash: string): Tab {
   if (hash.startsWith(HASHES.achievements)) return 'achievements';
+  if (hash.startsWith(HASHES.routes)) return 'routes';
   if (hash.startsWith(HASHES.settings)) return 'settings';
   return 'dashboard';
 }
@@ -31,6 +37,8 @@ export function useHashTab(): [Tab, (tab: Tab) => void] {
   const [tab, setTab] = useHashValue(tabFromHash);
   const select = useCallback(
     (next: Tab) => {
+      // Un nouvel onglet s'affiche depuis le haut de la page.
+      if (tabFromHash(window.location.hash) !== next) document.documentElement.scrollTop = 0;
       window.location.hash = HASHES[next];
       setTab(next);
     },

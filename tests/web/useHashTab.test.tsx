@@ -35,6 +35,27 @@ describe('useHashTab', () => {
   });
 });
 
+describe('useHashTab : routes', () => {
+  it('reconnaît l’onglet Routes', () => {
+    window.location.hash = '#/routes';
+    const { result } = renderHook(() => useHashTab());
+    expect(result.current[0]).toBe('routes');
+    act(() => result.current[1]('dashboard'));
+    expect(window.location.hash).toBe('#/');
+    act(() => result.current[1]('routes'));
+    expect(window.location.hash).toBe('#/routes');
+  });
+
+  it('remonte en haut de page seulement quand l’onglet change', () => {
+    const { result } = renderHook(() => useHashTab());
+    document.documentElement.scrollTop = 400;
+    act(() => result.current[1]('dashboard'));
+    expect(document.documentElement.scrollTop).toBe(400);
+    act(() => result.current[1]('routes'));
+    expect(document.documentElement.scrollTop).toBe(0);
+  });
+});
+
 describe('useHashAchievement', () => {
   it('lit la fiche ouverte depuis l’adresse', () => {
     window.location.hash = '#/succes/42';

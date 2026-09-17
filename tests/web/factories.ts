@@ -1,4 +1,16 @@
-import type { AchievementCard, AchievementEntry, KbStatus, ProgressSummary, SettingsInfo } from '../../shared/types.ts';
+import { CHARACTERS } from '../../shared/characters.ts';
+import type {
+  AchievementCard,
+  AchievementEntry,
+  CharacterProgress,
+  KbStatus,
+  KnownMarks,
+  PlannedRun,
+  ProgressSummary,
+  RoutePlan,
+  RoutesResponse,
+  SettingsInfo,
+} from '../../shared/types.ts';
 
 export function makeAchievement(id: number, overrides: Partial<AchievementEntry> = {}): AchievementEntry {
   return {
@@ -93,3 +105,105 @@ export function makeCard(overrides: Partial<AchievementCard> = {}): AchievementC
     ...overrides,
   };
 }
+
+/** Run de Magdalene telle que la renvoie /api/routes. */
+export function makeRun(overrides: Partial<PlannedRun> = {}): PlannedRun {
+  return {
+    id: 'magdalene-1',
+    character: 'magdalene',
+    mode: 'hard',
+    endings: ['bossRush', 'momsHeart', 'satan', 'lamb'],
+    steps: [
+      'Traverser Basement, Caves et Depths, puis battre Mom en Depths II.',
+      "Traverser Womb I et II et battre Mom's Heart (ou It Lives).",
+    ],
+    achievements: [
+      { id: 45, name: 'Guardian Angel' },
+      { id: 71, name: "Maggy's Faith" },
+    ],
+    minutes: 74,
+    score: 1.622,
+    missing: [],
+    note: null,
+    ...overrides,
+  };
+}
+
+const NO_MARKS: KnownMarks = {
+  momsHeart: 0,
+  isaac: 0,
+  satan: 0,
+  bossRush: 0,
+  blueBaby: 0,
+  lamb: 0,
+  megaSatan: 0,
+  greed: 0,
+  hush: 0,
+  delirium: 0,
+  mother: 0,
+  beast: 0,
+};
+
+/** Isaac et Magdalene débloqués ; Isaac a Mom's Heart en difficile, Satan et Greed en normal. */
+export function makeCharacters(): CharacterProgress[] {
+  return CHARACTERS.map((c) => ({
+    id: c.id,
+    unlocked: c.id === 'isaac' || c.id === 'magdalene',
+    marks: c.id === 'isaac' ? { ...NO_MARKS, momsHeart: 2, satan: 1, greed: 1 } : { ...NO_MARKS },
+    hardAll: c.tainted ? null : false,
+  }));
+}
+
+export function makePlan(overrides: Partial<RoutePlan> = {}): RoutePlan {
+  return {
+    marksSource: 'save',
+    characters: makeCharacters(),
+    runs: [
+      makeRun(),
+      makeRun({
+        id: 'isaac-1',
+        character: 'isaac',
+        mode: 'greed',
+        endings: ['ultraGreed'],
+        steps: ['Lancer une partie en mode Greed.'],
+        achievements: [{ id: 193, name: 'Censer' }],
+        minutes: 35,
+        score: 1.714,
+      }),
+      makeRun({
+        id: 'isaac-2',
+        character: 'isaac',
+        endings: ['mother'],
+        achievements: [{ id: 405, name: 'Jacob and Esau' }],
+        minutes: 55,
+        score: 1.091,
+        missing: [{ anyOf: [{ id: 407, name: 'A Secret Exit' }], met: false }],
+      }),
+    ],
+    offRoute: {
+      challenges: [
+        {
+          id: 94,
+          name: 'Rune of Perthro',
+          number: 6,
+          title: 'Solar System',
+          character: 'Isaac',
+          goal: "Mom's Heart",
+          curse: null,
+          startingItems: ['Distant Admiration'],
+          requirement: { anyOf: [{ id: 159, name: 'Solar System' }], met: false },
+        },
+      ],
+      counters: [
+        { id: 344, name: 'Dank Depths', condition: 'Defeat It Lives! 21 times', total: 21, value: 16 },
+        { id: 349, name: 'Black Hole', condition: 'Defeat 20 Portals', total: 20, value: null },
+      ],
+      closets: [{ id: 474, name: 'The Broken', character: 'isaac' }],
+      redKey: false,
+      misc: [{ id: 23, name: 'Little Gish', condition: 'Defeat Gish', dlc: 'rebirth' }],
+    },
+    ...overrides,
+  };
+}
+
+export const ROUTES_OK: RoutesResponse = { kb: KB_OK, plan: makePlan() };

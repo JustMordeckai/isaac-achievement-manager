@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WikiSyncEvent } from '../../shared/types.ts';
 import { api, ApiRequestError, iconUrl } from '../../web/src/api.ts';
-import { KB_OK, makeCard, makeSummary, SETTINGS } from './factories.ts';
+import { KB_OK, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 describe('api', () => {
@@ -76,6 +76,16 @@ describe('api', () => {
       },
     });
     expect((await api.achievement(9, { profile: 'me', slot: 2 })).wiki?.name).toBe('The Nail');
+  });
+
+  it('demande le plan de routes du profil courant', async () => {
+    stubFetch({
+      'GET /api/routes': (url) => {
+        expect(url.search).toBe('?profile=76561198000000001');
+        return ROUTES_OK;
+      },
+    });
+    expect(await api.routes({ profile: '76561198000000001', slot: null })).toEqual(ROUTES_OK);
   });
 
   it('lit l’état du wiki et les réglages', async () => {
