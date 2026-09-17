@@ -80,7 +80,7 @@ function requestWithHost(port: number, hostHeader: string): Promise<{ status: nu
 }
 
 describe('API', () => {
-  it('bloque un hote non autorise et laisse passer 127.0.0.1 et localhost', async () => {
+  it('bloque un hôte non autorisé et laisse passer 127.0.0.1 et localhost', async () => {
     const base = await start();
     const { port } = new URL(base);
     const evil = await requestWithHost(Number(port), 'evil.example:5250');
@@ -90,14 +90,14 @@ describe('API', () => {
     expect(local.status).toBe(200);
   });
 
-  it('repond a /api/ping sans dependre des sources de progression', async () => {
+  it('répond à /api/ping sans dépendre des sources de progression', async () => {
     const base = await start({ progress: { get: vi.fn(() => new Promise<never>(() => {})) } });
     const res = await fetch(`${base}/api/ping`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ app: 'isaac-achievement-manager' });
   });
 
-  it('sert la progression du profil par defaut', async () => {
+  it('sert la progression du profil par défaut', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get } });
     const res = await fetch(`${base}/api/progress`);
@@ -106,7 +106,7 @@ describe('API', () => {
     expect(get).toHaveBeenCalledWith('me', null);
   });
 
-  it('transmet le profil et le slot demandes', async () => {
+  it('transmet le profil et le slot demandés', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get } });
     const res = await fetch(`${base}/api/achievements?profile=${OTHER_ID64}&slot=2`);
@@ -136,7 +136,7 @@ describe('API', () => {
     expect(await res.json()).toEqual({ error: 'Aucun compte' });
   });
 
-  it('renvoie 500 pour une erreur imprevue', async () => {
+  it('renvoie 500 pour une erreur imprévue', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const base = await start({
       progress: {
@@ -160,7 +160,7 @@ describe('API', () => {
     });
   });
 
-  it('expose un statut sans sources si la progression echoue', async () => {
+  it('expose un statut sans sources si la progression échoue', async () => {
     const base = await start({
       progress: {
         get: vi.fn(async () => {
@@ -173,7 +173,7 @@ describe('API', () => {
     expect(await res.json()).toEqual({ app: 'isaac-achievement-manager', sources: null, wiki: ABSENT });
   });
 
-  it('resout un profil', async () => {
+  it('résout un profil', async () => {
     const resolve = vi.fn(async () => ({ steamId64: ME_ID64, name: 'Player' }));
     const base = await start({ profiles: { getStats: vi.fn(), resolve } });
     const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('https://steamcommunity.com/id/JustMordeckai/')}`);
@@ -191,7 +191,7 @@ describe('API', () => {
     expect(await res.json()).toEqual({ error: 'Profil Steam introuvable' });
   });
 
-  it('repond 400 a une saisie de profil non reconnue', async () => {
+  it('répond 400 à une saisie de profil non reconnue', async () => {
     const resolve = vi.fn(async () => {
       throw new ProfileError('input', 'Entrée non reconnue');
     });
@@ -201,7 +201,7 @@ describe('API', () => {
     expect(await res.json()).toEqual({ error: 'Entrée non reconnue' });
   });
 
-  it('sert les icones', async () => {
+  it('sert les icônes', async () => {
     const get = vi.fn(async () => new Uint8Array([0xff, 0xd8]));
     const base = await start({ icons: { get } });
     const file = 'a36d7e92df7e991758907a75dfa55d36b52548c4.jpg';
@@ -213,7 +213,7 @@ describe('API', () => {
     expect(get).toHaveBeenCalledWith(file);
   });
 
-  it("relaie le refus d'un nom d'icone", async () => {
+  it('relaie le refus d’un nom d’icône', async () => {
     const base = await start({
       icons: {
         get: vi.fn(async () => {
@@ -225,7 +225,7 @@ describe('API', () => {
     expect(res.status).toBe(400);
   });
 
-  it("arrete le serveur seulement avec l'en-tete dedie", async () => {
+  it('arrête le serveur seulement avec l’en-tête dédié', async () => {
     const onShutdown = vi.fn();
     const base = await start({ onShutdown });
     const refused = await fetch(`${base}/api/shutdown`, { method: 'POST' });
@@ -236,7 +236,7 @@ describe('API', () => {
     await vi.waitFor(() => expect(onShutdown).toHaveBeenCalledTimes(1));
   });
 
-  it('repond 404 a un arret non configure et aux routes inconnues', async () => {
+  it('répond 404 à un arrêt non configuré et aux routes inconnues', async () => {
     const base = await start();
     const shutdown = await fetch(`${base}/api/shutdown`, { method: 'POST', headers: { 'X-IAM-Action': 'shutdown' } });
     expect(shutdown.status).toBe(404);
@@ -245,19 +245,19 @@ describe('API', () => {
     expect(await unknown.json()).toEqual({ error: 'Route API inconnue' });
   });
 
-  it('expose les reglages detectes', async () => {
+  it('expose les réglages détectés', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/settings`)).json()).toEqual(SETTINGS);
   });
 });
 
 describe('API wiki', () => {
-  it("expose l'etat de la base wiki", async () => {
+  it('expose l’état de la base wiki', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/wiki/status`)).json()).toEqual(ABSENT);
   });
 
-  it('enrichit la liste des succes avec la base wiki', async () => {
+  it('enrichit la liste des succès avec la base wiki', async () => {
     const base = await start({ kb: fakeKb(await testKnowledgeBase()) });
     const list = await (await fetch(`${base}/api/achievements`)).json();
     expect(list[8]).toMatchObject({ id: 9, name: 'The Nail', how: 'mark', character: 'azazel' });
@@ -269,7 +269,7 @@ describe('API wiki', () => {
     expect(list[8]).toMatchObject({ id: 9, how: null, character: null });
   });
 
-  it("sert la fiche d'un succes avec son etat pour le profil demande", async () => {
+  it('sert la fiche d’un succès avec son état pour le profil demandé', async () => {
     const kb = await testKnowledgeBase();
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get }, kb: fakeKb(kb) });
@@ -286,7 +286,7 @@ describe('API wiki', () => {
     ]);
   });
 
-  it("donne les prerequis d'un succes de personnage dans la fiche", async () => {
+  it('donne les prérequis d’un succès de personnage dans la fiche', async () => {
     const base = await start({ kb: fakeKb(await testKnowledgeBase()) });
     const card = await (await fetch(`${base}/api/achievement/491`)).json();
     // #491 : The Beast avec Tainted Isaac.
@@ -306,7 +306,7 @@ describe('API wiki', () => {
     expect(card).toMatchObject({ achievement: { id: 9, how: null }, wiki: null, kb: ABSENT, plan: null });
   });
 
-  it('sert le plan de routes du profil demande', async () => {
+  it('sert le plan de routes du profil demandé', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get }, kb: fakeKb(await testKnowledgeBase()) });
     const res = await fetch(`${base}/api/routes?profile=me&slot=1`);
@@ -336,7 +336,7 @@ describe('API wiki', () => {
     expect(await unknown.json()).toEqual({ error: 'Succès #9999 inconnu' });
   });
 
-  it("diffuse la synchro en NDJSON, avec l'en-tete dedie", async () => {
+  it('diffuse la synchro en NDJSON, avec l’en-tête dédié', async () => {
     const report = {
       achievements: 641,
       pages: 1,
@@ -367,7 +367,7 @@ describe('API wiki', () => {
     ]);
   });
 
-  it('termine le flux apres une synchro en echec', async () => {
+  it('termine le flux après une synchro en échec', async () => {
     const sync = vi.fn(async (onEvent: (event: WikiSyncEvent) => void) => {
       onEvent({ step: 'error', done: 0, total: 1, message: 'wiki injoignable' });
       throw new Error('wiki injoignable');
@@ -377,7 +377,7 @@ describe('API wiki', () => {
     expect((await res.text()).trim()).toBe(JSON.stringify({ step: 'error', done: 0, total: 1, message: 'wiki injoignable' }));
   });
 
-  it('repond 409 si une synchro tourne deja', async () => {
+  it('répond 409 si une synchro tourne déjà', async () => {
     const base = await start({ kb: fakeKb(null, { isRunning: vi.fn(() => true) }) });
     const res = await fetch(`${base}/api/wiki/sync`, { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
     expect(res.status).toBe(409);

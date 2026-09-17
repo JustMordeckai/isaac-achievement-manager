@@ -169,7 +169,7 @@ export interface AchievementCard {
   /** null si la base wiki est absente ou si le succès n'y figure pas. */
   wiki: AchievementWiki | null;
   kb: KbStatus;
-  /** Prerequisites and runs from the planner, null without wiki base. */
+  /** Prérequis et runs du planificateur, null sans base wiki. */
   plan: CardPlan | null;
 }
 

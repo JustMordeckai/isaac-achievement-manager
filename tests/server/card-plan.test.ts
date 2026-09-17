@@ -13,7 +13,7 @@ async function card(id: number) {
 }
 
 describe('cardPlan', () => {
-  it('donne le prérequis d\'un défi', async () => {
+  it('donne le prérequis d’un défi', async () => {
     // #94 : défi n°6 (Solar System), débloqué par le succès du même nom.
     expect(await card(94)).toEqual({ requirements: [{ anyOf: [{ id: 159, name: 'Solar System' }], met: true }], runs: [] });
   });

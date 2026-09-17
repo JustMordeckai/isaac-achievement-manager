@@ -2,7 +2,7 @@ import type { AchievementState, CardPlan, RoutePlan } from '../../shared/types.t
 import type { KnowledgeBase } from '../wiki/kb-types.ts';
 import { requirementGroups, toRequirements } from './requirements.ts';
 
-/** Prerequisites of an achievement and runs from the plan that obtain it. */
+/** Prérequis d'un succès et runs du plan qui l'obtiennent. */
 export function cardPlan(kb: KnowledgeBase, plan: RoutePlan, achievements: AchievementState[], id: number): CardPlan {
   const names = new Map(achievements.map((a) => [a.id, a.name]));
   const unlocked = new Set(achievements.filter((a) => a.unlocked).map((a) => a.id));
