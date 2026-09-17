@@ -14,12 +14,14 @@ export function requirementGroups(character: CharacterId | null, endings: Ending
     groups.push(...TARGETS[ending].requiresAny);
   }
   for (const id of extra) groups.push([id]);
+  // Un groupe « l'un ou l'autre » déjà couvert par un succès exigé seul n'apporte rien : on le retire.
+  const single = new Set(groups.filter((group) => group.length === 1).map(([id]) => id));
   const seen = new Set<string>();
   return groups.filter((group) => {
     const key = group.join('|');
     if (seen.has(key)) return false;
     seen.add(key);
-    return true;
+    return group.length === 1 || !group.some((id) => single.has(id));
   });
 }
 

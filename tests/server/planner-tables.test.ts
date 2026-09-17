@@ -130,4 +130,10 @@ describe('requirementGroups', () => {
     expect(requirementGroups(null, ['beast', 'bossRush'], [320])).toEqual([[635], [57, 78], [4], [320]]);
     expect(requirementGroups('isaac', [])).toEqual([]);
   });
+
+  it('retire un groupe déjà couvert par un succès exigé seul', () => {
+    // The Beast demande The Polaroid ou The Negative ; ??? exige déjà The Polaroid.
+    expect(requirementGroups(null, ['blueBaby', 'beast'])).toEqual([[57], [635]]);
+    expect(requirementGroups(null, ['lamb', 'blueBaby', 'beast'])).toEqual([[78], [57], [635]]);
+  });
 });

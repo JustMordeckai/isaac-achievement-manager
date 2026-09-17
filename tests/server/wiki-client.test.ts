@@ -27,7 +27,8 @@ function echo(url: string): Response {
 }
 
 describe('createWikiClient', () => {
-  it('interroge l’API par lots de 50 avec une pause d’une seconde et l’agent utilisateur de l’outil', async () => {
+  // 120 fichiers écrits dans le cache : quand toute la suite tourne en parallèle, cela peut dépasser 5 s.
+  it('interroge l’API par lots de 50 avec une pause d’une seconde et l’agent utilisateur de l’outil', { timeout: 20_000 }, async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => echo(String(input)));
     const sleep = vi.fn(async () => {});
     const progress: string[] = [];

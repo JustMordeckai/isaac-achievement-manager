@@ -53,7 +53,6 @@ describe('cardPlan', () => {
         requirement(320, 'New Area', true),
         requirement(407, 'A Secret Exit', false),
         requirement(635, 'A Strange Door', false),
-        { anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: true },
         requirement(341, 'Greedier!', false),
       ],
       runs: [
