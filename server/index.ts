@@ -5,11 +5,12 @@ import path from 'node:path';
 import { format } from 'node:util';
 import express from 'express';
 import { APP_NAME, createApp } from './app.ts';
-import { detectSteamEnv, loadSettings } from './config.ts';
+import { chooseAccount, detectSteamEnv, loadSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
 import { createProgressService } from './progress-service.ts';
 import { createProfileClient } from './sources/steam-profile.ts';
+import { createWikiKb } from './wiki/setup.ts';
 
 const args = new Set(process.argv.slice(2));
 const dev = args.has('--dev');
@@ -43,13 +44,23 @@ if (args.has('--log')) {
 
 const settings = loadSettings(DATA_DIR);
 const env = detectSteamEnv({ extraAccountIds: settings.accountId !== null ? [settings.accountId] : [] });
+const account = chooseAccount(env, settings.accountId);
 const profiles = createProfileClient();
+const progress = createProgressService({ env, forcedAccountId: settings.accountId, profiles });
 const url = `http://127.0.0.1:${settings.port}/`;
 
 const app = createApp({
-  progress: createProgressService({ env, forcedAccountId: settings.accountId, profiles }),
+  progress,
   profiles,
   icons: createIconCache(path.join(DATA_DIR, 'icons')),
+  kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
+  settings: {
+    port: settings.port,
+    dataDir: DATA_DIR,
+    steamPath: env.steamPath,
+    account: account && { accountId: account.accountId, steamId64: account.steamId64, personaName: account.personaName },
+    forcedAccountId: settings.accountId,
+  },
   onShutdown: () => {
     console.log('Arrêt demandé depuis l’interface.');
     process.exit(0);
@@ -102,8 +113,8 @@ server.on('error', async (error: Error) => {
 });
 
 server.listen(settings.port, '127.0.0.1', () => {
-  const account = env.accounts.find((a) => a.hasIsaacData);
   console.log(`Isaac Achievement Manager : ${url}`);
-  console.log(`Steam : ${env.steamPath ?? 'introuvable'} ; compte détecté : ${account?.personaName ?? 'aucun'}`);
+  const name = account ? (account.personaName ?? `compte ${account.accountId}`) : 'aucun';
+  console.log(`Steam : ${env.steamPath ?? 'introuvable'} ; compte utilisé : ${name}`);
   if (shouldOpen) openBrowser(url);
 });
