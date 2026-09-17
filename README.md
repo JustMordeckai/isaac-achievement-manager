@@ -2,17 +2,18 @@
 
 Application web locale qui lit ta progression sur *The Binding of Isaac: Rebirth* (Repentance+) et t'aide à savoir ce qu'il te reste à débloquer.
 
-Version actuelle (jalon M2) :
+Version actuelle (jalon M3) :
 
 - lecture du cache Steam local, de la sauvegarde Repentance+ et du profil Steam public ;
 - détection des écarts entre ces sources (par exemple un secret débloqué en jeu mais absent de Steam) ;
-- tableau de bord : progression globale et par extension, derniers déblocages, écarts ;
+- tableau de bord : progression globale et par extension, derniers déblocages, trois meilleures runs, grille des marques de complétion des 34 personnages, écarts ;
+- planificateur de routes : runs à faire par personnage (fins à battre, chemin, succès obtenus, prérequis), triées par succès gagnés par heure, et succès hors routes (défis, compteurs, placards de Home, divers) ;
 - liste des succès filtrable (état, extension, méthode d'obtention, personnage, secrets, recherche, écarts) ;
-- fiche détaillée de chaque succès, tirée du wiki anglais : condition, ce qu'il débloque, astuces, liens vers les pages sources ;
+- fiche détaillée de chaque succès, tirée du wiki anglais : condition, ce qu'il débloque, astuces, liens vers les pages sources, et pour un succès manquant ses prérequis et les runs du plan qui l'obtiennent ;
 - écran Paramètres : synchro du wiki avec avancement, chemins et compte détectés ;
 - consultation du profil public d'un autre joueur (SteamID64, URL de profil ou pseudo personnalisé).
 
-À venir : planificateur de routes (M3), conseiller IA via Ollama (M4). Le design complet est dans `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
+À venir : conseiller IA via Ollama (M4). Le design complet est dans `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
 
 ## Prérequis
 
@@ -37,6 +38,10 @@ npm run build
 Au premier lancement, la base wiki n'existe pas encore : un bandeau le signale et renvoie vers l'écran Paramètres, dont le bouton « Synchroniser le wiki » la télécharge (environ 600 pages, une vingtaine de secondes). La même synchro existe en ligne de commande : `npm run sync-wiki`. Elle n'est jamais lancée automatiquement ; relance-la après une mise à jour du jeu ou du wiki.
 
 L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement dans `data/` : icônes en cache, base wiki (`kb.json`), copie des pages du wiki (`wiki-cache/`) et journal. Elle lit `data/settings.json` si l'utilisateur l'a créé.
+
+## Routes
+
+L'onglet Routes et le tableau de bord ont besoin de la base wiki. Les marques de complétion viennent de la sauvegarde (compteurs du jeu) ; pour un autre joueur, elles sont déduites de ses succès, et celles qu'aucun succès ne prouve s'affichent « ? ». Le mode conseillé est difficile tant que le succès « toutes les marques en difficile » du personnage manque. Les durées des runs et les coefficients de difficulté des personnages sont des estimations manuelles, pas des mesures. Par défaut, seules les runs jouables tout de suite sont listées ; la case « Afficher aussi les runs à débloquer » montre les autres avec les succès à obtenir d'abord.
 
 ## Dépannage
 
@@ -71,7 +76,7 @@ L'écran Paramètres affiche les valeurs utilisées ; les modifier demande d'éd
 |---|---|
 | Schéma des succès | `Steam/appcache/stats/UserGameStatsSchema_250900.bin` |
 | Succès Steam locaux | `Steam/appcache/stats/UserGameStats_<compte>_250900.bin` |
-| Sauvegarde | `Steam/userdata/<compte>/250900/remote/rep+persistentgamedata{1,2,3}.dat` |
+| Sauvegarde (secrets, compteurs, marques de complétion) | `Steam/userdata/<compte>/250900/remote/rep+persistentgamedata{1,2,3}.dat` |
 | Profil public | `https://steamcommunity.com/profiles/<SteamID64>/stats/250900/?xml=1` |
 | Wiki (synchro manuelle) | `https://bindingofisaacrebirth.fandom.com/api.php` |
 
