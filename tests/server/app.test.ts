@@ -584,4 +584,33 @@ describe('API conseiller', () => {
     controller.abort();
     await expect.poll(() => ollama?.aborted()).toBe(1);
   });
+
+  it('n’ouvre pas de génération quand le client abandonne pendant la lecture de la progression', async () => {
+    let resolveProgress!: () => void;
+    const progressDone = new Promise<void>((resolve) => {
+      resolveProgress = resolve;
+    });
+    const get = vi.fn(async () => {
+      await progressDone;
+      return merged;
+    });
+    const base = await startWithOllama({ progress: { get } });
+    const closed = new Promise<void>((resolve) => {
+      server?.once('connection', (socket) => socket.once('close', () => resolve()));
+    });
+    const controller = new AbortController();
+    const pending = fetch(`${base}/api/advisor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'advisor' },
+      body: JSON.stringify(QUESTION),
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => expect(get).toHaveBeenCalled());
+    controller.abort();
+    await expect(pending).rejects.toThrow();
+    await closed;
+    resolveProgress();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(ollama?.chats).toHaveLength(0);
+  });
 });

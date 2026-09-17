@@ -171,15 +171,15 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   api.post('/advisor', requireAction('advisor'), jsonBody, async (req, res) => {
-    const request = parseAdvisorRequest(req.body);
-    const [progress, kb] = await Promise.all([deps.progress.get(request.profile, request.slot), deps.kb.get()]);
-    const plan = kb ? buildPlan({ kb, ...progress }) : null;
-    const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
     const controller = new AbortController();
     // Navigateur parti (bouton Arrêter, onglet fermé) : on coupe aussi la génération sur Ollama.
     res.on('close', () => {
       if (!res.writableFinished) controller.abort();
     });
+    const request = parseAdvisorRequest(req.body);
+    const [progress, kb] = await Promise.all([deps.progress.get(request.profile, request.slot), deps.kb.get()]);
+    const plan = kb ? buildPlan({ kb, ...progress }) : null;
+    const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
     const messages: OllamaMessage[] = [
       { role: 'system', content: context.system },
       ...request.history,
