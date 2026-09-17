@@ -33,16 +33,26 @@ function endpoint(url: string, path: string): string {
   return new URL(path, url.endsWith('/') ? url : `${url}/`).toString();
 }
 
-function unreachable(url: string, error: unknown): OllamaError {
+function unreachable(url: string, error: unknown, timeoutMs: number = STATUS_TIMEOUT_MS): OllamaError {
   if (error instanceof Error && error.name === 'TimeoutError') {
-    return new OllamaError('unreachable', `Ollama injoignable sur ${url} (pas de réponse en ${STATUS_TIMEOUT_MS / 1000} s)`);
+    return new OllamaError('unreachable', `Ollama injoignable sur ${url} (pas de réponse en ${timeoutMs / 1000} s)`);
   }
   const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
   return new OllamaError('unreachable', `Ollama injoignable sur ${url}${typeof code === 'string' ? ` (${code})` : ''}`);
 }
 
+/** Corps JSON, ou null si ce n'est pas du JSON. Une lecture coupée ou trop longue remonte telle quelle. */
+async function jsonBody(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
 async function errorText(res: Response): Promise<string> {
-  const body: unknown = await res.json().catch(() => null);
+  const body: unknown = await jsonBody(res);
   const error = typeof body === 'object' && body !== null ? (body as { error?: unknown }).error : undefined;
   return typeof error === 'string' ? error : `HTTP ${res.status}`;
 }
@@ -56,17 +66,18 @@ export function modelMissingMessage(model: string): string {
   return `Modèle ${model} absent du serveur Ollama : lance « ollama pull ${model} » sur ce serveur`;
 }
 
-/** Modèles installés sur le serveur (GET /api/tags), triés par nom. */
-export async function listModels(url: string): Promise<string[]> {
-  let res: Response;
+/** Modèles installés sur le serveur (GET /api/tags), triés par nom. `timeoutMs` sert surtout aux tests. */
+export async function listModels(url: string, timeoutMs: number = STATUS_TIMEOUT_MS): Promise<string[]> {
   let body: unknown;
   try {
-    res = await fetch(endpoint(url, 'api/tags'), { signal: AbortSignal.timeout(STATUS_TIMEOUT_MS) });
-    body = res.ok ? await res.json().catch(() => null) : null;
+    const res = await fetch(endpoint(url, 'api/tags'), { signal: AbortSignal.timeout(timeoutMs) });
+    // Une réponse qui traîne (en-têtes reçus, corps jamais fini) doit rester « injoignable », pas « upstream ».
+    if (!res.ok) throw new OllamaError('upstream', `Ollama a répondu ${res.status} : ${await errorText(res)}`);
+    body = await jsonBody(res);
   } catch (error) {
-    throw unreachable(url, error);
+    if (error instanceof OllamaError) throw error;
+    throw unreachable(url, error, timeoutMs);
   }
-  if (!res.ok) throw new OllamaError('upstream', `Ollama a répondu ${res.status} : ${await errorText(res)}`);
   const models = typeof body === 'object' && body !== null ? (body as { models?: unknown }).models : undefined;
   if (!Array.isArray(models)) {
     throw new OllamaError('upstream', `Réponse inattendue de ${url} : est-ce bien un serveur Ollama ?`);
@@ -90,6 +101,8 @@ export interface ChatOptions {
  * Ouvre une réponse en streaming (POST /api/chat). La promesse échoue avant tout texte si Ollama est
  * injoignable ou si le modèle manque ; le générateur renvoie ensuite les morceaux de la réponse.
  * Après un abandon par `signal`, l'erreur d'abandon remonte telle quelle.
+ * Le minuteur d'inactivité est armé avant l'appel et n'est libéré que par le `finally` du générateur :
+ * tout appelant doit donc parcourir le générateur jusqu'à sa fin ou l'abandonner.
  */
 export async function openChat({
   url,
@@ -135,8 +148,14 @@ export async function openChat({
     return fail(signal.aborted ? error : unreachable(url, error));
   }
   if (!res.ok || !res.body) {
+    // Le minuteur reste armé : un serveur qui ne finit jamais son corps d'erreur doit échouer en « timeout ».
+    let message: string;
+    try {
+      message = await errorText(res);
+    } catch (error) {
+      return fail(error);
+    }
     clearTimeout(timer);
-    const message = await errorText(res);
     if (res.status === 404 && /not found/i.test(message)) throw new OllamaError('model', modelMissingMessage(model));
     throw new OllamaError('upstream', `Ollama a répondu ${res.status} : ${message}`);
   }
@@ -146,12 +165,15 @@ export async function openChat({
     try {
       for await (const line of ndjsonLines(body)) {
         touch();
-        let data: { message?: { content?: unknown }; done?: unknown; done_reason?: unknown; error?: unknown };
+        let parsed: unknown;
         try {
-          data = JSON.parse(line);
+          parsed = JSON.parse(line);
         } catch {
           throw new OllamaError('upstream', "Réponse d'Ollama illisible");
         }
+        // Une ligne valide en JSON mais qui n'est pas un objet (`null`, un nombre...) est illisible aussi.
+        if (typeof parsed !== 'object' || parsed === null) throw new OllamaError('upstream', "Réponse d'Ollama illisible");
+        const data = parsed as { message?: { content?: unknown }; done?: unknown; done_reason?: unknown; error?: unknown };
         if (typeof data.error === 'string') throw new OllamaError('upstream', `Erreur d'Ollama : ${data.error}`);
         const text = data.message?.content;
         if (typeof text === 'string' && text !== '') yield text;

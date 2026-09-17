@@ -51,6 +51,21 @@ describe('listModels', () => {
     });
   });
 
+  it('signale un serveur qui ne finit jamais sa réponse', async () => {
+    fake = await startFakeOllama({
+      'GET /api/tags': (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.flushHeaders();
+      },
+    });
+    const error = await listModels(fake.url, 200).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(OllamaError);
+    expect(error).toMatchObject({
+      kind: 'unreachable',
+      message: `Ollama injoignable sur ${fake.url} (pas de réponse en 0.2 s)`,
+    });
+  });
+
   it('relaie une erreur HTTP d’Ollama', async () => {
     fake = await startFakeOllama({
       'GET /api/tags': (_req, res) => {
@@ -91,6 +106,38 @@ describe('openChat', () => {
     await expect(openChat({ url, model: 'qwen3.5:9b', messages: USER, signal: new AbortController().signal })).rejects.toMatchObject({
       kind: 'unreachable',
     });
+  });
+
+  it('n’attend pas sans fin le corps d’une réponse en erreur', async () => {
+    fake = await startFakeOllama({
+      'POST /api/chat': (_req, res) => {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.flushHeaders();
+      },
+    });
+    await expect(
+      openChat({
+        url: fake.url,
+        model: 'qwen3.5:9b',
+        messages: USER,
+        signal: new AbortController().signal,
+        idleTimeoutMs: 100,
+      }),
+    ).rejects.toMatchObject({
+      kind: 'timeout',
+      message: 'Ollama ne répond plus (rien reçu depuis 1 s) : le serveur est peut-être occupé par une autre demande',
+    });
+  });
+
+  it('refuse une ligne du flux qui n’est pas un objet', async () => {
+    fake = await startFakeOllama({
+      'POST /api/chat': (_req, res) => {
+        res.end('null\n');
+      },
+    });
+    const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', messages: USER, signal: new AbortController().signal });
+    await expect(collect(reply)).rejects.toMatchObject({ kind: 'upstream', message: "Réponse d'Ollama illisible" });
   });
 
   it('remonte une erreur envoyée au milieu du flux', async () => {
