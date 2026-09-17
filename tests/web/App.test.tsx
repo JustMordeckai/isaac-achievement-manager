@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
@@ -103,6 +103,32 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes')).toBe(2));
     expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+  });
+
+  it('garde Actualiser occupé tant que les routes se rechargent', async () => {
+    const user = userEvent.setup();
+    const pending: { release?: () => void } = {};
+    let routeCalls = 0;
+    const mock = stubProgress({
+      'GET /api/routes': () => {
+        routeCalls += 1;
+        if (routeCalls === 1) return ROUTES_OK;
+        return new Promise((resolve) => {
+          pending.release = () => resolve(ROUTES_OK);
+        });
+      },
+    });
+    window.location.hash = '#/routes';
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
+    await vi.waitFor(() => expect(pending.release).toBeDefined());
+    // La progression est relue tout de suite ; seules les routes restent en attente.
+    await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(screen.getByRole('button', { name: 'Actualisation…' })).toBeDisabled();
+    await act(async () => pending.release?.());
+    expect(await screen.findByRole('button', { name: 'Actualiser' })).toBeEnabled();
   });
 
   it('recharge avec le slot choisi', async () => {

@@ -58,7 +58,7 @@ export function RunCard({ run, onOpenAchievement }: RunCardProps) {
       ) : (
         <>
           <p className="muted">
-            {count} succès, soit {perHour(run.score)} par heure (pondéré par la difficulté du personnage)
+            {count} succès, soit {perHour(run.score)} par heure (pondéré par la difficulté estimée du personnage)
           </p>
           <AchievementChips label="Succès obtenus" list={run.achievements} onOpen={onOpenAchievement} />
         </>
@@ -70,7 +70,9 @@ export function RunCard({ run, onOpenAchievement }: RunCardProps) {
       )}
       {run.note && <p className="hint">{run.note}</p>}
       <details className="run__path">
-        <summary>Chemin en {run.steps.length} étapes</summary>
+        <summary>
+          Chemin en {run.steps.length} {run.steps.length === 1 ? 'étape' : 'étapes'}
+        </summary>
         <ol>
           {run.steps.map((step) => (
             <li key={step}>{step}</li>

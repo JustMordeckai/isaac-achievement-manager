@@ -70,7 +70,12 @@ export function App() {
     setTab('achievements');
   }
 
-  const busy = state.status === 'loading' || (state.status === 'ready' && state.refreshing);
+  // Actualiser reste occupé tant que la progression ou les routes se (re)chargent.
+  const busy =
+    state.status === 'loading' ||
+    (state.status === 'ready' && state.refreshing) ||
+    routes.status === 'loading' ||
+    (routes.status === 'ready' && routes.refreshing);
   const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');

@@ -42,11 +42,24 @@ describe('Routes : runs conseillées', () => {
     const user = userEvent.setup();
     renderRoutes();
     const select = screen.getByLabelText('Personnage');
-    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Tous', 'Isaac', 'Magdalene']);
+    const options = within(select).getAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['Tous', 'Isaac', 'Magdalene']);
+    expect(options.map((o) => o.getAttribute('lang'))).toEqual([null, 'en', 'en']);
     await user.selectOptions(select, 'Isaac');
     expect(runTitles()).toEqual(['run-isaac-1']);
     await user.selectOptions(select, 'Tous');
     expect(runTitles()).toHaveLength(2);
+  });
+
+  it('revient à tous les personnages quand le personnage filtré sort du plan', async () => {
+    const user = userEvent.setup();
+    const { rerender, props } = renderRoutes();
+    await user.selectOptions(screen.getByLabelText('Personnage'), 'Isaac');
+    expect(runTitles()).toEqual(['run-isaac-1']);
+    const plan = makePlan({ runs: [makeRun()] });
+    rerender(<Routes {...props} state={{ status: 'ready', data: { kb: KB_OK, plan }, refreshing: false }} />);
+    expect(screen.getByLabelText('Personnage')).toHaveValue('all');
+    expect(runTitles()).toEqual(['run-magdalene-1']);
   });
 
   it('explique une liste vide', async () => {
@@ -78,6 +91,14 @@ describe('Routes : runs conseillées', () => {
     expect(runTitles()).toHaveLength(20);
   });
 
+  it('accorde le bouton quand il ne reste qu’une run', async () => {
+    const user = userEvent.setup();
+    const runs = Array.from({ length: 21 }, (_, i) => makeRun({ id: `magdalene-${i + 1}` }));
+    renderRoutes(makePlan({ runs }));
+    await user.click(screen.getByRole('button', { name: 'Afficher 1 run de plus' }));
+    expect(runTitles()).toHaveLength(21);
+  });
+
   it('ouvre la fiche d’un succès depuis une run', async () => {
     const user = userEvent.setup();
     const { props } = renderRoutes();
@@ -103,10 +124,25 @@ describe('Routes : hors routes', () => {
     const { props } = renderRoutes();
     const challenge = screen.getByRole('button', { name: 'Rune of Perthro' }).closest('li');
     expect(challenge).toHaveTextContent(
-      "Rune of Perthro : défi n° 6 Solar System, avec Isaac, objectif Mom's Heart (à débloquer d'abord : Solar System)",
+      "Rune of Perthro : défi n° 6 Solar System, avec Isaac, objectif Mom's Heart, objets de départ : Distant Admiration (à débloquer d'abord : Solar System)",
     );
     await user.click(screen.getByRole('button', { name: 'Rune of Perthro' }));
     expect(props.onOpenAchievement).toHaveBeenCalledWith(94);
+  });
+
+  it('donne la malédiction et les objets de départ d’un défi', () => {
+    const plan = makePlan();
+    const [challenge] = plan.offRoute.challenges;
+    plan.offRoute.challenges = [
+      { ...challenge, curse: 'Curse of the Blind', startingItems: ['Distant Admiration', 'Forever Alone'], requirement: null },
+    ];
+    renderRoutes(plan);
+    const item = screen.getByRole('button', { name: 'Rune of Perthro' }).closest('li');
+    expect(item).toHaveTextContent(
+      "Rune of Perthro : défi n° 6 Solar System, avec Isaac, objectif Mom's Heart, malédiction Curse of the Blind, objets de départ : Distant Admiration, Forever Alone",
+    );
+    expect(within(item as HTMLElement).getByText('Curse of the Blind')).toHaveAttribute('lang', 'en');
+    expect(within(item as HTMLElement).getByText('Distant Admiration, Forever Alone')).toHaveAttribute('lang', 'en');
   });
 
   it('montre la progression connue des compteurs', () => {
@@ -129,13 +165,26 @@ describe('Routes : hors routes', () => {
 
   it('regroupe les placards par personnage et rappelle la Red Key', () => {
     const { unmount } = renderRoutes();
-    expect(screen.getByText(/Le coffre de Mom donne la Red Key/)).toBeInTheDocument();
+    const hint = screen.getByText(/^Ils s'ouvrent pendant la route de/);
+    expect(hint).toHaveTextContent(
+      "Ils s'ouvrent pendant la route de The Beast, avec une Red Key, une Cracked Key ou Soul of Cain. Le coffre de Mom donne la Red Key au premier passage à Home.",
+    );
+    expect([...hint.querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([
+      'The Beast',
+      'Red Key',
+      'Cracked Key',
+      'Soul of Cain',
+      'Red Key',
+      'Home',
+    ]);
     expect(screen.getByRole('button', { name: 'The Broken' }).closest('li')).toHaveTextContent('Isaac : The Broken');
     unmount();
     const plan = makePlan();
     plan.offRoute.redKey = true;
     renderRoutes(plan);
-    expect(screen.queryByText(/Le coffre de Mom donne la Red Key/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^Ils s'ouvrent pendant la route de/)).toHaveTextContent(
+      /^Ils s'ouvrent pendant la route de The Beast, avec une Red Key, une Cracked Key ou Soul of Cain\.$/,
+    );
   });
 
   it('classe les succès divers par extension', () => {

@@ -50,6 +50,16 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
                   , objectif <span lang="en">{c.goal}</span>
                 </>
               )}
+              {c.curse && (
+                <>
+                  , malédiction <span lang="en">{c.curse}</span>
+                </>
+              )}
+              {c.startingItems.length > 0 && (
+                <>
+                  , objets de départ : <span lang="en">{c.startingItems.join(', ')}</span>
+                </>
+              )}
               {c.requirement && !c.requirement.met && (
                 <span className="todo-list__missing">
                   {' '}
@@ -83,8 +93,15 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
       <details className="card">
         <summary>Placards de Home ({offRoute.closets.length})</summary>
         <p className="hint">
-          Ils s'ouvrent pendant la route de The Beast, avec une Red Key, une Cracked Key ou Soul of Cain.
-          {!offRoute.redKey && ' Le coffre de Mom donne la Red Key au premier passage à Home.'}
+          Ils s'ouvrent pendant la route de <span lang="en">The Beast</span>, avec une{' '}
+          <span lang="en">Red Key</span>, une <span lang="en">Cracked Key</span> ou{' '}
+          <span lang="en">Soul of Cain</span>.
+          {!offRoute.redKey && (
+            <>
+              {' '}
+              Le coffre de Mom donne la <span lang="en">Red Key</span> au premier passage à <span lang="en">Home</span>.
+            </>
+          )}
         </p>
         <ul className="todo-list">
           {closetCharacters.map((character: CharacterId) => (
@@ -133,10 +150,13 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
   const [withLocked, setWithLocked] = useState(false);
   const [shown, setShown] = useState(PAGE_SIZE);
   const present = new Set(plan.runs.map((r) => r.character));
+  // Après une actualisation, un personnage sorti du plan ne filtre plus rien : retour à « Tous ».
+  const selected = character !== 'all' && present.has(character) ? character : 'all';
   const runs = plan.runs.filter(
-    (r) => (character === 'all' || r.character === character) && (withLocked || r.missing.length === 0),
+    (r) => (selected === 'all' || r.character === selected) && (withLocked || r.missing.length === 0),
   );
   const playable = plan.runs.filter((r) => r.missing.length === 0).length;
+  const more = Math.min(PAGE_SIZE, runs.length - shown);
 
   return (
     <section aria-labelledby="runs-title">
@@ -150,7 +170,7 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
           <label className="field">
             <span>Personnage</span>
             <select
-              value={character}
+              value={selected}
               onChange={(e) => {
                 setCharacter(e.target.value as CharacterId | 'all');
                 setShown(PAGE_SIZE);
@@ -158,7 +178,7 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
             >
               <option value="all">Tous</option>
               {CHARACTERS.filter((c) => present.has(c.id)).map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id} value={c.id} lang="en">
                   {c.name}
                 </option>
               ))}
@@ -192,7 +212,7 @@ function RunList({ plan, onOpen }: { plan: RoutePlan; onOpen(id: number): void }
       )}
       {runs.length > shown && (
         <button type="button" className="btn load-more" onClick={() => setShown((n) => n + PAGE_SIZE)}>
-          Afficher {Math.min(PAGE_SIZE, runs.length - shown)} runs de plus
+          Afficher {more} {more === 1 ? 'run' : 'runs'} de plus
         </button>
       )}
     </section>

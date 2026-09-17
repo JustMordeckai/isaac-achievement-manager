@@ -15,7 +15,7 @@ describe('RunCard', () => {
     expect(within(card).getByText('environ 1 h 14')).toBeInTheDocument();
     expect(within(card).getByText(/^Battre/)).toHaveTextContent("Battre Boss Rush, Mom's Heart, Satan, The Lamb");
     expect(
-      within(card).getByText('2 succès, soit 1,6 par heure (pondéré par la difficulté du personnage)'),
+      within(card).getByText('2 succès, soit 1,6 par heure (pondéré par la difficulté estimée du personnage)'),
     ).toBeInTheDocument();
     const chips = within(within(card).getByRole('list', { name: 'Succès obtenus' })).getAllByRole('button');
     expect(chips.map((c) => c.textContent)).toEqual(['Guardian Angel', "Maggy's Faith"]);
@@ -32,6 +32,12 @@ describe('RunCard', () => {
     expect(summary.closest('details')).toHaveAttribute('open');
     const steps = [...container.querySelectorAll('.run__path li')].map((li) => li.textContent);
     expect(steps).toEqual(makeRun().steps);
+  });
+
+  it('accorde le chemin à une seule étape', () => {
+    const run = makeRun({ steps: ['Traverser Basement, Caves et Depths, puis battre Mom en Depths II.'] });
+    render(<RunCard run={run} onOpenAchievement={vi.fn()} />);
+    expect(screen.getByText('Chemin en 1 étape')).toBeInTheDocument();
   });
 
   it('présente une run de préparation et ouvre les succès qu’elle rapproche', async () => {
