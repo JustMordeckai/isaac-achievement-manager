@@ -162,7 +162,7 @@ export function Advisor({
 
       <section className="card" aria-labelledby="chat-title">
         <h2 id="chat-title">Conversation</h2>
-        {chat.exchanges.length === 0 ? (
+        {chat.exchanges.length === 0 && (
           <div className="chat__empty">
             <p className="muted">Exemples de questions :</p>
             <ul className="chat__suggestions">
@@ -175,18 +175,18 @@ export function Advisor({
               ))}
             </ul>
           </div>
-        ) : (
-          <ol className="chat" aria-label="Échanges" aria-busy={chat.busy} aria-live="polite">
-            {chat.exchanges.map((exchange) => (
-              <ExchangeView
-                key={exchange.id}
-                exchange={exchange}
-                onRetry={() => chat.retry(exchange.id, query)}
-                onOpenAchievement={onOpenAchievement}
-              />
-            ))}
-          </ol>
         )}
+        {/* Toujours dans le DOM : une région live née avec son contenu n'annonce pas la première réponse. */}
+        <ol className="chat" aria-label="Échanges" aria-busy={chat.busy} aria-live="polite">
+          {chat.exchanges.map((exchange) => (
+            <ExchangeView
+              key={exchange.id}
+              exchange={exchange}
+              onRetry={() => chat.retry(exchange.id, query)}
+              onOpenAchievement={onOpenAchievement}
+            />
+          ))}
+        </ol>
         <form className="chat__form" onSubmit={send}>
           <label className="chat__label" htmlFor="advisor-question">
             Ta question
@@ -214,7 +214,8 @@ export function Advisor({
                 Envoyer
               </button>
             )}
-            {chat.exchanges.length > 0 && !chat.busy && (
+            {/* Pendant une réponse aussi : effacer la conversation coupe la réponse en cours. */}
+            {chat.exchanges.length > 0 && (
               <button type="button" className="btn btn--ghost" onClick={chat.clear}>
                 Effacer la conversation
               </button>

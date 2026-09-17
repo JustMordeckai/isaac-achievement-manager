@@ -77,6 +77,14 @@ describe('Advisor', () => {
     expect(chat.ask).toHaveBeenLastCalledWith('Ligne 1\nLigne 2', query);
   });
 
+  it('garde la liste des échanges annoncée avant la première réponse', () => {
+    renderAdvisor();
+    const conversation = screen.getByRole('list', { name: 'Échanges' });
+    expect(conversation).toHaveAttribute('aria-live', 'polite');
+    expect(within(conversation).queryAllByRole('listitem')).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Quelle run faire en premier ?' })).toBeInTheDocument();
+  });
+
   it('affiche la conversation et ouvre une fiche transmise au modèle', async () => {
     const user = userEvent.setup();
     const { props } = renderAdvisor({ chat: makeChat([exchange()]) });
@@ -95,18 +103,20 @@ describe('Advisor', () => {
     expect(screen.queryByRole('button', { name: 'Quelle run faire en premier ?' })).not.toBeInTheDocument();
   });
 
-  it('montre l’attente du modèle puis permet d’arrêter la réponse', async () => {
+  it('montre l’attente du modèle puis permet d’arrêter ou d’effacer la réponse', async () => {
     const user = userEvent.setup();
     const chat = makeChat([exchange({ answer: '', sources: [], state: 'waiting' })], true);
     renderAdvisor({ chat }, 'Suite');
     expect(screen.getByText(/^Préparation de la réponse… Le premier message peut prendre/)).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Échanges' })).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByRole('button', { name: 'Envoyer' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Effacer la conversation' })).not.toBeInTheDocument();
     await user.keyboard('{Enter}');
     expect(chat.ask).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Arrêter la réponse' }));
     expect(chat.stop).toHaveBeenCalled();
+    // La spec section 9 : effacer la conversation coupe aussi la réponse en cours.
+    await user.click(screen.getByRole('button', { name: 'Effacer la conversation' }));
+    expect(chat.clear).toHaveBeenCalled();
   });
 
   it('indique quand le conseiller n’a rien répondu', () => {

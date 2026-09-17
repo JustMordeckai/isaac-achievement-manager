@@ -1029,6 +1029,11 @@ html {
   gap: 16px;
 }
 
+/* Conversation vide : la liste reste dans le DOM pour être annoncée, sans rien occuper. */
+.chat:empty {
+  margin: 0;
+}
+
 .chat__exchange {
   display: grid;
   gap: 8px;

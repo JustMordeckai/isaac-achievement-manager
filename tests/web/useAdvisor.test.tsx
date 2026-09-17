@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AdvisorEvent } from '../../shared/types.ts';
+import type { AdvisorEvent, AdvisorStatus } from '../../shared/types.ts';
 import type { ProfileQuery } from '../../web/src/api.ts';
 import { HISTORY_EXCHANGES, useAdvisorChat, useAdvisorStatus } from '../../web/src/useAdvisor.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK } from './factories.ts';
@@ -65,6 +65,26 @@ describe('useAdvisorStatus', () => {
     );
     act(() => result.current.replace(ADVISOR_OFFLINE));
     expect(result.current.status).toEqual(ADVISOR_OFFLINE);
+  });
+
+  it('ignore le résultat d’une vérification abandonnée', async () => {
+    let late: (status: AdvisorStatus) => void = () => {};
+    let calls = 0;
+    stubFetch({
+      'GET /api/advisor/status': () => {
+        calls += 1;
+        return calls === 1 ? new Promise<AdvisorStatus>((resolve) => (late = resolve)) : ADVISOR_OK;
+      },
+    });
+    const { result } = renderHook(() => useAdvisorStatus(0));
+    act(() => result.current.recheck());
+    await vi.waitFor(() => expect(result.current.status).toEqual(ADVISOR_OK));
+    // La première vérification, abandonnée, ne doit pas écraser la plus récente.
+    await act(async () => {
+      late(ADVISOR_OFFLINE);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current.status).toEqual(ADVISOR_OK);
   });
 });
 
@@ -154,6 +174,72 @@ describe('useAdvisorChat', () => {
       { role: 'user', content: 'Longue question' },
       { role: 'assistant', content: 'Début de réponse' },
     ]);
+  });
+
+  it('efface la conversation pendant une réponse et libère l’envoi', async () => {
+    const stream = controlledStream();
+    let calls = 0;
+    stubFetch({
+      'POST /api/advisor': (_url, init) => {
+        calls += 1;
+        if (calls > 1) return ndjson(ANSWER);
+        init?.signal?.addEventListener('abort', () => stream.close());
+        return stream.response;
+      },
+    });
+    const { result } = renderHook(() => useAdvisorChat());
+    act(() => result.current.ask('Longue question', ME));
+    expect(result.current.busy).toBe(true);
+    act(() => result.current.clear());
+    expect(result.current.exchanges).toEqual([]);
+    expect(result.current.busy).toBe(false);
+    act(() => result.current.ask('Autre question', ME));
+    await vi.waitFor(() => expect(result.current.exchanges[0]?.state).toBe('done'));
+    expect(result.current.exchanges).toHaveLength(1);
+  });
+
+  it('retire la note de réponse coupée de l’historique', async () => {
+    const bodies: Array<{ history: Array<{ content: string }> }> = [];
+    stubFetch({
+      'POST /api/advisor': (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        return ndjson([
+          { kind: 'delta', text: 'Commence par Magdalene.' },
+          { kind: 'delta', text: '\n\n(Réponse coupée : limite de longueur atteinte.)' },
+          { kind: 'done' },
+        ]);
+      },
+    });
+    const { result } = renderHook(() => useAdvisorChat());
+    act(() => result.current.ask('Quelle run faire ?', ME));
+    await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
+    // La note reste affichée, mais le modèle ne doit pas la relire comme s'il l'avait écrite.
+    expect(result.current.exchanges[0].answer).toBe(
+      'Commence par Magdalene.\n\n(Réponse coupée : limite de longueur atteinte.)',
+    );
+    act(() => result.current.ask('Et ensuite ?', ME));
+    await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
+    expect(bodies[1].history).toEqual([
+      { role: 'user', content: 'Quelle run faire ?' },
+      { role: 'assistant', content: 'Commence par Magdalene.' },
+    ]);
+  });
+
+  it('remplace l’échange repris à sa place dans la conversation', async () => {
+    let fail = true;
+    stubFetch({
+      'POST /api/advisor': () =>
+        fail ? jsonResponse({ error: 'Ollama injoignable sur http://127.0.0.1:11434' }, 503) : ndjson(ANSWER),
+    });
+    const { result } = renderHook(() => useAdvisorChat());
+    act(() => result.current.ask('Première', ME));
+    await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('failed'));
+    fail = false;
+    act(() => result.current.ask('Seconde', ME));
+    await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
+    act(() => result.current.retry(result.current.exchanges[0].id, ME));
+    await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
+    expect(result.current.exchanges.map((e) => e.question)).toEqual(['Première', 'Seconde']);
   });
 
   it('signale un échec et repose la question', async () => {

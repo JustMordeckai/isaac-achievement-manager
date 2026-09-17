@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
@@ -115,6 +115,17 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const filled = useRef(status !== null);
+  const typed = useRef({ url: false, model: false });
+
+  useEffect(() => {
+    // Première arrivée de l'état (jusqu'à 3 s sur un serveur injoignable) : les champs que
+    // l'utilisateur n'a pas touchés partent des réglages lus sur le serveur.
+    if (!status || filled.current) return;
+    filled.current = true;
+    if (!typed.current.url) setUrl(status.url);
+    if (!typed.current.model) setModel(status.model);
+  }, [status]);
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -142,11 +153,27 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
       <form className="settings-form" onSubmit={save}>
         <label className="field">
           <span>Adresse du serveur Ollama</span>
-          <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input
+            type="url"
+            required
+            value={url}
+            onChange={(e) => {
+              typed.current.url = true;
+              setUrl(e.target.value);
+            }}
+          />
         </label>
         <label className="field">
           <span>Modèle</span>
-          <input required list="ollama-models" value={model} onChange={(e) => setModel(e.target.value)} />
+          <input
+            required
+            list="ollama-models"
+            value={model}
+            onChange={(e) => {
+              typed.current.model = true;
+              setModel(e.target.value);
+            }}
+          />
         </label>
         <datalist id="ollama-models">
           {models.map((name) => (
@@ -193,8 +220,7 @@ export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps)
         <SyncProgress sync={sync} />
       </section>
 
-      {/* Remonté quand l'état arrive : les champs partent des réglages lus sur le serveur. */}
-      <AdvisorSettings key={advisor.status ? 'ready' : 'loading'} advisor={advisor} />
+      <AdvisorSettings advisor={advisor} />
 
       <section className="card" aria-labelledby="app-title">
         <h2 id="app-title">Steam et application</h2>

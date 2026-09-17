@@ -146,6 +146,15 @@ describe('Settings : conseiller', () => {
     expect(advisorSection().getByLabelText('Modèle')).toHaveValue('qwen3.5:9b');
   });
 
+  it('garde une saisie faite avant l’arrivée de l’état', async () => {
+    const user = userEvent.setup();
+    const { rerender, props } = renderSettings({ advisor: makeAdvisorState(null) });
+    await user.type(advisorSection().getByLabelText('Modèle'), 'qwen3:4b');
+    rerender(<Settings {...props} advisor={makeAdvisorState()} />);
+    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('qwen3:4b');
+    expect(advisorSection().getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://127.0.0.1:11434');
+  });
+
   it('enregistre l’adresse et le modèle', async () => {
     const user = userEvent.setup();
     const saved = { ...ADVISOR_OK, url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' };

@@ -26,6 +26,8 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
     setChecking(true);
     api.advisorStatus(controller.signal).then(
       (next) => {
+        // Vérification abandonnée : une réponse en retard ne doit pas écraser la plus récente.
+        if (controller.signal.aborted) return;
         setStatus(next);
         setChecking(false);
       },
@@ -75,14 +77,24 @@ export interface AdvisorChat {
 /** Échanges repris comme historique (le serveur en accepte 10 messages). */
 export const HISTORY_EXCHANGES = 5;
 const MAX_MESSAGE_CHARS = 8000;
+/** Note ajoutée par le serveur à une réponse coupée (TRUNCATED_NOTICE de server/advisor/ollama.ts). */
+const TRUNCATED_SUFFIX = '\n\n(Réponse coupée : limite de longueur atteinte.)';
+
+/** Réponse telle que le modèle l'a écrite : l'affichage garde la note de troncature, pas l'historique. */
+function historyAnswer(answer: string): string {
+  const text = answer.endsWith(TRUNCATED_SUFFIX) ? answer.slice(0, -TRUNCATED_SUFFIX.length) : answer;
+  return text.slice(0, MAX_MESSAGE_CHARS);
+}
 
 function historyOf(exchanges: Exchange[]): ChatMessage[] {
   return exchanges
-    .filter((e) => (e.state === 'done' || e.state === 'stopped') && e.answer.trim() !== '')
+    .filter((e) => e.state === 'done' || e.state === 'stopped')
+    .map((e) => ({ question: e.question, answer: historyAnswer(e.answer) }))
+    .filter((e) => e.answer.trim() !== '')
     .slice(-HISTORY_EXCHANGES)
     .flatMap((e): ChatMessage[] => [
       { role: 'user', content: e.question },
-      { role: 'assistant', content: e.answer.slice(0, MAX_MESSAGE_CHARS) },
+      { role: 'assistant', content: e.answer },
     ]);
 }
 
@@ -102,14 +114,17 @@ export function useAdvisorChat(): AdvisorChat {
 
   useEffect(() => () => controller.current?.abort(), []);
 
-  const start = useCallback((question: string, query: ProfileQuery, previous: Exchange[]) => {
+  /** Nouvel échange : ajouté à la fin, ou mis à la place de l'échange `replaced` quand on repose sa question. */
+  const start = useCallback((question: string, query: ProfileQuery, replaced: number | null) => {
     const id = nextId.current++;
     const abort = new AbortController();
     controller.current = abort;
     const update = (patch: (e: Exchange) => Partial<Exchange>) =>
       setExchanges((list) => list.map((e) => (e.id === id ? { ...e, ...patch(e) } : e)));
     const entry: Exchange = { id, question, answer: '', sources: [], state: 'waiting', error: null };
-    current.current = [...previous, entry];
+    const before = current.current;
+    const previous = replaced === null ? before : before.filter((e) => e.id !== replaced);
+    current.current = replaced === null ? [...before, entry] : before.map((e) => (e.id === replaced ? entry : e));
     setExchanges(current.current);
     api
       .askAdvisor(
@@ -136,7 +151,7 @@ export function useAdvisorChat(): AdvisorChat {
     (question: string, query: ProfileQuery) => {
       const text = question.trim();
       if (text === '' || controller.current) return;
-      start(text, query, current.current);
+      start(text, query, null);
     },
     [start],
   );
@@ -145,7 +160,7 @@ export function useAdvisorChat(): AdvisorChat {
     (id: number, query: ProfileQuery) => {
       const failed = current.current.find((e) => e.id === id);
       if (!failed || controller.current) return;
-      start(failed.question, query, current.current.filter((e) => e.id !== id));
+      start(failed.question, query, id);
     },
     [start],
   );
