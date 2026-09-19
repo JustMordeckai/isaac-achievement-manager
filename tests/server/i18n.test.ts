@@ -9,12 +9,12 @@ describe('catalogues', () => {
   });
 
   it('keeps English values free of accented letters', () => {
-    const accented = Object.entries(en).filter(([, value]) => /[À-ſ]/.test(value));
+    const accented = Object.entries(en).filter(([, value]) => /[\u00c0-\u017f]/.test(value));
     expect(accented).toEqual([]);
   });
 
   it('never uses an em dash or an en dash', () => {
-    const dashes = [...Object.values(en), ...Object.values(fr)].filter((value) => /[–—]/.test(value));
+    const dashes = [...Object.values(en), ...Object.values(fr)].filter((value) => /[\u2013\u2014]/.test(value));
     expect(dashes).toEqual([]);
   });
 
@@ -55,6 +55,10 @@ describe('t', () => {
     expect(t('en', 'app.loadFailed', { message: 'boom' })).toBe('Loading failed: boom');
     expect(t('fr', 'app.loadFailed', { message: 'boum' })).toBe('Chargement impossible : boum');
   });
+
+  it('throws by name on a key that exists in neither catalogue', () => {
+    expect(() => t('en', 'nope.missing' as never)).toThrow('Missing message key: nope.missing');
+  });
 });
 
 describe('plural', () => {
@@ -63,5 +67,9 @@ describe('plural', () => {
     expect(plural('en', 'routes.moreRuns', 4)).toBe('Show 4 more runs');
     expect(plural('fr', 'routes.moreRuns', 1)).toBe('Afficher 1 run de plus');
     expect(plural('fr', 'routes.moreRuns', 4)).toBe('Afficher 4 runs de plus');
+  });
+
+  it('throws by name rather than crashing when the suffixed key is missing', () => {
+    expect(() => plural('en', 'app.language', 1)).toThrow('Missing message key: app.language.one');
   });
 });

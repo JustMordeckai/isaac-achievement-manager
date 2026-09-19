@@ -28,7 +28,9 @@ export function format(template: string, params?: Record<string, string | number
 
 /** Value of a key in the asked language, English when a translation is missing. */
 export function t(locale: Locale, key: MessageKey, params?: Record<string, string | number>): string {
-  return format(CATALOGS[locale][key] ?? en[key], params);
+  const value = CATALOGS[locale][key] ?? en[key];
+  if (value === undefined) throw new Error(`Missing message key: ${key}`);
+  return format(value, params);
 }
 
 /** Value of `key.one` for a count of one, of `key.other` otherwise; `count` is available as a placeholder. */
