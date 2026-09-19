@@ -93,6 +93,17 @@ describe('api', () => {
     expect(await api.wikiStatus()).toEqual(KB_OK);
     expect(await api.settings()).toEqual(SETTINGS);
   });
+
+  it('saves the locale with the dedicated header', async () => {
+    const mock = stubFetch({
+      'POST /api/settings': (_url, init) => {
+        expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('settings');
+        return { ...SETTINGS, locale: 'fr' };
+      },
+    });
+    expect(await api.saveLocale('fr')).toEqual({ ...SETTINGS, locale: 'fr' });
+    expect(JSON.parse(String(mock.mock.calls[0][1]?.body))).toEqual({ locale: 'fr' });
+  });
 });
 
 describe('api : conseiller', () => {

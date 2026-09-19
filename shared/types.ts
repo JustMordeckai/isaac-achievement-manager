@@ -1,5 +1,6 @@
 import type { CharacterId } from './characters.ts';
 import type { EndingId } from './endings.ts';
+import type { Locale } from './i18n/index.ts';
 import type { MarkId, MarkLevel } from './marks.ts';
 
 export type Dlc = 'rebirth' | 'afterbirth' | 'afterbirthPlus' | 'repentance' | 'repentancePlus';
@@ -202,6 +203,7 @@ export interface SettingsInfo {
   steamPath: string | null;
   account: { accountId: number; steamId64: string; personaName: string | null } | null;
   forcedAccountId: number | null;
+  locale: Locale;
 }
 
 /** Origine des marques de complétion : lues dans la sauvegarde ou déduites des succès. */

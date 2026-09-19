@@ -1,6 +1,9 @@
 import { once } from 'node:events';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import http, { type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
 import { type AdvisorService, createAdvisorService } from '../../server/advisor/service.ts';
@@ -14,6 +17,7 @@ import { chatLines, closedUrl, type FakeOllama, startFakeOllama } from './helper
 import { ME_ID64, OTHER_ID64 } from './helpers/fixtures.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
+import { removeDir } from './helpers/steam-dir.ts';
 
 const merged = mergeProgress(fixtureMergeInput());
 const ABSENT: KbStatus = { state: 'absent', syncedAt: null, running: false };
@@ -23,6 +27,7 @@ const SETTINGS: SettingsInfo = {
   steamPath: 'C:\\Steam',
   account: { accountId: 123456789, steamId64: ME_ID64, personaName: 'Player' },
   forcedAccountId: null,
+  locale: 'en',
 };
 
 function fakeKb(kb: KnowledgeBase | null = null, overrides: Partial<KbService> = {}): KbService {
@@ -265,6 +270,33 @@ describe('API', () => {
   it('expose les réglages détectés', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/settings`)).json()).toEqual(SETTINGS);
+  });
+
+  it('saves the requested locale with the dedicated header', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'iam-settings-'));
+    try {
+      const base = await start({ settings: { ...SETTINGS, dataDir: dir } });
+      const post = (body: unknown, headers: Record<string, string> = { 'X-IAM-Action': 'settings' }) =>
+        fetch(`${base}/api/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify(body),
+        });
+      const refused = await post({ locale: 'fr' }, {});
+      expect(refused.status).toBe(403);
+      const invalid = await post({ locale: 'de' });
+      expect(invalid.status).toBe(400);
+      expect(await invalid.json()).toEqual({ error: 'Unknown language: de' });
+      const saved = await post({ locale: 'fr' });
+      expect(saved.status).toBe(200);
+      expect((await saved.json()).locale).toBe('fr');
+      expect(JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8'))).toEqual({ locale: 'fr' });
+      // The saved locale applies at once, without a restart: the error message follows.
+      const stillInvalid = await post({ locale: 'de' });
+      expect(await stillInvalid.json()).toEqual({ error: 'Langue inconnue : de' });
+    } finally {
+      removeDir(dir);
+    }
   });
 });
 

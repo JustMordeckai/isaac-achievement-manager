@@ -6,7 +6,7 @@ import { format } from 'node:util';
 import express from 'express';
 import { createAdvisorService } from './advisor/service.ts';
 import { APP_NAME, createApp } from './app.ts';
-import { chooseAccount, detectSteamEnv, loadSettings, saveOllamaSettings } from './config.ts';
+import { chooseAccount, detectSteamEnv, loadSettings, saveSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
 import { createProgressService } from './progress-service.ts';
@@ -55,13 +55,14 @@ const app = createApp({
   profiles,
   icons: createIconCache(path.join(DATA_DIR, 'icons')),
   kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
-  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveOllamaSettings(DATA_DIR, ollama) }),
+  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveSettings(DATA_DIR, { ollama }) }),
   settings: {
     port: settings.port,
     dataDir: DATA_DIR,
     steamPath: env.steamPath,
     account: account && { accountId: account.accountId, steamId64: account.steamId64, personaName: account.personaName },
     forcedAccountId: settings.accountId,
+    locale: settings.locale,
   },
   onShutdown: () => {
     console.log('Arrêt demandé depuis l’interface.');

@@ -1,4 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { t, toLocale } from '../shared/i18n/index.ts';
 import type {
   AchievementCard,
   AdvisorEvent,
@@ -12,6 +13,7 @@ import { buildAdvisorContext } from './advisor/context.ts';
 import { OllamaError, type OllamaErrorKind, type OllamaMessage } from './advisor/ollama.ts';
 import { parseAdvisorRequest, parseOllamaSettings } from './advisor/request.ts';
 import type { AdvisorService } from './advisor/service.ts';
+import { saveSettings } from './config.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
 import type { KbService } from './kb-service.ts';
@@ -95,6 +97,15 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   api.get('/settings', (_req, res) => {
+    res.json(deps.settings);
+  });
+
+  api.post('/settings', requireAction('settings'), jsonBody, async (req, res) => {
+    const body = req.body as Record<string, unknown>;
+    const locale = toLocale(body.locale);
+    if (!locale) throw new HttpError(400, t(deps.settings.locale, 'errors.localeInvalid', { locale: String(body.locale) }));
+    await saveSettings(deps.settings.dataDir, { locale });
+    deps.settings.locale = locale;
     res.json(deps.settings);
   });
 

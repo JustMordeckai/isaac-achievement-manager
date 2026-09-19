@@ -6,4 +6,5 @@ export const fr: Catalog = {
   'app.loadFailed': 'Chargement impossible : {message}',
   'routes.moreRuns.one': 'Afficher 1 run de plus',
   'routes.moreRuns.other': 'Afficher {count} runs de plus',
+  'errors.localeInvalid': 'Langue inconnue : {locale}',
 };

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { DEFAULT_LOCALE, type Locale, toLocale } from '../shared/i18n/index.ts';
 import type { LocalAccount, OllamaSettings } from '../shared/types.ts';
 import { writeFileAtomic } from './fs-atomic.ts';
 import { HttpError } from './http-error.ts';
@@ -101,11 +102,12 @@ export interface Settings {
   /** Compte Steam imposé (id de compte), sinon choix automatique. */
   accountId: number | null;
   ollama: OllamaSettings;
+  locale: Locale;
 }
 
 export const DEFAULT_OLLAMA: OllamaSettings = { url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b' };
 
-export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null, ollama: DEFAULT_OLLAMA };
+export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null, ollama: DEFAULT_OLLAMA, locale: DEFAULT_LOCALE };
 
 const MODEL_NAME = /^[\w.:/-]{1,200}$/;
 
@@ -138,7 +140,7 @@ export function loadSettings(dataDir: string): Settings {
     return { ...DEFAULT_SETTINGS };
   }
   if (typeof raw !== 'object' || raw === null) return { ...DEFAULT_SETTINGS };
-  const { port, accountId, ollama } = raw as Record<string, unknown>;
+  const { port, accountId, ollama, locale } = raw as Record<string, unknown>;
   const server = typeof ollama === 'object' && ollama !== null ? (ollama as Record<string, unknown>) : {};
   return {
     port: Number.isInteger(port) && (port as number) > 0 && (port as number) < 65536 ? (port as number) : DEFAULT_SETTINGS.port,
@@ -151,11 +153,12 @@ export function loadSettings(dataDir: string): Settings {
       url: ollamaUrl(server.url) ?? DEFAULT_OLLAMA.url,
       model: ollamaModel(server.model) ?? DEFAULT_OLLAMA.model,
     },
+    locale: toLocale(locale) ?? DEFAULT_SETTINGS.locale,
   };
 }
 
-/** Écrit les réglages Ollama dans data/settings.json en gardant les autres champs du fichier. */
-export async function saveOllamaSettings(dataDir: string, ollama: OllamaSettings): Promise<void> {
+/** Writes a patch into data/settings.json, keeping the other fields already in the file. */
+export async function saveSettings(dataDir: string, patch: Record<string, unknown>): Promise<void> {
   const file = path.join(dataDir, 'settings.json');
   let current: Record<string, unknown> = {};
   let text: string | null = null;
@@ -176,5 +179,5 @@ export async function saveOllamaSettings(dataDir: string, ollama: OllamaSettings
     }
     current = parsed as Record<string, unknown>;
   }
-  await writeFileAtomic(file, `${JSON.stringify({ ...current, ollama }, null, 2)}\n`);
+  await writeFileAtomic(file, `${JSON.stringify({ ...current, ...patch }, null, 2)}\n`);
 }

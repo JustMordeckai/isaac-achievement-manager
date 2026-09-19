@@ -67,6 +67,7 @@ export const SETTINGS: SettingsInfo = {
   steamPath: 'c:\\program files (x86)\\steam',
   account: { accountId: 123456789, steamId64: '76561198083722517', personaName: 'Player' },
   forcedAccountId: null,
+  locale: 'en',
 };
 
 export const ADVISOR_OK: AdvisorStatus = {

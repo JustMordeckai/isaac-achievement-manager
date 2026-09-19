@@ -1,3 +1,4 @@
+import type { Locale } from '../../shared/i18n/index.ts';
 import { ndjsonLines } from '../../shared/ndjson.ts';
 import type {
   AchievementCard,
@@ -120,6 +121,12 @@ export const api = {
     request<AchievementCard>(`/api/achievement/${id}?${profileParams(query)}`, { signal }),
   wikiStatus: (signal?: AbortSignal) => request<KbStatus>('/api/wiki/status', { signal }),
   settings: (signal?: AbortSignal) => request<SettingsInfo>('/api/settings', { signal }),
+  saveLocale: (locale: Locale) =>
+    request<SettingsInfo>('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'settings' },
+      body: JSON.stringify({ locale }),
+    }),
   resolveProfile: (input: string) =>
     request<ResolvedProfile>(`/api/profile/resolve?${new URLSearchParams({ input })}`),
   syncWiki,
