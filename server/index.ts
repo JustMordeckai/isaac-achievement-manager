@@ -20,11 +20,13 @@ const shouldOpen = args.has('--open');
 if (args.has('--log')) {
   // Writes every line to data/server.log through one appendFileSync per call: unlike a shell
   // redirection (>>), no file descriptor stays open, so a second launch of the launcher while the
-  // server is running can write to this file too (no sharing conflict on Windows).
-  // Windows).
+  // server is running can write to this file too (no sharing conflict on Windows). The line is
+  // printed as well, so the window that started the server shows what the log records.
   mkdirSync(DATA_DIR, { recursive: true });
   const logFile = path.join(DATA_DIR, 'server.log');
-  const write = (...parts: unknown[]): void => {
+  const print = console.log.bind(console);
+  const printError = console.error.bind(console);
+  const append = (...parts: unknown[]): void => {
     try {
       appendFileSync(logFile, `${format(...parts)}\n`);
     } catch {
@@ -32,13 +34,20 @@ if (args.has('--log')) {
       // server that is otherwise healthy.
     }
   };
+  const write = (...parts: unknown[]): void => {
+    print(...parts);
+    append(...parts);
+  };
   console.log = write;
-  console.error = write;
+  console.error = (...parts: unknown[]): void => {
+    printError(...parts);
+    append(...parts);
+  };
   // A fatal error at startup (invalid port in data/settings.json, a bind failure unrelated to
   // EADDRINUSE, and so on) becomes an unhandled rejection then an uncaught exception: without
-  // this handler, Node would write it to a hidden console, invisible, instead of data/server.log.
+  // this handler, Node would write it its own way and it would never reach data/server.log.
   process.on('uncaughtException', (error) => {
-    write('Erreur fatale :', error);
+    write('Fatal error:', error);
     process.exit(1);
   });
 }
