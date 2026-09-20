@@ -28,6 +28,7 @@ const CLEAN = [
   'server/http-error.ts',
   'server/sources/steam-profile.ts',
   'server/sources/save-file.ts',
+  'server/sources/progress.ts',
   'server/wiki/client.ts',
   'server/wiki/sync.ts',
   'server/wiki/setup.ts',

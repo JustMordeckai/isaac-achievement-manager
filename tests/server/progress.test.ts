@@ -6,12 +6,12 @@ import { fixture, OTHER_ID64 } from './helpers/fixtures.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
 
 function onlineStats(input: MergeInput): ProfileStats {
-  if (!input.online.data) throw new Error('fixture sans profil en ligne');
+  if (!input.online.data) throw new Error('fixture without an online profile');
   return input.online.data;
 }
 
-describe("mergeProgress", () => {
-  it("fusionne les sources locales de Player", () => {
+describe('mergeProgress', () => {
+  it("merges Player's local sources", () => {
     const { summary, achievements, save } = mergeProgress(fixtureMergeInput());
     expect(summary.total).toBe(641);
     expect(summary.unlocked).toBe(125);
@@ -39,21 +39,29 @@ describe("mergeProgress", () => {
     expect(save?.marks?.isaac).toMatchObject({ momsHeart: 2, lamb: 2, greed: 1, bossRush: 0 });
   });
 
-  it("signale un cache local en retard sur le profil en ligne", () => {
+  it('reports a local cache behind the online profile, in the reader\'s language', () => {
     const base = fixtureMergeInput();
     const cache = new Map(base.steamCache.data);
     cache.delete(343);
-    const { summary, achievements } = mergeProgress({ ...base, steamCache: { status: { state: 'ok' }, data: cache } });
+    const input = { ...base, steamCache: { status: { state: 'ok' as const }, data: cache } };
+
+    const { summary, achievements } = mergeProgress(input, 'en');
     expect(summary.sources.steamCache).toEqual({
       state: 'stale',
-      message: 'Le profil en ligne compte 1 succès de plus que le cache local',
+      message: 'The online profile holds 1 achievements the local cache does not.',
     });
     expect(summary.unlocked).toBe(125);
     expect(summary.desyncs).toContainEqual({ id: 343, name: 'Flooded Caves', kind: 'profileAhead' });
     expect(achievements.find((a) => a.id === 343)?.unlockedAt).toBe('2026-09-16T14:30:52.000Z');
+
+    const fr = mergeProgress(input, 'fr');
+    expect(fr.summary.sources.steamCache).toEqual({
+      state: 'stale',
+      message: 'Le profil en ligne compte 1 succès de plus que le cache local',
+    });
   });
 
-  it("signale un profil en ligne en retard sur le cache", () => {
+  it('reports an online profile behind the cache', () => {
     const base = fixtureMergeInput();
     const stats = onlineStats(base);
     const online: ProfileStats = {
@@ -66,7 +74,7 @@ describe("mergeProgress", () => {
     expect(summary.desyncs).toContainEqual({ id: 343, name: 'Flooded Caves', kind: 'cacheAhead' });
   });
 
-  it("utilise le profil en ligne quand le cache local manque", () => {
+  it('uses the online profile when the local cache is missing', () => {
     const base = fixtureMergeInput();
     const { summary } = mergeProgress({ ...base, steamCache: { status: { state: 'absent', message: 'x' }, data: null } });
     expect(summary.unlocked).toBe(125);
@@ -74,12 +82,12 @@ describe("mergeProgress", () => {
     expect(summary.desyncs).toEqual([{ id: 638, name: 'Play Online', kind: 'saveOnly' }]);
   });
 
-  it("affiche un joueur distant avec le profil en ligne seul", () => {
+  it('displays a remote player with only the online profile', () => {
     const base = fixtureMergeInput();
-    const remote = { status: { state: 'absent' as const, message: 'Joueur distant' }, data: null };
+    const remote = { status: { state: 'absent' as const, message: 'Remote player' }, data: null };
     const { summary, achievements } = mergeProgress({
       ...base,
-      profile: { steamId64: OTHER_ID64, name: 'Ami', isLocal: false },
+      profile: { steamId64: OTHER_ID64, name: 'Friend', isLocal: false },
       defs: null,
       steamCache: remote,
       save: remote,
@@ -93,7 +101,7 @@ describe("mergeProgress", () => {
     expect(achievements[0]).toMatchObject({ id: 1, name: 'Magdalene', icon: 'a36d7e92df7e991758907a75dfa55d36b52548c4.jpg', dlc: 'rebirth' });
   });
 
-  it("ignore la sauvegarde pour un profil distant", () => {
+  it('ignores the save for a remote player', () => {
     const base = fixtureMergeInput();
     const { summary, achievements, save } = mergeProgress({ ...base, profile: { steamId64: OTHER_ID64, name: null, isLocal: false } });
     expect(summary.desyncs).toEqual([]);
@@ -101,12 +109,12 @@ describe("mergeProgress", () => {
     expect(save).toBeNull();
   });
 
-  it("ne calcule aucun écart de sauvegarde sans source Steam", () => {
+  it('computes no save desync without a Steam source', () => {
     const base = fixtureMergeInput();
     const { summary, achievements } = mergeProgress({
       ...base,
       steamCache: { status: { state: 'absent' }, data: null },
-      online: { status: { state: 'error', message: 'Steam injoignable' }, data: null },
+      online: { status: { state: 'error', message: 'Steam unreachable' }, data: null },
     });
     expect(summary.total).toBe(641);
     expect(summary.unlocked).toBe(0);
@@ -115,7 +123,7 @@ describe("mergeProgress", () => {
     expect(achievements.find((a) => a.id === 638)?.inSave).toBe(true);
   });
 
-  it("liste les succès Steam absents d'une sauvegarde vide", () => {
+  it('lists the Steam achievements missing from an empty save', () => {
     const base = fixtureMergeInput();
     const empty = parseSaveFile(fixture('rep+persistentgamedata2.dat'));
     const { summary } = mergeProgress({ ...base, save: { status: { state: 'ok', message: 'Slot 2' }, data: empty } });
@@ -124,7 +132,7 @@ describe("mergeProgress", () => {
     expect(summary.desyncs[0]).toEqual({ id: 1, name: 'Magdalene', kind: 'steamOnly' });
   });
 
-  it("renvoie une progression vide sans aucune définition", () => {
+  it('returns an empty progress without any definition', () => {
     const empty = { status: { state: 'absent' as const }, data: null };
     const { summary, achievements } = mergeProgress({
       profile: { steamId64: OTHER_ID64, name: null, isLocal: false },

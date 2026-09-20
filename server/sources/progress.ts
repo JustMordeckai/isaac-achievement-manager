@@ -1,4 +1,5 @@
 import { DLC_ORDER, dlcForId } from '../../shared/dlc.ts';
+import { DEFAULT_LOCALE, t, type Locale } from '../../shared/i18n/index.ts';
 import type { CompletionMarks } from '../../shared/marks.ts';
 import type {
   AchievementDef,
@@ -22,7 +23,7 @@ export interface SourceResult<T> {
 
 export interface MergeInput {
   profile: ProgressSummary['profile'];
-  /** Définitions du schéma Steam local, null s'il est indisponible. */
+  /** Local Steam schema definitions, null when unavailable. */
   defs: AchievementDef[] | null;
   steamCache: SourceResult<UnlockMap>;
   save: SourceResult<SaveFileData>;
@@ -31,10 +32,10 @@ export interface MergeInput {
   accounts: LocalAccount[];
 }
 
-/** Données de la sauvegarde utiles au planificateur (profil local seulement). */
+/** Save data useful to the planner (local profile only). */
 export interface SaveProgress {
   counters: number[];
-  /** null si le bloc des compteurs ne contient pas les marques. */
+  /** null when the counters chunk does not hold the marks. */
   marks: CompletionMarks | null;
 }
 
@@ -59,7 +60,7 @@ function definitionsFrom(input: MergeInput): AchievementDef[] {
   }));
 }
 
-export function mergeProgress(input: MergeInput): MergedProgress {
+export function mergeProgress(input: MergeInput, locale: Locale = DEFAULT_LOCALE): MergedProgress {
   const defs = definitionsFrom(input);
   const names = new Map(defs.map((d) => [d.id, d.name]));
   const desyncs: Desync[] = [];
@@ -91,7 +92,7 @@ export function mergeProgress(input: MergeInput): MergedProgress {
       }
       if (ahead > 0) {
         steamCacheStatus.state = 'stale';
-        steamCacheStatus.message = `Le profil en ligne compte ${ahead} succès de plus que le cache local`;
+        steamCacheStatus.message = t(locale, 'sources.profileAhead', { ahead });
       }
     }
   } else {

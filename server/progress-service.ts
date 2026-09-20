@@ -111,7 +111,7 @@ export function createProgressService({ env, forcedAccountId, profiles }: Progre
     try {
       const data = parseSaveFile(new Uint8Array(await readFile(chosen.path)), locale);
       const updatedAt = new Date(chosen.mtimeMs).toISOString();
-      return { result: { status: { state: 'ok', message: t(locale, 'errors.slotLabel', { slot: chosen.slot }), updatedAt }, data }, slots };
+      return { result: { status: { state: 'ok', message: t(locale, 'sources.slot', { slot: chosen.slot }), updatedAt }, data }, slots };
     } catch (error) {
       return { result: failed(error), slots };
     }
@@ -157,15 +157,18 @@ export function createProgressService({ env, forcedAccountId, profiles }: Progre
       if (slot !== null) throw new HttpError(400, t(locale, 'errors.slotLocalOnly'));
       const [online, name] = await Promise.all([loadOnline(steamId64, false, locale), resolveName(steamId64, locale)]);
       const remote = absent<never>(t(locale, 'errors.remotePlayerNoLocalFiles'));
-      return mergeProgress({
-        profile: { steamId64, name, isLocal: false },
-        defs,
-        steamCache: remote,
-        save: remote,
-        saveSlots: null,
-        online,
-        accounts,
-      });
+      return mergeProgress(
+        {
+          profile: { steamId64, name, isLocal: false },
+          defs,
+          steamCache: remote,
+          save: remote,
+          saveSlots: null,
+          online,
+          accounts,
+        },
+        locale,
+      );
     }
 
     const [steamCache, save, online] = await Promise.all([
@@ -173,15 +176,18 @@ export function createProgressService({ env, forcedAccountId, profiles }: Progre
       loadSave(account, slot, locale),
       loadOnline(steamId64, true, locale),
     ]);
-    return mergeProgress({
-      profile: { steamId64, name: account.personaName, isLocal: true },
-      defs,
-      steamCache,
-      save: save.result,
-      saveSlots: save.slots,
-      online,
-      accounts,
-    });
+    return mergeProgress(
+      {
+        profile: { steamId64, name: account.personaName, isLocal: true },
+        defs,
+        steamCache,
+        save: save.result,
+        saveSlots: save.slots,
+        online,
+        accounts,
+      },
+      locale,
+    );
   }
 
   const inFlight = new Map<string, Promise<MergedProgress>>();
