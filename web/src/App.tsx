@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_LOCALE, type Locale } from '../../shared/i18n/index.ts';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Locale } from '../../shared/i18n/index.ts';
 import { api, type ProfileQuery } from './api.ts';
 import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
-import { guessLocale, LocaleProvider } from './i18n.tsx';
+import { loadLocale, LocaleProvider, storeLocale } from './i18n.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
 import { Advisor } from './pages/Advisor.tsx';
@@ -20,9 +20,6 @@ import { useKbStatus, useSettings, useWikiSync } from './useWiki.ts';
 type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; message: string };
 
 const NO_DESYNC: ReadonlySet<number> = new Set();
-
-/** Remembers, across reloads, that the browser-guessed locale has already been applied once. */
-const LOCALE_GUESSED_KEY = 'iam-locale-guessed';
 
 export function App() {
   const [query, setQuery] = useState<ProfileQuery>({ profile: 'me', slot: null });
@@ -42,32 +39,18 @@ export function App() {
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
   const [sync, startSync] = useWikiSync(reload);
-  const [chosenLocale, setChosenLocale] = useState<Locale | null>(null);
-  const guessedLocaleOnce = useRef(false);
+  const [locale, setLocale] = useState<Locale>(loadLocale);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
-  // First run only: when the settings file holds no explicit locale (the server reports the
-  // default), the browser's own language is applied once and saved, so the choice sticks on the
-  // next visit. A locale the reader already picked this session, or on a previous one (tracked in
-  // localStorage), is never overridden.
+  // The first paint already uses the remembered (or browser-guessed) locale, exactly like the
+  // theme; once the server answers, its value takes over and is remembered for the next visit.
   useEffect(() => {
-    if (settings.status !== 'ready' || guessedLocaleOnce.current) return;
-    guessedLocaleOnce.current = true;
-    let alreadyGuessed = true;
-    try {
-      alreadyGuessed = localStorage.getItem(LOCALE_GUESSED_KEY) !== null;
-      localStorage.setItem(LOCALE_GUESSED_KEY, '1');
-    } catch {
-      // Storage unavailable: still guess for this visit, without remembering it for the next one.
-    }
-    if (alreadyGuessed || chosenLocale !== null || settings.info.locale !== DEFAULT_LOCALE) return;
-    const guess = guessLocale(navigator.languages);
-    if (guess === settings.info.locale) return;
-    setChosenLocale(guess);
-    void api.saveLocale(guess).catch(() => {});
+    if (settings.status !== 'ready') return;
+    setLocale(settings.info.locale);
+    storeLocale(settings.info.locale);
   }, [settings.status]);
 
   const summary = state.status === 'ready' ? state.data.summary : null;
@@ -110,8 +93,6 @@ export function App() {
     routes.status === 'loading' ||
     (routes.status === 'ready' && routes.refreshing);
   const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
-  const settingsLocale = settings.status === 'ready' ? settings.info.locale : DEFAULT_LOCALE;
-  const locale = chosenLocale ?? settingsLocale;
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');
   const resetProfile = query.profile !== 'me' ? () => setQuery({ profile: 'me', slot: null }) : null;
@@ -119,6 +100,10 @@ export function App() {
   const askAdvisor = (question: string) => {
     setDraft(question);
     setTab('advisor');
+  };
+  const handleLocaleChange = (next: Locale) => {
+    setLocale(next);
+    storeLocale(next);
   };
 
   return (
@@ -138,7 +123,7 @@ export function App() {
           tab={tab}
           onTabChange={setTab}
           onStop={() => void requestStop()}
-          onLocaleChange={setChosenLocale}
+          onLocaleChange={handleLocaleChange}
         />
         <main className="main">
           {stop.kind === 'failed' && (
@@ -147,7 +132,7 @@ export function App() {
             </p>
           )}
           {tab === 'settings' && (
-            <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} onLocaleChange={setChosenLocale} />
+            <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} onLocaleChange={handleLocaleChange} />
           )}
           {tab === 'routes' && (
             <Routes

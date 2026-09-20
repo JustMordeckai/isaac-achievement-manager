@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
+import { LOCALE_STORAGE_KEY } from '../../web/src/i18n.tsx';
 import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
 import {
   ADVISOR_OFFLINE,
@@ -395,5 +396,21 @@ describe('App', () => {
         'Autre joueur…',
       ]),
     );
+  });
+
+  it('paints in the remembered locale on the very first render, without waiting for settings', () => {
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
+    stubProgress();
+    render(<App />);
+    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+  });
+
+  it('lets the server locale override the remembered one once settings answer', async () => {
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
+    stubProgress({ 'GET /api/settings': () => ({ ...SETTINGS, locale: 'en' }) });
+    render(<App />);
+    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Language')).toBeInTheDocument();
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
   });
 });
