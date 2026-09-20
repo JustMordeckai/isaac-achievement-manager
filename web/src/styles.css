@@ -184,11 +184,21 @@ html {
 }
 
 .lang__button {
-  gap: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
 }
 
-.icon--chevron {
-  color: var(--text-muted);
+.lang__button:hover {
+  background: var(--bg-sunk);
 }
 
 .lang__menu {
@@ -229,8 +239,6 @@ html {
 
 .flag {
   display: block;
-  border: 1px solid var(--border);
-  border-radius: 2px;
 }
 
 /* Theme: a switch, so the state is read from the knob as much as from the icon. */

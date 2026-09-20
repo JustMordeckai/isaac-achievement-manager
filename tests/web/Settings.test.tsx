@@ -221,7 +221,9 @@ describe('Settings: language', () => {
   it('offers both languages, with the current one selected, and explains where the choice is stored', () => {
     renderSettings();
     const section = within(screen.getByRole('region', { name: 'Language' }));
-    expect(section.getByRole('button', { name: 'Language: English' })).toBeInTheDocument();
+    const picker = section.getByRole('button', { name: 'Language: English' });
+    expect(picker).toHaveTextContent('English');
+    expect(picker.querySelector('svg.flag')).not.toBeNull();
     expect(section.getByText(/data\/settings\.json/)).toBeInTheDocument();
   });
 });

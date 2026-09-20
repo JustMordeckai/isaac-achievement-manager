@@ -1,7 +1,7 @@
 /**
  * The few inline icons of the interface. They are drawn with `currentColor` so they follow the
  * text colour of the button that holds them, and they carry no title: the button around them
- * always has its own accessible name. The flags are square, like every other header button.
+ * always has its own accessible name. The flags keep the shape of a flag, wider than tall.
  */
 
 export function RefreshIcon() {
@@ -49,33 +49,25 @@ export function MoonIcon() {
   );
 }
 
-export function ChevronIcon() {
+/** Union Jack, simplified to the flat bands a 24 pixel flag can show. */
+function FlagEn({ size = 24 }: { size?: number }) {
   return (
-    <svg className="icon icon--chevron" viewBox="0 0 8 8" width="8" height="8" fill="none" aria-hidden="true" focusable="false">
-      <path d="M1 3l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="flag" viewBox="0 0 60 40" width={size} height={(size * 2) / 3} aria-hidden="true" focusable="false">
+      <rect width="60" height="40" fill="#012169" />
+      <path d="M0 0 60 40M60 0 0 40" stroke="#ffffff" strokeWidth="8" />
+      <path d="M0 0 60 40M60 0 0 40" stroke="#c8102e" strokeWidth="4" />
+      <path d="M30 0V40M0 20H60" stroke="#ffffff" strokeWidth="13" />
+      <path d="M30 0V40M0 20H60" stroke="#c8102e" strokeWidth="8" />
     </svg>
   );
 }
 
-/** Union Jack, simplified to the flat bands a 20 pixel square can show. */
-function FlagEn({ size = 20 }: { size?: number }) {
+function FlagFr({ size = 24 }: { size?: number }) {
   return (
-    <svg className="flag" viewBox="0 0 20 20" width={size} height={size} aria-hidden="true" focusable="false">
-      <rect width="20" height="20" fill="#012169" />
-      <path d="M0 0 20 20M20 0 0 20" stroke="#ffffff" strokeWidth="4" />
-      <path d="M0 0 20 20M20 0 0 20" stroke="#c8102e" strokeWidth="2" />
-      <path d="M10 0V20M0 10H20" stroke="#ffffff" strokeWidth="6.6" />
-      <path d="M10 0V20M0 10H20" stroke="#c8102e" strokeWidth="4" />
-    </svg>
-  );
-}
-
-function FlagFr({ size = 20 }: { size?: number }) {
-  return (
-    <svg className="flag" viewBox="0 0 20 20" width={size} height={size} aria-hidden="true" focusable="false">
-      <rect width="6.67" height="20" fill="#002654" />
-      <rect x="6.67" width="6.66" height="20" fill="#ffffff" />
-      <rect x="13.33" width="6.67" height="20" fill="#ce1126" />
+    <svg className="flag" viewBox="0 0 60 40" width={size} height={(size * 2) / 3} aria-hidden="true" focusable="false">
+      <rect width="20" height="40" fill="#002654" />
+      <rect x="20" width="20" height="40" fill="#ffffff" />
+      <rect x="40" width="20" height="40" fill="#ce1126" />
     </svg>
   );
 }

@@ -130,6 +130,13 @@ describe('LanguagePicker', () => {
     expect(failing).not.toHaveBeenCalled();
   });
 
+  it('shows the flag alone in the header, where there is no room for a word', () => {
+    render(<LocaleHarness />);
+    const button = screen.getByRole('button', { name: 'Language: English' });
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg.flag')).not.toBeNull();
+  });
+
   it('names each entry in its own language, for screen readers', async () => {
     const user = userEvent.setup();
     render(<LocaleHarness />);

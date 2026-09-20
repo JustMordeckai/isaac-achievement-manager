@@ -9,7 +9,7 @@ import {
   type Locale,
   type MessageKey,
 } from '../../shared/i18n/index.ts';
-import { ChevronIcon, FLAGS } from './components/icons.tsx';
+import { FLAGS } from './components/icons.tsx';
 import { api } from './api.ts';
 
 interface LocaleContextValue {
@@ -98,15 +98,16 @@ export function storeLocale(locale: Locale): void {
 }
 
 export interface LanguagePickerProps {
-  /** Shows the explanatory hint below the button; used in Settings, left out in the compact header. */
+  /** Shows the language beside its flag, and the explanatory hint below: the Settings screen has
+   * the room for both, the header does not. */
   hint?: boolean;
 }
 
 /**
- * The one language switcher in the interface: a square button showing the flag of the current
- * language, which opens the list of the served languages. Each entry is named in its own language,
- * so a screen reader announces "English" and "Francais" rather than a country, and the flag is only
- * ever decoration. Header.tsx and Settings.tsx both render this instead of duplicating it.
+ * The one language switcher in the interface: the flag of the current language on its own, which
+ * opens the list of the served languages. Each entry is named in its own language, so a screen
+ * reader announces "English" and "Francais" rather than a country, and the flag is only ever
+ * decoration. Header.tsx and Settings.tsx both render this instead of duplicating it.
  */
 export function LanguagePicker({ hint }: LanguagePickerProps) {
   const { locale, onLocaleChange, onLocaleSaved } = useContext(LocaleContext);
@@ -152,7 +153,7 @@ export function LanguagePicker({ hint }: LanguagePickerProps) {
         <button
           type="button"
           ref={button}
-          className="icon-btn lang__button"
+          className="lang__button"
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label={`${t(locale, 'app.language')}: ${LOCALE_NAMES[locale]}`}
@@ -160,7 +161,7 @@ export function LanguagePicker({ hint }: LanguagePickerProps) {
           onClick={() => setOpen((shown) => !shown)}
         >
           <Current />
-          <ChevronIcon />
+          {hint && <span lang={locale}>{LOCALE_NAMES[locale]}</span>}
         </button>
         {open && (
           <div className="lang__menu" role="menu" aria-label={t(locale, 'app.language')}>
@@ -176,7 +177,7 @@ export function LanguagePicker({ hint }: LanguagePickerProps) {
                   lang={code}
                   onClick={() => pick(code)}
                 >
-                  <Flag size={16} />
+                  <Flag size={20} />
                   {LOCALE_NAMES[code]}
                 </button>
               );
