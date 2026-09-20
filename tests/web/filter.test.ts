@@ -14,51 +14,51 @@ const ids = (filter: Partial<AchievementFilter>, desyncIds = NONE) =>
   filterAchievements(LIST, { ...DEFAULT_FILTER, ...filter }, desyncIds).map((a) => a.id);
 
 describe('filterAchievements', () => {
-  it('garde les manquants par défaut, triés par numéro', () => {
+  it('keeps the missing ones by default, sorted by number', () => {
     expect(ids({})).toEqual([9, 638]);
   });
 
-  it('filtre par état', () => {
+  it('filters by state', () => {
     expect(ids({ status: 'unlocked' })).toEqual([1, 343]);
     expect(ids({ status: 'all' })).toEqual([1, 9, 343, 638]);
   });
 
-  it('filtre par extension', () => {
+  it('filters by DLC', () => {
     expect(ids({ status: 'all', dlc: 'afterbirthPlus' })).toEqual([343]);
   });
 
-  it('filtre par méthode et par personnage', () => {
+  it('filters by way to earn it and by character', () => {
     expect(ids({ status: 'all', how: 'mark' })).toEqual([9]);
     expect(ids({ status: 'all', how: 'misc' })).toEqual([638]);
     expect(ids({ status: 'all', character: 'azazel' })).toEqual([9]);
     expect(ids({ status: 'all', how: 'counter', character: 'azazel' })).toEqual([]);
   });
 
-  it('cherche sans tenir compte de la casse ni des accents', () => {
-    expect(normalizeText('CAVÉS Été')).toBe('caves ete');
-    expect(ids({ status: 'all', search: '  CAVÉS ' })).toEqual([343]);
+  it('searches without case or accents', () => {
+    expect(normalizeText('CAV\u00c9S \u00c9t\u00e9')).toBe('caves ete');
+    expect(ids({ status: 'all', search: '  CAV\u00c9S ' })).toEqual([343]);
   });
 
-  it('cherche dans la description', () => {
+  it('searches in the description', () => {
     expect(ids({ status: 'all', search: 'new item' })).toEqual([9]);
   });
 
-  it('cherche par numéro', () => {
+  it('searches by number', () => {
     expect(ids({ status: 'all', search: '#638' })).toEqual([638]);
     expect(ids({ status: 'all', search: '343' })).toEqual([343]);
   });
 
-  it('isole les écarts d’après la liste fournie par le résumé', () => {
+  it('isolates the differences from the list the summary gives', () => {
     expect(ids({ status: 'all', onlyDesync: true }, new Set([638, 1]))).toEqual([1, 638]);
     expect(ids({ status: 'all', onlyDesync: true })).toEqual([]);
   });
 
-  it('filtre les secrets', () => {
+  it('filters the secrets', () => {
     expect(ids({ status: 'all', secret: 'only' })).toEqual([638]);
     expect(ids({ status: 'all', secret: 'exclude' })).toEqual([1, 9, 343]);
   });
 
-  it('trie par nom et par déblocage récent', () => {
+  it('sorts by name and by recent unlock', () => {
     expect(filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all', sort: 'name' }, NONE).map((a) => a.name)).toEqual([
       'Flooded Caves',
       'Magdalene',
@@ -68,7 +68,7 @@ describe('filterAchievements', () => {
     expect(ids({ status: 'all', sort: 'recent' })).toEqual([343, 1, 9, 638]);
   });
 
-  it('ne modifie pas la liste reçue', () => {
+  it('leaves the list it is given alone', () => {
     const before = LIST.map((a) => a.id);
     filterAchievements(LIST, { ...DEFAULT_FILTER, status: 'all' }, NONE);
     expect(LIST.map((a) => a.id)).toEqual(before);

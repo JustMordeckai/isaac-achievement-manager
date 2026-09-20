@@ -61,23 +61,23 @@ describe('Settings', () => {
   });
 
   it('explains a missing base and reports the last failure', () => {
-    const kb: KbStatus = { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' };
+    const kb: KbStatus = { ...KB_ABSENT, message: 'Last sync failed: wiki unreachable' };
     renderSettings({ kb });
     expect(within(kbSection()).getByText(/has not been downloaded yet/)).toBeInTheDocument();
-    expect(within(kbSection()).getByText('Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
+    expect(within(kbSection()).getByText('Last sync failed: wiki unreachable')).toBeInTheDocument();
   });
 
   it('shows an unreadable base', () => {
-    renderSettings({ kb: { state: 'error', syncedAt: null, running: false, message: 'Base wiki illisible : JSON invalide' } });
-    expect(within(kbSection()).getByText('Base wiki illisible : JSON invalide')).toBeInTheDocument();
+    renderSettings({ kb: { state: 'error', syncedAt: null, running: false, message: 'Wiki base unreadable: invalid JSON' } });
+    expect(within(kbSection()).getByText('Wiki base unreadable: invalid JSON')).toBeInTheDocument();
   });
 
   it('follows the progress and locks the button during the sync', () => {
     const { rerender, props } = renderSettings({ sync: { kind: 'running', event: null } });
     expect(screen.getByRole('button', { name: 'Sync under way…' })).toBeDisabled();
     expect(screen.getByText('Connecting to the wiki…')).toBeInTheDocument();
-    rerender(<Settings {...props} sync={{ kind: 'running', event: { step: 'pages', done: 3, total: 12, message: 'Lot 3 sur 12' } }} />);
-    expect(screen.getByText('Lot 3 sur 12')).toBeInTheDocument();
+    rerender(<Settings {...props} sync={{ kind: 'running', event: { step: 'pages', done: 3, total: 12, message: 'Batch 3 of 12' } }} />);
+    expect(screen.getByText('Batch 3 of 12')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Pages downloaded' })).toHaveAttribute('aria-valuenow', '3');
     rerender(<Settings {...props} sync={{ kind: 'idle' }} kb={{ ...KB_OK, running: true }} />);
     expect(screen.getByRole('button', { name: 'Sync under way…' })).toBeDisabled();
@@ -96,8 +96,8 @@ describe('Settings', () => {
   });
 
   it('shows the failure of the sync', () => {
-    renderSettings({ sync: { kind: 'failed', message: 'Une synchro du wiki est déjà en cours' } });
-    expect(screen.getByRole('alert')).toHaveTextContent('Sync failed: Une synchro du wiki est déjà en cours');
+    renderSettings({ sync: { kind: 'failed', message: 'A wiki sync is already running' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Sync failed: A wiki sync is already running');
     expect(screen.getByRole('button', { name: 'Sync the wiki' })).toBeEnabled();
   });
 
@@ -136,7 +136,7 @@ describe('Settings: language', () => {
     renderSettings();
     const section = within(screen.getByRole('region', { name: 'Language' }));
     expect(section.getByRole('option', { name: 'English' })).toBeInTheDocument();
-    expect(section.getByRole('option', { name: 'Français' })).toBeInTheDocument();
+    expect(section.getByRole('option', { name: 'Fran\u00e7ais' })).toBeInTheDocument();
     expect(section.getByLabelText('Language')).toHaveValue('en');
     expect(section.getByText(/data\/settings\.json/)).toBeInTheDocument();
   });
@@ -213,9 +213,9 @@ describe('Settings: advisor', () => {
     const section = advisorSection();
     await user.click(section.getByRole('button', { name: 'Save' }));
     expect(section.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-    await act(async () => reply(jsonResponse({ error: 'Adresse Ollama invalide (attendu : http://hôte:port)' }, 400)));
+    await act(async () => reply(jsonResponse({ error: 'Invalid Ollama address (http://host:port expected)' }, 400)));
     expect(await section.findByRole('alert')).toHaveTextContent(
-      'The settings could not be saved: Adresse Ollama invalide (attendu : http://hôte:port)',
+      'The settings could not be saved: Invalid Ollama address (http://host:port expected)',
     );
     expect(advisor.replace).not.toHaveBeenCalled();
     expect(section.getByRole('button', { name: 'Save' })).toBeEnabled();

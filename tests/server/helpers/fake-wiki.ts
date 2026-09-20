@@ -2,9 +2,9 @@ import type { FetchPagesResult, WikiClient } from '../../../server/wiki/client.t
 import { linkedPages, samplePages, wikiText } from './wiki.ts';
 
 /**
- * Faux client wiki construit sur les fixtures : pages complètes de l'échantillon, pages de base
- * (Achievements, Achievement Tips, Template:Nav challenge), et pour les autres titres liés une page
- * minimale réduite à son infobox, d'après l'index linked-pages.json.
+ * Fake wiki client built on the fixtures: the full pages of the sample, the core pages
+ * (Achievements, Achievement Tips, Template:Nav challenge), and for the other linked titles a
+ * minimal page reduced to its infobox, from the linked-pages.json index.
  */
 export function fakeWikiClient(
   options: { achievements?: string | null; failed?: string[] } = {},

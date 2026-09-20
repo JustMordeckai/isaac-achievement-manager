@@ -6,6 +6,6 @@ export default defineConfig({
   root: fileURLToPath(new URL('./web', import.meta.url)),
   plugins: [react()],
   build: { outDir: 'dist', emptyOutDir: true },
-  // Le front importe ../shared : on autorise tout le dossier du projet.
+  // The front imports ../shared, so the whole project folder is allowed.
   server: { fs: { allow: [fileURLToPath(new URL('.', import.meta.url))] } },
 });

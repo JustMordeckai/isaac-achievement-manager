@@ -1,18 +1,18 @@
 import { cleanInline, findTemplates, templateParams, type TemplateCounter } from './wikitext.ts';
 
-/** Une fiche {{infobox achievement}} de la page Achievements. */
+/** One {{infobox achievement}} entry of the Achievements page. */
 export interface WikiAchievementRow {
   id: number;
-  /** Champ `name` : clé utilisée par {{a|...}} et {{achievement|...}} (ex. "Suicide King 2"). */
+  /** `name` field: the key {{a|...}} and {{achievement|...}} use (for instance "Suicide King 2"). */
   wikiName: string;
-  /** Nom affiché : `override name` s'il existe, sinon `name`. */
+  /** Name on screen: `override name` when it exists, `name` otherwise. */
   displayName: string;
-  /** Page liée (champ `link`, sans ancre), sinon le nom affiché. */
+  /** Linked page (`link` field, with no anchor), otherwise the name on screen. */
   link: string;
-  /** Ancre du champ `link` (ex. "Bosses"), null sinon. */
+  /** Anchor of the `link` field ("Bosses" for instance), null otherwise. */
   linkFragment: string | null;
   description: string;
-  /** Condition nettoyée, une ligne par variante encore valable. */
+  /** Cleaned condition, one line per variant that still applies. */
   condition: string;
   conditionLinks: string[];
 }

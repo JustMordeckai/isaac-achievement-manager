@@ -6,7 +6,7 @@ import { fixture } from './fixtures.ts';
 
 let cached: Promise<KnowledgeBase> | null = null;
 
-/** Base wiki construite une fois à partir des fixtures (641 succès). */
+/** Wiki base built once from the fixtures (641 achievements). */
 export function testKnowledgeBase(): Promise<KnowledgeBase> {
   cached ??= buildKnowledgeBase({
     client: fakeWikiClient(),

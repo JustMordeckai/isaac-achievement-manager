@@ -5,7 +5,7 @@ import { requirementGroups } from '../../server/planner/requirements.ts';
 import { TARGETS } from '../../server/planner/targets.ts';
 import { CHARACTERS } from '../../shared/characters.ts';
 import { ENDINGS } from '../../shared/endings.ts';
-import { t } from '../../shared/i18n/index.ts';
+import { type MessageKey, t } from '../../shared/i18n/index.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 
 describe('TARGETS', () => {
@@ -88,16 +88,17 @@ describe('routeSteps', () => {
       "Touch Isaac's chest while holding The Polaroid to enter Chest, then beat ???.",
       'Without entering the chest, go back to the starting room, open the Golden Gate with Key Piece 1 and 2, then beat Mega Satan.',
     ]);
-    // Same route, in the reader's language: proves routeSteps builds each sentence through the catalogues.
-    expect(routeSteps(option, 'fr')).toEqual([
-      'Pendant la run, faire exploser les statues des Angel Rooms pour battre Uriel et Gabriel (Key Piece 1 et 2).',
-      'Traverser Basement, Caves et Depths, puis battre Mom en Depths II.',
-      'Après Mom, prendre The Polaroid (The Negative disparaît).',
-      "Traverser Womb I et II et battre Mom's Heart (ou It Lives).",
-      'Prendre le rayon de lumière vers Cathedral et battre Isaac.',
-      "Toucher le coffre d'Isaac en tenant The Polaroid pour entrer dans Chest, puis battre ???.",
-      'Sans entrer dans le coffre, revenir à la salle de départ, ouvrir la Golden Gate avec Key Piece 1 et 2, puis battre Mega Satan.',
-    ]);
+    // Same route, in the reader's language: proves routeSteps picks the same keys and reads them from the catalogue.
+    const keys: MessageKey[] = [
+      'planner.step.mainAngelStatues',
+      'planner.step.momRun',
+      'planner.step.mainTakePolaroid',
+      'planner.step.momsHeart',
+      'planner.step.isaac',
+      'planner.step.blueBaby',
+      'planner.step.megaSatan',
+    ];
+    expect(routeSteps(option, 'fr')).toEqual(keys.map((key) => t('fr', key)));
   });
 
   it('places Boss Rush at the right point of the Mother and The Beast routes', () => {

@@ -6,7 +6,7 @@ type Token = { kind: 'string'; value: string; quoted: boolean } | { kind: 'open'
 
 const ESCAPES: Record<string, string> = { n: '\n', t: '\t' };
 
-/** Lit un fichier KeyValues texte de Steam (loginusers.vdf, libraryfolders.vdf...). */
+/** Reads a text Steam KeyValues file (loginusers.vdf, libraryfolders.vdf...). */
 export function parseTextVdf(text: string): VdfTextObject {
   let pos = 0;
 
@@ -48,7 +48,7 @@ export function parseTextVdf(text: string): VdfTextObject {
           value += text[pos++];
         }
       }
-      if (pos >= text.length) throw new Error('VDF texte : chaîne non terminée');
+      if (pos >= text.length) throw new Error('Text VDF: unterminated string');
       pos++;
       return { kind: 'string', value, quoted: true };
     }
@@ -66,19 +66,19 @@ export function parseTextVdf(text: string): VdfTextObject {
     for (;;) {
       const keyToken = next();
       if (keyToken === null) {
-        if (depth > 0) throw new Error('VDF texte : accolade fermante manquante');
+        if (depth > 0) throw new Error('Text VDF: missing closing brace');
         return obj;
       }
       if (keyToken.kind === 'close') {
-        if (depth === 0) throw new Error('VDF texte : accolade fermante en trop');
+        if (depth === 0) throw new Error('Text VDF: extra closing brace');
         return obj;
       }
-      if (keyToken.kind === 'open') throw new Error('VDF texte : accolade ouvrante inattendue');
+      if (keyToken.kind === 'open') throw new Error('Text VDF: unexpected opening brace');
       if (isConditional(keyToken)) continue;
       const key = keyToken.value;
       const valueToken = next();
       if (valueToken === null || valueToken.kind === 'close') {
-        throw new Error(`VDF texte : valeur manquante pour "${key}"`);
+        throw new Error(`Text VDF: missing value for "${key}"`);
       }
       obj[key] = valueToken.kind === 'open' ? parseObject(depth + 1) : valueToken.value;
     }

@@ -11,9 +11,9 @@ import {
 } from '../../server/wiki/wikitext.ts';
 import { samplePages } from './helpers/wiki.ts';
 
-describe('findTemplates et templateParams', () => {
-  it('trouve un modèle à accolades imbriquées sans tenir compte de la casse ni des soulignés', () => {
-    const text = 'avant {{Infobox_Achievement\n | name = A {{c|Cain}}\n | id = 2\n}} après {{infobox achievement|id=3}}';
+describe('findTemplates and templateParams', () => {
+  it('finds a template with nested braces, ignoring case and underscores', () => {
+    const text = 'before {{Infobox_Achievement\n | name = A {{c|Cain}}\n | id = 2\n}} after {{infobox achievement|id=3}}';
     const found = findTemplates(text, 'infobox achievement');
     expect(found.map((t) => t.raw)).toEqual([
       '{{Infobox_Achievement\n | name = A {{c|Cain}}\n | id = 2\n}}',
@@ -21,13 +21,13 @@ describe('findTemplates et templateParams', () => {
     ]);
   });
 
-  it('ignore un modèle jamais fermé et retrouve le modèle complet qui suit', () => {
-    const text = 'avant {{infobox achievement|name=Jamais refermé puis suite {{infobox achievement|id=5}} après';
+  it('skips a template that is never closed and finds the complete one that follows', () => {
+    const text = 'before {{infobox achievement|name=Never closed then more {{infobox achievement|id=5}} after';
     const found = findTemplates(text, 'infobox achievement');
     expect(found.map((t) => t.raw)).toEqual(['{{infobox achievement|id=5}}']);
   });
 
-  it('sépare les paramètres nommés et positionnels en ignorant les barres des liens et modèles', () => {
+  it('separates named and positional parameters, ignoring the pipes of links and templates', () => {
     expect(templateParams('{{a|Eden      |text}}')).toEqual({ name: 'a', params: { '1': 'Eden', '2': 'text' } });
     expect(templateParams('{{x| link = [[A|B]] | cond = {{i|Key|n}} and more }}')).toEqual({
       name: 'x',
@@ -37,96 +37,96 @@ describe('findTemplates et templateParams', () => {
 });
 
 describe('stripNoise', () => {
-  it('retire commentaires, notes, galeries, tableaux imbriqués et mots magiques', () => {
+  it('removes comments, notes, galleries, nested tables and magic words', () => {
     const text = [
-      'a <!-- caché --> b<ref name="x"/> c<ref>note</ref>',
+      'a <!-- hidden --> b<ref name="x"/> c<ref>note</ref>',
       '__FORCETOC__',
-      '<gallery>\nFile:x.png|légende\n</gallery>',
+      '<gallery>\nFile:x.png|caption\n</gallery>',
       '{| class="wikitable"',
-      '| cellule',
+      '| cell',
       '{|',
-      '| imbriqué',
+      '| nested',
       '|}',
       '|}',
-      'fin',
+      'end',
     ].join('\n');
-    expect(stripNoise(text)).toBe('a  b c\n\n\nfin');
+    expect(stripNoise(text)).toBe('a  b c\n\n\nend');
   });
 });
 
 describe('selectCurrentVariants', () => {
-  it('garde la variante actuelle des segments séparés par <br>', () => {
-    expect(selectCurrentVariants('{{dlc|na+}} Ancienne<br>{{dlc|a+}} Nouvelle')).toBe('{{dlc|a+}} Nouvelle');
+  it('keeps the current variant of the segments split by <br>', () => {
+    expect(selectCurrentVariants('{{dlc|na+}} Old<br>{{dlc|a+}} New')).toBe('{{dlc|a+}} New');
   });
 
-  it('écarte les lignes réservées aux consoles, sauf si elles citent aussi le PC', () => {
+  it('drops the lines meant for consoles, unless they name the PC too', () => {
     expect(selectCurrentVariants('Reset 7 times<br>{{plat|Switch}}{{plat|PS4}} Streak')).toBe('Reset 7 times');
-    expect(selectCurrentVariants('{{plat|PC}}{{plat|PS4}} Partout')).toBe('{{plat|PC}}{{plat|PS4}} Partout');
+    expect(selectCurrentVariants('{{plat|PC}}{{plat|PS4}} Everywhere')).toBe('{{plat|PC}}{{plat|PS4}} Everywhere');
   });
 
-  it('supprime les plages {{dlc+|code retiré}} et garde les autres', () => {
-    expect(selectCurrentVariants('A {{dlc+|nr}}vieux{{dlc-}} B {{dlc+|r}}neuf{{dlc-|r}} C')).toBe('A  B neuf C');
+  it('drops the {{dlc+|removed code}} ranges and keeps the others', () => {
+    expect(selectCurrentVariants('A {{dlc+|nr}}old{{dlc-}} B {{dlc+|r}}new{{dlc-|r}} C')).toBe('A  B new C');
   });
 
-  it('retire un élément de liste obsolète avec ses sous-éléments', () => {
-    const text = ['* {{dlc|nr}} Ancien effet', '** détail ancien', '*** détail plus fin', '* {{dlc|r}} Effet actuel', '** détail actuel'].join('\n');
-    expect(selectCurrentVariants(text)).toBe('* {{dlc|r}} Effet actuel\n** détail actuel');
+  it('removes an obsolete list item along with its sub items', () => {
+    const text = ['* {{dlc|nr}} Old effect', '** old detail', '*** finer detail', '* {{dlc|r}} Current effect', '** current detail'].join('\n');
+    expect(selectCurrentVariants(text)).toBe('* {{dlc|r}} Current effect\n** current detail');
   });
 
-  it('reconnaît un code contenant une lettre cyrillique après le n', () => {
-    expect(selectCurrentVariants('*{{dlc|nа}} Retiré\n* Gardé')).toBe('* Gardé');
+  it('recognizes a code holding a Cyrillic letter after the n', () => {
+    expect(selectCurrentVariants('*{{dlc|nа}} Removed\n* Kept')).toBe('* Kept');
   });
 });
 
 describe('cleanInline', () => {
-  it('rend les modèles de noms et compte les modèles inconnus', () => {
+  it('renders the name templates and counts the unknown ones', () => {
     const unknown = new Map<string, number>();
     const result = cleanInline(
-      'Use {{i|Red Key|n}} in {{s|Home}} as {{c|Tainted ???}}, {{r|Boss Rush}}, {{cu|blind}}, {{mode|hard}}, {{room|Devil}}, {{achievement|Pop!      |text}}{{mystère|x}}{{=}}',
+      'Use {{i|Red Key|n}} in {{s|Home}} as {{c|Tainted ???}}, {{r|Boss Rush}}, {{cu|blind}}, {{mode|hard}}, {{room|Devil}}, {{achievement|Pop!      |text}}{{mystery|x}}{{=}}',
       unknown,
     );
     expect(result.text).toBe(
       'Use Red Key in Home as Tainted ???, Boss Rush, Curse of the Blind, Hard mode, Devil Room, Pop!=',
     );
-    expect(unknown).toEqual(new Map([['mystère', 1]]));
+    expect(unknown).toEqual(new Map([['mystery', 1]]));
   });
 
-  it('supprime sans les compter les sous-pages incluses et les galeries de bébés', () => {
+  it('drops the included subpages and the baby galleries without counting them', () => {
     const unknown = new Map<string, number>();
-    const result = cleanInline('Avant {{/Additions}}{{Repentance Babies}}{{Afterbirth† Babies}}{{Infobox item|x}} après', unknown);
-    expect(result.text).toBe('Avant après');
+    const result = cleanInline('Before {{/Additions}}{{Repentance Babies}}{{Afterbirth† Babies}}{{Infobox item|x}} after', unknown);
+    expect(result.text).toBe('Before after');
     expect(unknown).toEqual(new Map());
   });
 
-  it('rend les liens et garde la liste des pages liées', () => {
+  it('renders the links and keeps the list of linked pages', () => {
     const result = cleanInline(
-      "[[Mom's Heart]]s, [[??? (Boss)|???]], [[Isaac (Boss)|]], [[#Tips|astuces]], [[wikipedia:Castlevania]], [[:category:Yes Mother? items|Yes Mother? items]] [[File:X.png|thumb|[[Cain]]]][[Category:Items]][[fr:Succès]]",
+      "[[Mom's Heart]]s, [[??? (Boss)|???]], [[Isaac (Boss)|]], [[#Tips|tips]], [[wikipedia:Castlevania]], [[:category:Yes Mother? items|Yes Mother? items]] [[File:X.png|thumb|[[Cain]]]][[Category:Items]][[fr:Success]]",
     );
-    expect(result.text).toBe("Mom's Hearts, ???, Isaac, astuces, Castlevania, Yes Mother? items");
+    expect(result.text).toBe("Mom's Hearts, ???, Isaac, tips, Castlevania, Yes Mother? items");
     expect(result.links).toEqual(["Mom's Heart", '??? (Boss)', 'Isaac (Boss)', 'Cain']);
   });
 
-  it('retire gras, italique, balises et entités, et resserre les parenthèses', () => {
-    expect(cleanInline("'''Gras''' et ''italique''<br/>ligne&nbsp;2 <small>petit</small> ( {{dlc|r}} sauf Plum )").text).toBe(
-      'Gras et italique\nligne 2 petit (sauf Plum)',
+  it('removes bold, italics, tags and entities, and tightens the parentheses', () => {
+    expect(cleanInline("'''Bold''' and ''italics''<br/>line&nbsp;2 <small>small</small> ( {{dlc|r}} except Plum )").text).toBe(
+      'Bold and italics\nline 2 small (except Plum)',
     );
   });
 });
 
 describe('toBlocks', () => {
-  it('produit paragraphes, éléments de liste et termes de définition', () => {
-    const text = ['Première ligne', 'suite du paragraphe', '', '* Élément', '** Sous-élément', '; Terme: définition', ': retrait', '----', 'Fin'].join('\n');
+  it('produces paragraphs, list items and definition terms', () => {
+    const text = ['First line', 'rest of the paragraph', '', '* Item', '** Sub item', '; Term: definition', ': indent', '----', 'End'].join('\n');
     expect(toBlocks(text)).toEqual([
-      { kind: 'paragraph', level: 0, text: 'Première ligne suite du paragraphe' },
-      { kind: 'item', level: 1, text: 'Élément' },
-      { kind: 'item', level: 2, text: 'Sous-élément' },
-      { kind: 'item', level: 1, text: 'Terme: définition' },
-      { kind: 'paragraph', level: 0, text: 'retrait' },
-      { kind: 'paragraph', level: 0, text: 'Fin' },
+      { kind: 'paragraph', level: 0, text: 'First line rest of the paragraph' },
+      { kind: 'item', level: 1, text: 'Item' },
+      { kind: 'item', level: 2, text: 'Sub item' },
+      { kind: 'item', level: 1, text: 'Term: definition' },
+      { kind: 'paragraph', level: 0, text: 'indent' },
+      { kind: 'paragraph', level: 0, text: 'End' },
     ]);
   });
 
-  it('ne garde que les effets actuels de The Nail', () => {
+  it('keeps only the current effects of The Nail', () => {
     const { sections } = splitSections(samplePages()['The Nail']);
     const effects = sections.find((s) => s.title === 'Effects');
     expect(toBlocks(effects?.body ?? '')).toEqual([
@@ -152,17 +152,17 @@ describe('toBlocks', () => {
 });
 
 describe('splitSections', () => {
-  it('sépare introduction et sections, et marque les titres obsolètes', () => {
-    const text = 'intro\n== A ==\ncorps A\n=== A1 ===\ncorps A1\n=== {{dlc|nr}} Ancien ===\nvieux\n== [[B]] ==\ncorps B';
+  it('separates the intro from the sections, and marks the obsolete headings', () => {
+    const text = 'intro\n== A ==\nbody A\n=== A1 ===\nbody A1\n=== {{dlc|nr}} Old ===\nold text\n== [[B]] ==\nbody B';
     const { lead, sections } = splitSections(text);
     expect(lead).toBe('intro');
     expect(sections.map((s) => [s.title, s.level, s.obsolete])).toEqual([
       ['A', 2, false],
       ['A1', 3, false],
-      ['Ancien', 3, true],
+      ['Old', 3, true],
       ['B', 2, false],
     ]);
-    expect(sections[0].body).toBe('corps A\n');
+    expect(sections[0].body).toBe('body A\n');
     expect(sectionEnd(sections, 0)).toBe(3);
     expect(sectionEnd(sections, 3)).toBe(4);
   });

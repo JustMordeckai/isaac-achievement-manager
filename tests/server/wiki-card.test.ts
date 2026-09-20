@@ -5,7 +5,7 @@ import { testKnowledgeBase } from './helpers/kb.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
 
 describe('wikiUrl', () => {
-  it('encode les titres et les ancres comme le wiki', () => {
+  it('encodes the titles and the anchors the way the wiki does', () => {
     expect(wikiUrl('??? (Boss)')).toBe('https://bindingofisaacrebirth.fandom.com/wiki/%3F%3F%3F_(Boss)');
     expect(wikiUrl('Jacob & Esau')).toBe('https://bindingofisaacrebirth.fandom.com/wiki/Jacob_%26_Esau');
     expect(wikiUrl('Template:Nav challenge')).toBe('https://bindingofisaacrebirth.fandom.com/wiki/Template:Nav_challenge');
@@ -17,20 +17,20 @@ describe('wikiUrl', () => {
 describe('enrichAchievements', () => {
   const { achievements } = mergeProgress(fixtureMergeInput());
 
-  it('ajoute le type de condition et le personnage', async () => {
+  it('adds the kind of condition and the character', async () => {
     const entries = enrichAchievements(achievements, await testKnowledgeBase());
     expect(entries[8]).toMatchObject({ id: 9, how: 'mark', character: 'azazel' });
     expect(entries[2]).toMatchObject({ id: 3, how: 'boss', character: null });
     expect(entries[640]).toMatchObject({ id: 641, how: 'misc', character: null });
   });
 
-  it('laisse les champs à null sans base wiki', () => {
+  it('leaves the fields null with no wiki base', () => {
     expect(enrichAchievements(achievements, null)[8]).toMatchObject({ id: 9, how: null, character: null });
   });
 });
 
 describe('buildAchievementWiki', () => {
-  it('assemble condition, déblocage et astuces d’une marque de complétion', async () => {
+  it('assembles condition, unlock and tips of a completion mark', async () => {
     const kb = await testKnowledgeBase();
     const wiki = buildAchievementWiki(kb, 70);
     expect(wiki).toMatchObject({
@@ -44,7 +44,7 @@ describe('buildAchievementWiki', () => {
     expect(wiki?.tips.map((t) => [t.page, t.sections.map((s) => s.title)])).toEqual([['Boss Rush', ['Tips']]]);
   });
 
-  it('ajoute la page du personnage, celle de Home pour un placard, et la page du défi', async () => {
+  it('adds the page of the character, the Home page for a closet, and the challenge page', async () => {
     const kb = await testKnowledgeBase();
     expect(buildAchievementWiki(kb, 474)?.tips.map((t) => t.page)).toEqual(['Tainted Isaac', 'Home']);
     expect(buildAchievementWiki(kb, 46)?.tips.map((t) => t.page)).toEqual(['Cain']);
@@ -53,7 +53,7 @@ describe('buildAchievementWiki', () => {
     expect(buildAchievementWiki(kb, 89)?.tips.map((t) => t.page)).toEqual(['Pitch Black']);
   });
 
-  it('ajoute les astuces générales rattachées et l’extrait de la section visée', async () => {
+  it('adds the general tips that are tied to it and the excerpt of the section it points at', async () => {
     const kb = await testKnowledgeBase();
     const noDamage = buildAchievementWiki(kb, 37);
     expect(noDamage?.tips.at(-1)).toMatchObject({
@@ -65,7 +65,7 @@ describe('buildAchievementWiki', () => {
     expect(bossRushTip?.unlockPage?.intro).toEqual(kb.pages['The Nail']?.intro ?? []);
   });
 
-  it('renvoie null pour un succès absent du wiki ou inconnu', async () => {
+  it('returns null for an achievement the wiki does not have or does not know', async () => {
     const kb = await testKnowledgeBase();
     expect(buildAchievementWiki(kb, 641)).toBeNull();
     expect(buildAchievementWiki(kb, 9999)).toBeNull();

@@ -2,7 +2,7 @@ import type { CharacterId } from '../../shared/characters.ts';
 import type { How, TextBlock, Unlock, WikiSyncReport } from '../../shared/types.ts';
 import type { KbChallenge, KbPage, TipAttachment } from './parse-pages.ts';
 
-/** À incrémenter à chaque changement de forme de data/kb.json. */
+/** Bumped on every change of the shape of data/kb.json. */
 export const KB_VERSION = 1;
 
 export interface KbAchievement {
@@ -10,15 +10,15 @@ export interface KbAchievement {
   wikiName: string;
   name: string;
   description: string;
-  /** Condition nettoyée (vide pour un succès absent du wiki). */
+  /** Cleaned condition (empty for an achievement the wiki does not have). */
   condition: string;
   how: How;
   unlocks: Unlock;
   character: CharacterId | null;
-  /** Page liée utilisable (clé de `pages`), null si elle n'existe pas. */
+  /** Usable linked page (key of `pages`), null when it does not exist. */
   page: string | null;
   fragment: string | null;
-  /** Section visée par l'ancre de la page liée, si elle a été trouvée. */
+  /** Section the anchor of the linked page points at, when it was found. */
   excerpt: TextBlock[] | null;
   inWiki: boolean;
 }

@@ -4,7 +4,7 @@ export interface VdfInput {
 
 const encoder = new TextEncoder();
 
-/** Encode un objet en KeyValues binaire (les nombres deviennent des int32). */
+/** Encodes an object as binary KeyValues (numbers become int32). */
 export function vdfBinary(input: VdfInput): Uint8Array {
   const out: number[] = [];
   const cstring = (text: string) => out.push(...encoder.encode(text), 0);

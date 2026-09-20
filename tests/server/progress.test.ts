@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { plural } from '../../shared/i18n/index.ts';
 import { mergeProgress, type MergeInput } from '../../server/sources/progress.ts';
 import { parseSaveFile } from '../../server/sources/save-file.ts';
 import type { ProfileStats } from '../../server/sources/steam-profile.ts';
@@ -57,7 +58,7 @@ describe('mergeProgress', () => {
     const fr = mergeProgress(input, 'fr');
     expect(fr.summary.sources.steamCache).toEqual({
       state: 'stale',
-      message: 'Le profil en ligne compte 1 succès de plus que le cache local',
+      message: plural('fr', 'sources.profileAhead', 1),
     });
   });
 
@@ -80,7 +81,7 @@ describe('mergeProgress', () => {
     const fr = mergeProgress(input, 'fr');
     expect(fr.summary.sources.steamCache).toEqual({
       state: 'stale',
-      message: 'Le profil en ligne compte 2 succès de plus que le cache local',
+      message: plural('fr', 'sources.profileAhead', 2),
     });
   });
 

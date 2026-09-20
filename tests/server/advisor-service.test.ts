@@ -65,7 +65,7 @@ describe('createAdvisorService', () => {
     const reply = await service.chat([{ role: 'user', content: 'Salut' }], new AbortController().signal, 'en');
     let text = '';
     for await (const part of reply) text += part;
-    expect(text).toBe('Bonjour Player.');
+    expect(text).toBe('Hello Player.');
   });
 
   it('keeps the previous settings when the write fails', async () => {

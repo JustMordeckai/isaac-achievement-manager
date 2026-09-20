@@ -89,7 +89,7 @@ describe('RunCard', () => {
         { anyOf: [{ id: 407, name: 'A Secret Exit' }], met: false },
         { anyOf: [{ id: 57, name: 'The Polaroid' }, { id: 78, name: 'The Negative' }], met: false },
       ],
-      note: 'Eden change de départ à chaque partie.',
+      note: 'Eden starts every run with different items.',
     });
     renderCard(run);
     expect(screen.getByText('Normal')).not.toHaveClass('run__mode--strong');
@@ -101,7 +101,7 @@ describe('RunCard', () => {
       'The Polaroid',
       'The Negative',
     ]);
-    expect(screen.getByText('Eden change de départ à chaque partie.')).toHaveClass('hint');
+    expect(screen.getByText('Eden starts every run with different items.')).toHaveClass('hint');
   });
 
   it('asks the advisor how to clear the run', async () => {

@@ -13,16 +13,16 @@ afterEach(async () => {
 });
 
 describe('writeFileAtomic', () => {
-  it('écrit le fichier final sans laisser de fichier temporaire', async () => {
+  it('writes the final file and leaves no temporary file behind', async () => {
     const file = path.join(dir, 'ok.json');
     await writeFileAtomic(file, '{"a":1}');
     expect(await readFile(file, 'utf8')).toBe('{"a":1}');
     expect((await readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
   });
 
-  it('relance l’erreur et supprime le fichier temporaire quand le renommage échoue', async () => {
+  it('rethrows the error and removes the temporary file when the rename fails', async () => {
     const file = path.join(dir, 'blocked');
-    await mkdir(file); // le renommage vers un dossier existant échoue
+    await mkdir(file); // renaming onto an existing directory fails
     await expect(writeFileAtomic(file, 'contenu')).rejects.toThrow();
     expect((await readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
   });

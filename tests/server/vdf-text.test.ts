@@ -3,7 +3,7 @@ import { parseTextVdf, type VdfTextObject } from '../../server/sources/vdf-text.
 import { fixtureText } from './helpers/fixtures.ts';
 
 describe('parseTextVdf', () => {
-  it('lit loginusers.vdf', () => {
+  it('reads loginusers.vdf', () => {
     const users = parseTextVdf(fixtureText('loginusers.vdf')).users as VdfTextObject;
     expect(Object.keys(users)).toEqual(['76561198083722517', '76561198194833618']);
     const me = users['76561198083722517'] as VdfTextObject;
@@ -11,7 +11,7 @@ describe('parseTextVdf', () => {
     expect(me.Timestamp).toBe('1789551543');
   });
 
-  it('gère échappements, commentaires, jetons nus et conditions', () => {
+  it('handles escapes, comments, bare tokens and conditionals', () => {
     const text = [
       '\uFEFF// commentaire',
       '"root"',
@@ -34,20 +34,20 @@ describe('parseTextVdf', () => {
     });
   });
 
-  it('signale une accolade fermante manquante', () => {
-    expect(() => parseTextVdf('"a" { "b" "c"')).toThrow(/accolade fermante manquante/);
+  it('reports a missing closing brace', () => {
+    expect(() => parseTextVdf('"a" { "b" "c"')).toThrow(/missing closing brace/);
   });
 
-  it('signale une accolade fermante en trop', () => {
-    expect(() => parseTextVdf('"a" "b" }')).toThrow(/accolade fermante en trop/);
+  it('reports an extra closing brace', () => {
+    expect(() => parseTextVdf('"a" "b" }')).toThrow(/extra closing brace/);
   });
 
-  it('signale une valeur manquante', () => {
-    expect(() => parseTextVdf('"a"')).toThrow(/valeur manquante/);
-    expect(() => parseTextVdf('"a" { "b" }')).toThrow(/valeur manquante/);
+  it('reports a missing value', () => {
+    expect(() => parseTextVdf('"a"')).toThrow(/missing value/);
+    expect(() => parseTextVdf('"a" { "b" }')).toThrow(/missing value/);
   });
 
-  it('signale une chaîne non terminée', () => {
-    expect(() => parseTextVdf('"a" "b')).toThrow(/chaîne non terminée/);
+  it('reports an unterminated string', () => {
+    expect(() => parseTextVdf('"a" "b')).toThrow(/unterminated string/);
   });
 });

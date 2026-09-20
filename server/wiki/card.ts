@@ -5,13 +5,13 @@ import type { KnowledgeBase } from './kb-types.ts';
 
 const WIKI_BASE = 'https://bindingofisaacrebirth.fandom.com/wiki/';
 
-/** URL d'une page du wiki (espaces en soulignés, caractères spéciaux encodés). */
+/** URL of a wiki page (spaces as underscores, special characters encoded). */
 export function wikiUrl(title: string, fragment: string | null = null): string {
   const page = encodeURIComponent(title.replace(/ /g, '_')).replace(/%2F/g, '/').replace(/%3A/g, ':');
   return fragment ? `${WIKI_BASE}${page}#${encodeURIComponent(fragment.replace(/ /g, '_'))}` : `${WIKI_BASE}${page}`;
 }
 
-/** Ajoute le type de condition et le personnage de la base wiki à chaque succès de la liste. */
+/** Adds the kind of condition and the character of the wiki base to every achievement of the list. */
 export function enrichAchievements(list: AchievementState[], kb: KnowledgeBase | null): AchievementEntry[] {
   const byId = new Map(kb?.achievements.map((a) => [a.id, a]));
   return list.map((achievement) => {
@@ -20,7 +20,7 @@ export function enrichAchievements(list: AchievementState[], kb: KnowledgeBase |
   });
 }
 
-/** Pages dont les astuces complètent la fiche, dans l'ordre d'affichage (hors page liée). */
+/** Pages whose tips complete the card, in the order they are shown (the linked page aside). */
 function relatedPages(kb: KnowledgeBase, id: number): string[] {
   const entry = kb.achievements.find((a) => a.id === id);
   if (!entry) return [];

@@ -25,11 +25,11 @@ const BOSS_EXCLUDED = /\d|\b(?:as|using|without|in under|unlock)\b/i;
 
 function characterId(name: string): CharacterId {
   const character = characterByName(name);
-  if (!character) throw new Error(`Personnage non reconnu : ${name}`);
+  if (!character) throw new Error(`Unrecognized character: ${name}`);
   return character.id;
 }
 
-/** Découpe une liste de noms sur les virgules, « and », « or » et « / ». */
+/** Splits a list of names on commas, "and", "or" and "/". */
 function splitList(list: string): string[] {
   return list
     .split(/\s*,\s*(?:and\s+|or\s+)?|\s+and\s+|\s+or\s+|\s*\/\s*/)
@@ -48,7 +48,7 @@ function endingsOf(list: string): EndingId[] | null {
   return ids.length > 0 ? ids : null;
 }
 
-/** Classe une condition nettoyée (première ligne) selon la façon d'obtenir le succès. */
+/** Sorts a cleaned condition (first line) by the way the achievement is earned. */
 export function classifyHow(condition: string): How {
   const text = condition.split('\n')[0].trim();
 
@@ -87,13 +87,13 @@ export function classifyHow(condition: string): How {
   return { kind: 'misc' };
 }
 
-/** Page liée d'un succès, telle que résolue pendant la synchro. */
+/** Page linked from an achievement, as the sync resolved it. */
 export interface LinkedPageInfo {
-  /** Titre de la page après redirection. */
+  /** Title of the page after the redirect. */
   title: string;
   fragment: string | null;
   missing: boolean;
-  /** Type d'infobox normalisé ("passive collectible", "trinket"...), null sans infobox. */
+  /** Normalized infobox type ("passive collectible", "trinket"...), null with no infobox. */
   infobox: string | null;
 }
 
@@ -122,12 +122,12 @@ function kindFromDescription(description: string): UnlockKind | null {
   return null;
 }
 
-/** Page utilisable : présente et différente de la page Achievements (redirection des succès sans page). */
+/** Usable page: present and other than the Achievements page (where achievements with no page redirect). */
 export function isUsablePage(linked: LinkedPageInfo | null): linked is LinkedPageInfo {
   return linked !== null && !linked.missing && linked.title !== 'Achievements';
 }
 
-/** Déduit ce que débloque un succès depuis sa description wiki et le type de sa page liée. */
+/** Infers what an achievement unlocks from its wiki description and the type of its linked page. */
 export function classifyUnlock(displayName: string, description: string, linked: LinkedPageInfo | null): Unlock {
   const page = isUsablePage(linked) ? linked : null;
   const kind =
@@ -142,7 +142,7 @@ export function classifyUnlock(displayName: string, description: string, linked:
   return { kind, name };
 }
 
-/** Personnage concerné par un succès, s'il y en a un. */
+/** Character an achievement is about, when there is one. */
 export function characterOf(how: How): CharacterId | null {
   return 'character' in how ? how.character : null;
 }

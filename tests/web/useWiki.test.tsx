@@ -9,14 +9,14 @@ const DONE: WikiSyncEvent = {
   step: 'done',
   done: 1,
   total: 1,
-  message: 'Synchro terminée',
+  message: 'Sync complete',
   report: { achievements: 641, pages: 518, missingPages: [], unknownTemplates: {}, miscCount: 108, otherUnlockCount: 61, cachedPages: 0 },
 };
 
 const ndjson = (events: WikiSyncEvent[]) => new Response(events.map((e) => `${JSON.stringify(e)}\n`).join(''));
 
 describe('useKbStatus', () => {
-  it('relit l’état à chaque changement de clé', async () => {
+  it('reads the state again on every key change', async () => {
     let status = KB_ABSENT;
     const mock = stubFetch({ 'GET /api/wiki/status': () => status });
     const { result, rerender } = renderHook(({ key }) => useKbStatus(key), { initialProps: { key: 0 } });
@@ -38,7 +38,7 @@ describe('useKbStatus', () => {
 });
 
 describe('useSettings', () => {
-  it('lit les réglages une fois, ou signale l’erreur', async () => {
+  it('reads the settings once, or reports the error', async () => {
     stubFetch({ 'GET /api/settings': () => SETTINGS });
     const ok = renderHook(() => useSettings());
     expect(ok.result.current).toEqual({ status: 'loading' });
@@ -50,7 +50,7 @@ describe('useSettings', () => {
 });
 
 describe('useWikiSync', () => {
-  it('suit la synchro jusqu’au rapport puis prévient l’application', async () => {
+  it('follows the sync to its report then warns the application', async () => {
     let finish: (response: Response) => void = () => {};
     const mock = stubFetch({ 'POST /api/wiki/sync': () => new Promise<Response>((resolve) => (finish = resolve)) });
     const onFinished = vi.fn();
@@ -60,12 +60,12 @@ describe('useWikiSync', () => {
     expect(result.current[0]).toEqual({ kind: 'running', event: null });
     act(() => result.current[1]());
     expect(mock).toHaveBeenCalledTimes(1);
-    await act(async () => finish(ndjson([{ step: 'core', done: 0, total: 1, message: 'Téléchargement' }, DONE])));
+    await act(async () => finish(ndjson([{ step: 'core', done: 0, total: 1, message: 'Downloading' }, DONE])));
     await vi.waitFor(() => expect(result.current[0]).toEqual({ kind: 'done', report: DONE.report }));
     expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
-  it('signale un échec du flux ou un refus du serveur, et permet de relancer', async () => {
+  it('reports a failed stream or a refusal from the server, and allows a retry', async () => {
     const onFinished = vi.fn();
     stubFetch({
       'POST /api/wiki/sync': () => ndjson([{ step: 'error', done: 0, total: 1, message: 'Page « Achievements » indisponible' }]),
@@ -73,10 +73,10 @@ describe('useWikiSync', () => {
     const { result } = renderHook(() => useWikiSync(onFinished));
     act(() => result.current[1]());
     await vi.waitFor(() => expect(result.current[0]).toEqual({ kind: 'failed', message: 'Page « Achievements » indisponible' }));
-    stubFetch({ 'POST /api/wiki/sync': () => jsonResponse({ error: 'Une synchro du wiki est déjà en cours' }, 409) });
+    stubFetch({ 'POST /api/wiki/sync': () => jsonResponse({ error: 'A wiki sync is already running' }, 409) });
     act(() => result.current[1]());
     await vi.waitFor(() =>
-      expect(result.current[0]).toEqual({ kind: 'failed', message: 'Une synchro du wiki est déjà en cours' }),
+      expect(result.current[0]).toEqual({ kind: 'failed', message: 'A wiki sync is already running' }),
     );
     expect(onFinished).toHaveBeenCalledTimes(2);
   });

@@ -12,20 +12,20 @@ import {
   type TemplateCounter,
 } from './wikitext.ts';
 
-/** Au-delà, une section est coupée et la fiche renvoie vers le wiki. */
+/** Past that, a section is cut short and the card points to the wiki. */
 export const MAX_SECTION_CHARS = 5000;
 const MAX_INTRO_BLOCKS = 3;
 
-/** Contenu utile d'une page du wiki, stocké dans kb.json. */
+/** Useful content of a wiki page, stored in kb.json. */
 export interface KbPage {
   title: string;
-  /** Type d'infobox normalisé ("passive collectible", "character"...), null sans infobox. */
+  /** Normalized infobox type ("passive collectible", "character"...), null with no infobox. */
   infobox: string | null;
-  /** Effet résumé (champ description des objets, bibelots et cartes). */
+  /** Effect in one line (description field of items, trinkets and cards). */
   effect: string | null;
   quality: string | null;
   intro: TextBlock[];
-  /** Sections d'astuces conservées (Strategy, Tips, Difficulty...). */
+  /** Tip sections that are kept (Strategy, Tips, Difficulty...). */
   sections: TipSection[];
 }
 
@@ -41,7 +41,7 @@ export function pageInfobox(wikitext: string): { type: string | null; params: Re
   return { type: normalizeTemplateName(opening[1]).replace(/^infobox /, ''), params: templateParams(match.raw).params };
 }
 
-/** Construit une section d'astuces à partir d'une section et de ses sous-sections. */
+/** Builds a tip section from a section and its subsections. */
 export function buildSection(group: RawSection[], unknown?: TemplateCounter): TipSection {
   const [head, ...children] = group;
   const blocks: TextBlock[] = [...toBlocks(head.body, unknown)];
@@ -76,7 +76,7 @@ function intro(lead: string, unknown?: TemplateCounter): TextBlock[] {
   return blocks.slice(0, MAX_INTRO_BLOCKS);
 }
 
-/** Champ d'infobox nettoyé ; les variantes sur plusieurs lignes sont jointes par `separator`. */
+/** Cleaned infobox field; variants on several lines are joined by `separator`. */
 function fieldText(value: string | undefined, unknown?: TemplateCounter, separator = ' '): string | null {
   if (!value) return null;
   const text = cleanInline(value, unknown).text.replace(/\n+/g, separator).trim();
@@ -92,7 +92,7 @@ export function parsePage(title: string, wikitext: string, unknown?: TemplateCou
     if (section.obsolete) continue;
     const wanted = TIP_TITLES.test(section.title) || (type === 'challenge' && CHALLENGE_ONLY_TITLES.test(section.title));
     if (!wanted) {
-      // Les sous-sections d'une section ignorée peuvent contenir des astuces : on les examine aussi.
+      // The subsections of a section that is skipped can hold tips, so they are looked at too.
       const end = sectionEnd(sections, index);
       if (end > index + 1) {
         for (let child = index + 1; child < end; child = sectionEnd(sections, child)) {
@@ -115,14 +115,14 @@ export function parsePage(title: string, wikitext: string, unknown?: TemplateCou
   };
 }
 
-/** Blocs de la section dont le titre correspond à l'ancre (redirections vers une section). */
+/** Blocks of the section whose title matches the anchor (redirects to a section). */
 export function sectionBlocks(wikitext: string, anchor: string, unknown?: TemplateCounter): TextBlock[] | null {
   const { sections } = splitSections(wikitext);
   const wanted = anchor.replace(/_/g, ' ').trim().toLowerCase();
   const index = sections.findIndex((section) => section.title.toLowerCase() === wanted);
   if (index < 0) return null;
   const blocks = buildSection(sections.slice(index, sectionEnd(sections, index)), unknown).blocks.slice(0, 6);
-  // Une section réduite à une galerie ne dit rien : la fiche retombe alors sur l'intro de la page.
+  // A section that is only a gallery says nothing: the card then falls back on the intro of the page.
   return blocks.length > 0 ? blocks : null;
 }
 
@@ -132,7 +132,7 @@ export interface ChallengeRef {
   name: string;
 }
 
-/** Liste numérotée des défis (modèle Template:Nav challenge). */
+/** Numbered list of the challenges (Template:Nav challenge). */
 export function parseChallengeNav(wikitext: string): ChallengeRef[] {
   const refs: ChallengeRef[] = [];
   for (const match of wikitext.matchAll(/(\d+)\.\s*\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)) {
@@ -143,7 +143,7 @@ export function parseChallengeNav(wikitext: string): ChallengeRef[] {
 
 export interface KbChallenge {
   number: number;
-  /** Titre de la page du défi. */
+  /** Title of the challenge page. */
   title: string;
   name: string;
   character: string;
@@ -151,9 +151,9 @@ export interface KbChallenge {
   blindfolded: boolean;
   startingItems: string[];
   curse: string | null;
-  /** Ce que le défi débloque (champ unlocks). */
+  /** What the challenge unlocks (unlocks field). */
   reward: string | null;
-  /** Nom wiki du succès qui débloque le défi, null s'il est disponible d'emblée. */
+  /** Wiki name of the achievement that unlocks the challenge, null when it is available from the start. */
   unlockedBy: string | null;
 }
 
@@ -170,7 +170,7 @@ export function parseChallenge(ref: ChallengeRef, wikitext: string, unknown?: Te
     number: ref.number,
     title: ref.title,
     name: ref.name,
-    // Valeurs par défaut du modèle Infobox challenge : Isaac, et Mom comme objectif.
+    // Default values of the Infobox challenge template: Isaac, and Mom as the goal.
     character: fieldText(params.character, unknown) ?? 'Isaac',
     goal: fieldText(params['special goal'], unknown) ?? fieldText(params.goal, unknown) ?? 'Mom',
     blindfolded: /^\s*yes\s*$/i.test(params.blindfolded ?? ''),
@@ -181,7 +181,7 @@ export function parseChallenge(ref: ChallengeRef, wikitext: string, unknown?: Te
   };
 }
 
-/** Section de la page Achievement Tips rattachée à un ou plusieurs succès. */
+/** Section of the Achievement Tips page tied to one or more achievements. */
 export interface TipAttachment {
   ids: number[];
   section: TipSection;
@@ -199,9 +199,9 @@ function nameIndex(rows: WikiAchievementRow[]): Map<string, number[]> {
 }
 
 /**
- * Rattache les sections de niveau 2 de la page Achievement Tips aux succès : par les modèles
- * {{a|...}} ou {{achievement|...}} du corps de la section, par les noms du titre, ou, pour les
- * listes de définitions (« ; Nom : texte »), une entrée par succès.
+ * Ties the level 2 sections of the Achievement Tips page to the achievements: through the
+ * {{a|...}} or {{achievement|...}} templates in the body, through the names in the title, or, for
+ * definition lists ("; Name : text"), one entry per achievement.
  */
 export function parseAchievementTips(
   wikitext: string,

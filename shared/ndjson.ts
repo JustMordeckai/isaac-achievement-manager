@@ -1,6 +1,6 @@
 /**
- * Lignes non vides d'un flux NDJSON, dans l'ordre. Une ligne peut arriver en plusieurs morceaux :
- * la fin incomplète attend la lecture suivante. Arrêter la boucle annule le flux.
+ * Non empty lines of an NDJSON stream, in order. One line can arrive in several chunks:
+ * an unfinished end waits for the next read. Stopping the loop cancels the stream.
  */
 export async function* ndjsonLines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   const reader = body.getReader();

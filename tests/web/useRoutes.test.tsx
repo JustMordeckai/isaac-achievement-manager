@@ -8,7 +8,7 @@ import { jsonResponse, stubFetch } from './fetch-stub.ts';
 const ME: ProfileQuery = { profile: 'me', slot: null };
 
 describe('useRoutes', () => {
-  it('charge le plan puis le garde affiché pendant une actualisation', async () => {
+  it('loads the plan then keeps it on screen during a refresh', async () => {
     let release: () => void = () => {};
     const mock = stubFetch({
       'GET /api/routes': (url) => {
@@ -28,7 +28,7 @@ describe('useRoutes', () => {
     await vi.waitFor(() => expect(result.current).toEqual({ status: 'ready', data: ROUTES_OK, refreshing: false }));
   });
 
-  it('repart de zéro quand le profil change', async () => {
+  it('starts over when the profile changes', async () => {
     const mock = stubFetch({
       'GET /api/routes': (url) => (url.searchParams.get('slot') === '2' ? { kb: KB_ABSENT, plan: null } : ROUTES_OK),
     });
@@ -42,9 +42,9 @@ describe('useRoutes', () => {
     expect(mock).toHaveBeenCalledTimes(2);
   });
 
-  it('signale l’erreur du serveur', async () => {
-    stubFetch({ 'GET /api/routes': () => jsonResponse({ error: 'Aucun compte Steam local' }, 404) });
+  it('reports the error from the server', async () => {
+    stubFetch({ 'GET /api/routes': () => jsonResponse({ error: 'No local Steam account' }, 404) });
     const { result } = renderHook(() => useRoutes(ME, 0));
-    await vi.waitFor(() => expect(result.current).toEqual({ status: 'error', message: 'Aucun compte Steam local' }));
+    await vi.waitFor(() => expect(result.current).toEqual({ status: 'error', message: 'No local Steam account' }));
   });
 });

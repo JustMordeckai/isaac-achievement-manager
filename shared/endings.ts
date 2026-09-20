@@ -15,15 +15,15 @@ export type EndingId =
 
 export interface Ending {
   id: EndingId;
-  /** Nom tel qu'il apparaît dans les conditions du wiki. */
+  /** Name as it appears in the conditions of the wiki. */
   name: string;
   aliases: string[];
-  /** Page du wiki qui décrit le combat (avec l'ancre éventuelle). */
+  /** Wiki page that describes the fight (with its anchor when there is one). */
   page: string;
   fragment: string | null;
 }
 
-/** Les fins de run qui donnent une marque de complétion. */
+/** The run endings that give a completion mark. */
 export const ENDINGS: Ending[] = [
   { id: 'momsHeart', name: "Mom's Heart", aliases: ['It Lives', 'It Lives!'], page: "Mom's Heart", fragment: null },
   { id: 'isaac', name: 'Isaac', aliases: [], page: 'Isaac (Boss)', fragment: null },
@@ -51,6 +51,6 @@ export function endingByName(name: string): Ending | null {
 
 export function endingById(id: EndingId): Ending {
   const found = ENDINGS.find((e) => e.id === id);
-  if (!found) throw new Error(`Fin inconnue : ${id}`);
+  if (!found) throw new Error(`Unknown ending: ${id}`);
   return found;
 }

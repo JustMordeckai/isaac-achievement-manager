@@ -6,14 +6,14 @@ export type FakeOllamaHandler = (req: IncomingMessage, res: ServerResponse, body
 
 export interface FakeOllama {
   url: string;
-  /** Corps JSON reçus sur POST /api/chat. */
+  /** JSON bodies received on POST /api/chat. */
   chats: unknown[];
-  /** Nombre de réponses coupées par le client avant leur fin. */
+  /** How many answers the client cut before their end. */
   aborted(): number;
   close(): Promise<void>;
 }
 
-/** Lignes NDJSON d'une réponse de /api/chat, telles qu'Ollama 0.34 les envoie. */
+/** NDJSON lines of an answer of /api/chat, the way Ollama 0.34 sends them. */
 export function chatLines(parts: string[], doneReason = 'stop'): string[] {
   const message = (content: string) => ({ role: 'assistant', content });
   return [
@@ -24,7 +24,7 @@ export function chatLines(parts: string[], doneReason = 'stop'): string[] {
 
 export const TAGS = { models: [{ name: 'qwen3.5:9b' }, { name: 'qwen3.5:4b' }, { name: 'llama3.2:latest' }] };
 
-/** Réponses par défaut : liste des modèles, et une réponse en deux morceaux pour qwen3.5:9b. */
+/** Default answers: the list of models, and an answer in two chunks for qwen3.5:9b. */
 export const DEFAULT_ROUTES: Record<string, FakeOllamaHandler> = {
   'GET /api/tags': (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
@@ -39,11 +39,11 @@ export const DEFAULT_ROUTES: Record<string, FakeOllamaHandler> = {
       return;
     }
     res.setHeader('Content-Type', 'application/x-ndjson');
-    res.end(`${chatLines(['Bonjour', ' Player.']).join('\n')}\n`);
+    res.end(`${chatLines(['Hello', ' Player.']).join('\n')}\n`);
   },
 };
 
-/** Faux serveur Ollama sur un port éphémère ; `routes` remplace les réponses par défaut. */
+/** Fake Ollama server on an ephemeral port; `routes` replaces the default answers. */
 export async function startFakeOllama(routes: Record<string, FakeOllamaHandler> = {}): Promise<FakeOllama> {
   const handlers = { ...DEFAULT_ROUTES, ...routes };
   const chats: unknown[] = [];
@@ -79,7 +79,7 @@ export async function startFakeOllama(routes: Record<string, FakeOllamaHandler> 
   };
 }
 
-/** Adresse d'un port local fermé (ECONNREFUSED). */
+/** Address of a closed local port (ECONNREFUSED). */
 export async function closedUrl(): Promise<string> {
   const server = http.createServer();
   server.listen(0, '127.0.0.1');

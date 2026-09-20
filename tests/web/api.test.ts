@@ -42,11 +42,11 @@ describe('api', () => {
   it('encodes the input of the profile lookup', async () => {
     stubFetch({
       'GET /api/profile/resolve': (url) => {
-        expect(url.searchParams.get('input')).toBe('https://steamcommunity.com/id/Ami/');
-        return { steamId64: '76561198000000001', name: 'Ami' };
+        expect(url.searchParams.get('input')).toBe('https://steamcommunity.com/id/Friend/');
+        return { steamId64: '76561198000000001', name: 'Friend' };
       },
     });
-    expect(await api.resolveProfile('https://steamcommunity.com/id/Ami/')).toEqual({ steamId64: '76561198000000001', name: 'Ami' });
+    expect(await api.resolveProfile('https://steamcommunity.com/id/Friend/')).toEqual({ steamId64: '76561198000000001', name: 'Friend' });
   });
 
   it('sends the shutdown header', async () => {

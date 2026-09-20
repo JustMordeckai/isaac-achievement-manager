@@ -147,7 +147,7 @@ describe('API', () => {
     const frBase = await start({ settings: { ...SETTINGS, locale: 'fr' } });
     const frRes = await fetch(`${frBase}/api/progress?slot=9`);
     expect(frRes.status).toBe(400);
-    expect(await frRes.json()).toEqual({ error: 'Paramètre slot invalide (1 à 3)' });
+    expect(await frRes.json()).toEqual({ error: t('fr', 'errors.slotInvalid') });
   });
 
   it('returns the status of HttpError', async () => {
@@ -298,7 +298,7 @@ describe('API', () => {
       expect(JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8'))).toEqual({ locale: 'fr' });
       // The saved locale applies at once, without a restart: the error message follows.
       const stillInvalid = await post({ locale: 'de' });
-      expect(await stillInvalid.json()).toEqual({ error: 'Langue inconnue : de' });
+      expect(await stillInvalid.json()).toEqual({ error: t('fr', 'errors.localeInvalid', { locale: 'de' }) });
     } finally {
       removeDir(dir);
     }
@@ -548,15 +548,15 @@ describe('API advisor', () => {
     const get = vi.fn(async () => merged);
     const base = await startWithOllama({ progress: { get } });
     const history = [
-      { role: 'user', content: 'Bonjour' },
-      { role: 'assistant', content: 'Bonjour !' },
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hello!' },
     ];
     const res = await ask(base, { ...QUESTION, history, profile: OTHER_ID64, slot: 2 });
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/x-ndjson; charset=utf-8');
     expect(await lines(res)).toEqual([
       { kind: 'context', sources: [{ id: 9, name: 'The Nail' }] },
-      { kind: 'delta', text: 'Bonjour' },
+      { kind: 'delta', text: 'Hello' },
       { kind: 'delta', text: ' Player.' },
       { kind: 'done' },
     ]);
@@ -564,7 +564,7 @@ describe('API advisor', () => {
     const [chat] = ollama?.chats as Array<{ messages: Array<{ role: string; content: string }> }>;
     expect(chat.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(chat.messages[0].content).toContain('#9 The Nail: missing');
-    expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Bonjour', 'Bonjour !', 'How do I get The Nail (#9)?']);
+    expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Hello', 'Hello!', 'How do I get The Nail (#9)?']);
   });
 
   it('warns the model when the wiki database is missing', async () => {
@@ -608,13 +608,13 @@ describe('API advisor', () => {
   it('ends the stream with the error sent by Ollama mid-flight', async () => {
     ollama = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.write(`${chatLines(['Start'])[0]}\n`);
         res.end(`${JSON.stringify({ error: 'out of memory' })}\n`);
       },
     });
     const base = await startWithOllama();
     expect((await lines(await ask(base, QUESTION))).slice(1)).toEqual([
-      { kind: 'delta', text: 'Début' },
+      { kind: 'delta', text: 'Start' },
       { kind: 'error', message: 'Ollama error: out of memory' },
     ]);
   });
@@ -622,7 +622,7 @@ describe('API advisor', () => {
   it('cuts the generation when the browser gives up', async () => {
     ollama = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.write(`${chatLines(['Start'])[0]}\n`);
       },
     });
     const base = await startWithOllama();

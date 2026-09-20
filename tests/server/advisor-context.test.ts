@@ -238,7 +238,7 @@ describe('buildAdvisorContext: language rule', () => {
 
 describe('normalize', () => {
   it('compares without case, accents or punctuation', () => {
-    expect(normalize("  Mom's  HEART, Ève ! ")).toBe(' mom s heart eve ');
+    expect(normalize("  Mom's  HEART, \u00c8ve ! ")).toBe(' mom s heart eve ');
     expect(normalize('???')).toBe('  ');
   });
 });

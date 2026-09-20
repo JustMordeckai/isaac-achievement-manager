@@ -16,21 +16,21 @@ const T_INT64 = 0x0a;
 
 const decoder = new TextDecoder('utf-8');
 
-/** Lit un fichier KeyValues binaire de Steam (appcache/stats/*.bin). */
+/** Reads a binary Steam KeyValues file (appcache/stats/*.bin). */
 export function parseBinaryVdf(buf: Uint8Array): VdfObject {
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   let pos = 0;
 
   function readCString(): string {
     const end = buf.indexOf(0, pos);
-    if (end === -1) throw new Error(`VDF binaire : chaîne non terminée à l'offset ${pos}`);
+    if (end === -1) throw new Error(`Binary VDF: unterminated string at offset ${pos}`);
     const text = decoder.decode(buf.subarray(pos, end));
     pos = end + 1;
     return text;
   }
 
   function need(size: number): void {
-    if (pos + size > buf.length) throw new Error(`VDF binaire : fin de fichier inattendue à l'offset ${pos}`);
+    if (pos + size > buf.length) throw new Error(`Binary VDF: unexpected end of file at offset ${pos}`);
   }
 
   function readObject(depth: number): VdfObject {
@@ -70,10 +70,10 @@ export function parseBinaryVdf(buf: Uint8Array): VdfObject {
           pos += 8;
           break;
         default:
-          throw new Error(`VDF binaire : type 0x${type.toString(16)} inconnu à l'offset ${typeOffset}`);
+          throw new Error(`Binary VDF: unknown type 0x${type.toString(16)} at offset ${typeOffset}`);
       }
     }
-    if (depth > 0) throw new Error(`VDF binaire : fin de fichier inattendue à l'offset ${pos}`);
+    if (depth > 0) throw new Error(`Binary VDF: unexpected end of file at offset ${pos}`);
     return obj;
   }
 

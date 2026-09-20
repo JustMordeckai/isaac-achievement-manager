@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { CHARACTERS, characterById, characterByName, characterNames } from '../../shared/characters.ts';
 import { ENDINGS, endingById, endingByName } from '../../shared/endings.ts';
 
-describe('personnages', () => {
-  it('liste les 34 personnages avec des identifiants uniques', () => {
+describe('characters', () => {
+  it('lists the 34 characters with unique identifiers', () => {
     expect(CHARACTERS).toHaveLength(34);
     expect(new Set(CHARACTERS.map((c) => c.id)).size).toBe(34);
     expect(CHARACTERS.filter((c) => c.tainted)).toHaveLength(17);
   });
 
-  it('retrouve un personnage par son nom ou un alias, sans tenir compte de la casse', () => {
+  it('finds a character by its name or an alias, ignoring case', () => {
     expect(characterByName('Blue Baby')?.id).toBe('blueBaby');
     expect(characterByName(' maggy ')?.id).toBe('magdalene');
     expect(characterByName('Jacob & Esau')?.id).toBe('jacobAndEsau');
@@ -18,12 +18,12 @@ describe('personnages', () => {
     expect(characterByName('Mom')).toBeNull();
   });
 
-  it('donne le nom et la page wiki d’un identifiant', () => {
+  it('gives the name and the wiki page of an identifier', () => {
     expect(characterById('taintedBlueBaby')).toMatchObject({ name: 'Tainted ???', page: 'Tainted ???', tainted: true });
     expect(characterById('blueBaby')).toMatchObject({ name: '???', page: '??? (Character)' });
   });
 
-  it('trie les graphies de la plus longue à la plus courte', () => {
+  it('sorts the spellings from the longest to the shortest', () => {
     const names = characterNames();
     expect(names[0]).toBe('tainted jacob and esau');
     expect(names.indexOf('tainted isaac')).toBeLessThan(names.indexOf('isaac'));
@@ -31,8 +31,8 @@ describe('personnages', () => {
   });
 });
 
-describe('fins', () => {
-  it('liste les 13 fins qui donnent une marque de complétion', () => {
+describe('endings', () => {
+  it('lists the 13 endings that give a completion mark', () => {
     expect(ENDINGS.map((e) => e.id)).toEqual([
       'momsHeart',
       'isaac',
@@ -50,7 +50,7 @@ describe('fins', () => {
     ]);
   });
 
-  it('retrouve une fin par son nom ou un alias', () => {
+  it('finds an ending by its name or an alias', () => {
     expect(endingByName('It Lives!')?.id).toBe('momsHeart');
     expect(endingByName('the Boss Rush')?.id).toBe('bossRush');
     expect(endingByName('Blue Baby')?.id).toBe('blueBaby');

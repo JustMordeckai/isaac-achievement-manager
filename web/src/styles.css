@@ -62,9 +62,9 @@ textarea {
 }
 
 html {
-  /* Un élément qui reçoit le focus ne doit pas finir sous l'en-tête fixe. */
+  /* An element that takes the focus must not end up under the fixed header. */
   scroll-padding-top: calc(var(--header-height, 0px) + 12px);
-  /* Réserve toujours la place de la barre de défilement pour que l'en-tête ne se décale pas entre les pages. */
+  /* Always keeps room for the scrollbar so the header does not shift between pages. */
   scrollbar-gutter: stable;
 }
 
@@ -72,7 +72,7 @@ html {
   min-height: 100vh;
 }
 
-/* En-tête */
+/* Header */
 .header {
   position: sticky;
   top: 0;
@@ -222,7 +222,7 @@ html {
   color: var(--danger);
 }
 
-/* Pastilles d'état */
+/* State badges */
 .badges {
   display: flex;
   flex-wrap: wrap;
@@ -277,7 +277,7 @@ html {
 
 /* Zone principale */
 .main {
-  /* 1100px de contenu, comme l'en-tête, plus les 16px de marge de chaque côté. */
+  /* 1100px of content, like the header, plus the 16px margin on each side. */
   max-width: 1132px;
   margin: 0 auto;
   padding: 20px 16px 48px;
@@ -464,7 +464,7 @@ html {
   color: var(--text-muted);
 }
 
-/* Liste des succès */
+/* Achievement list */
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -580,7 +580,7 @@ html {
   border-color: var(--accent);
 }
 
-/* Fiche d'un succès, à droite de la liste */
+/* Card of an achievement, to the right of the list */
 .achievements--with-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
@@ -606,7 +606,7 @@ html {
   margin: 0;
 }
 
-/* Le titre reçoit le focus à l'ouverture pour les lecteurs d'écran ; ce n'est pas une commande. */
+/* The title takes the focus on open for screen readers; it is not a control. */
 .ach-card__head h2:focus {
   outline: none;
 }
@@ -685,7 +685,7 @@ html {
   margin-top: 2px;
 }
 
-/* Paramètres */
+/* Settings */
 .settings {
   display: grid;
   gap: 16px;
@@ -773,8 +773,8 @@ html {
   background: var(--bar-bg);
 }
 
-/* Grille des marques de complétion */
-/* Positionné : les textes masqués des cases restent dans la zone qui défile. */
+/* Grid of the completion marks */
+/* Positioned: the hidden texts of the cells stay inside the area that scrolls. */
 .character-grid__scroll {
   position: relative;
   overflow-x: auto;
@@ -807,7 +807,7 @@ html {
   white-space: nowrap;
 }
 
-/* Les noms restent visibles quand les marques défilent. */
+/* The names stay visible while the marks scroll. */
 .character-grid th:first-child {
   position: sticky;
   left: 0;
@@ -982,7 +982,7 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
-/* Fiche : prérequis et runs */
+/* Card: prerequisites and runs */
 .requirement-list,
 .plan-runs {
   margin: 4px 0 8px;
@@ -999,7 +999,7 @@ html {
   gap: 8px;
 }
 
-/* Conseiller */
+/* Advisor */
 .advisor {
   display: grid;
   gap: 16px;
@@ -1029,7 +1029,7 @@ html {
   gap: 16px;
 }
 
-/* Conversation vide : la liste reste dans le DOM pour être annoncée, sans rien occuper. */
+/* Empty conversation: the list stays in the DOM to be announced, taking no room. */
 .chat:empty {
   margin: 0;
 }
@@ -1119,7 +1119,7 @@ html {
   gap: 8px;
 }
 
-/* Paramètres du conseiller */
+/* Advisor settings */
 .settings-form {
   display: grid;
   gap: 8px;
@@ -1139,7 +1139,7 @@ html {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* La fiche passe au-dessus de la liste ; le focus la fait défiler à l'écran. */
+  /* The card goes above the list; the focus scrolls it into view. */
   .ach-card {
     position: static;
     max-height: none;
@@ -1164,7 +1164,7 @@ html {
     grid-column: 1 / -1;
   }
 
-  /* Étiquettes sous le nom : la colonne figée laisse plus de place aux marques. */
+  /* Tags under the name: the frozen column leaves more room for the marks. */
   .character-grid tbody th .tag {
     display: block;
     width: fit-content;
@@ -1175,7 +1175,7 @@ html {
     scroll-padding-top: 12px;
   }
 
-  /* Sur un petit écran, l'en-tête occuperait trop de hauteur s'il restait fixe. */
+  /* On a small screen, the header would take too much height if it stayed fixed. */
   .header {
     position: static;
   }

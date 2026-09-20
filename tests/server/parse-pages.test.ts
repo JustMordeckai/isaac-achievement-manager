@@ -13,13 +13,13 @@ import { samplePages, wikiText } from './helpers/wiki.ts';
 const pages = samplePages();
 const page = (title: string) => {
   const text = pages[title];
-  if (text === undefined) throw new Error(`page ${title} absente de l'échantillon`);
+  if (text === undefined) throw new Error(`page ${title} missing from the sample`);
   return parsePage(title, text);
 };
 const sectionTitles = (title: string) => page(title).sections.map((s) => s.title);
 
 describe('parsePage', () => {
-  it('lit le type d’infobox, l’effet actuel et la qualité d’un objet', () => {
+  it('reads the infobox type, the current effect and the quality of an item', () => {
     expect(page('The Nail')).toEqual({
       title: 'The Nail',
       infobox: 'activated collectible',
@@ -34,7 +34,7 @@ describe('parsePage', () => {
     expect(page('Pills').infobox).toBeNull();
   });
 
-  it('garde l’introduction et la section Strategy d’un personnage', () => {
+  it('keeps the intro and the Strategy section of a character', () => {
     const cain = page('Cain');
     expect(cain.infobox).toBe('character');
     expect(cain.intro).toEqual([
@@ -50,7 +50,7 @@ describe('parsePage', () => {
     expect(cain.sections[0].blocks[0].text).toMatch(/^Cain starts with slightly higher damage and speed/);
   });
 
-  it('choisit les sections d’astuces selon le type de page', () => {
+  it('picks the tip sections from the type of the page', () => {
     expect(sectionTitles('Cursed!')).toEqual(['Difficulty', 'Notes', 'Strategy']);
     expect(sectionTitles('Mother')).toEqual(['Strategies']);
     expect(sectionTitles('Boss Rush')).toEqual(['Tips']);
@@ -60,7 +60,7 @@ describe('parsePage', () => {
     expect(sectionTitles('Cain')).not.toContain('Notes');
   });
 
-  it('coupe une section trop longue et le signale', () => {
+  it('cuts a section that is too long and says so', () => {
     const strategy = page('Suicide King (Challenge)').sections.find((s) => s.title === 'Strategy');
     expect(strategy?.truncated).toBe(true);
     const length = strategy?.blocks.reduce((total, block) => total + block.text.length, 0) ?? 0;
@@ -69,20 +69,20 @@ describe('parsePage', () => {
 });
 
 describe('sectionBlocks', () => {
-  it('renvoie les blocs de la section visée par une ancre, ou null', () => {
+  it('returns the blocks of the section an anchor points at, or null', () => {
     expect(sectionBlocks(pages['Boss Rush'], 'Tips')?.length).toBeGreaterThan(0);
     expect(sectionBlocks(pages.Pills, 'Re-Lax')).toBeNull();
   });
 
-  it('renvoie null pour une section sans texte (galerie seule)', () => {
+  it('returns null for a section with no text (a gallery alone)', () => {
     expect(sectionBlocks(pages['Co-op'], 'Repentance babies')).toBeNull();
   });
 });
 
-describe('défis', () => {
+describe('challenges', () => {
   const refs = parseChallengeNav(wikiText('Template_Nav_challenge.wiki'));
 
-  it('liste les 45 défis numérotés', () => {
+  it('lists the 45 numbered challenges', () => {
     expect(refs.map((r) => r.number)).toEqual(Array.from({ length: 45 }, (_, i) => i + 1));
     expect(refs[6]).toEqual({ number: 7, title: 'Suicide King (Challenge)', name: 'Suicide King' });
     expect(refs[44]).toEqual({ number: 45, title: 'DELETE THIS', name: 'DELETE THIS' });
@@ -90,11 +90,11 @@ describe('défis', () => {
 
   const challenge = (title: string) => {
     const ref = refs.find((r) => r.title === title);
-    if (!ref) throw new Error(`défi ${title} absent`);
+    if (!ref) throw new Error(`challenge ${title} missing`);
     return parseChallenge(ref, pages[title]);
   };
 
-  it('applique les valeurs par défaut du modèle (Isaac, Mom)', () => {
+  it('applies the default values of the template (Isaac, Mom)', () => {
     expect(challenge('Pitch Black')).toEqual({
       number: 1,
       title: 'Pitch Black',
@@ -109,7 +109,7 @@ describe('défis', () => {
     });
   });
 
-  it('lit personnage, objets, objectif, objectif spécial et bandeau', () => {
+  it('reads character, items, goal, special goal and banner', () => {
     expect(challenge('Cursed!')).toMatchObject({
       character: 'Magdalene',
       goal: 'Mom',
@@ -128,7 +128,7 @@ describe('parseAchievementTips', () => {
   const rows = parseAchievementsPage(wikiText('Achievements.wiki'));
   const tips = parseAchievementTips(wikiText('Achievement_Tips.wiki'), rows);
 
-  it('rattache les sections par titre, par liste de définitions et par modèle {{a}}', () => {
+  it('ties the sections through the title, a definition list and the {{a}} template', () => {
     expect(tips.map((t) => [t.ids, t.section.title])).toEqual([
       [[144], 'Super Meat Boy & Super Bandage Girl'],
       [[378], 'Lachryphagy'],
@@ -139,7 +139,7 @@ describe('parseAchievementTips', () => {
     ]);
   });
 
-  it('garde le texte de chaque entrée et les sous-sections d’un groupe', () => {
+  it('keeps the text of every entry and the subsections of a group', () => {
     expect(tips[2].section.blocks[0]).toEqual({
       kind: 'paragraph',
       level: 0,

@@ -1,7 +1,7 @@
 import type { CharacterId } from './characters.ts';
 import type { EndingId } from './endings.ts';
 
-/** Les 12 marques de complétion, dans l'ordre de la note du jeu (Greed et Greedier partagent une marque). */
+/** The 12 completion marks, in the order of the note of the game (Greed and Greedier share one mark). */
 export type MarkId =
   | 'momsHeart'
   | 'isaac'
@@ -16,7 +16,7 @@ export type MarkId =
   | 'mother'
   | 'beast';
 
-/** 0 absente, 1 normal (Greed pour la marque greed), 2 difficile (Greedier). */
+/** 0 missing, 1 normal (Greed for the greed mark), 2 hard (Greedier). */
 export type MarkLevel = 0 | 1 | 2;
 
 export type CharacterMarks = Record<MarkId, MarkLevel>;
@@ -38,7 +38,7 @@ export const MARK_IDS: MarkId[] = [
   'beast',
 ];
 
-/** Marque et niveau minimal qu'apporte une fin de run. */
+/** Mark and lowest level a run ending brings. */
 export function markForEnding(ending: EndingId): { mark: MarkId; level: 1 | 2 } {
   if (ending === 'ultraGreed') return { mark: 'greed', level: 1 };
   if (ending === 'ultraGreedier') return { mark: 'greed', level: 2 };
@@ -46,8 +46,8 @@ export function markForEnding(ending: EndingId): { mark: MarkId; level: 1 | 2 } 
 }
 
 /**
- * Niveau d'une valeur brute de la sauvegarde. Bits : 1 normal, 2 difficile, 4 et 8 les mêmes
- * marques obtenues en ligne (Repentance+). Une marque difficile vaut aussi la marque normale.
+ * Level of a raw value of the save. Bits: 1 normal, 2 hard, 4 and 8 the same marks earned
+ * online (Repentance+). A hard mark also counts as the normal one.
  */
 export function markLevel(raw: number): MarkLevel {
   if (raw & 0b1010) return 2;

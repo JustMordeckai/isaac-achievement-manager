@@ -22,12 +22,12 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<string[]> {
 }
 
 describe('ndjsonLines', () => {
-  it('recolle les lignes coupées entre deux morceaux et saute les lignes vides', async () => {
+  it('glues back the lines cut between two chunks and skips the empty lines', async () => {
     expect(await collect(streamOf(['{"a":1}\n{"b"', ':2}\n\n', '{"c":3}']))).toEqual(['{"a":1}', '{"b":2}', '{"c":3}']);
   });
 
-  it('décode un caractère accentué coupé en deux octets', async () => {
-    const bytes = new TextEncoder().encode('{"t":"é"}\n');
+  it('decodes an accented character cut across two bytes', async () => {
+    const bytes = new TextEncoder().encode('{"t":"\u00e9"}\n');
     const cut = bytes.indexOf(0xc3) + 1;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -36,10 +36,10 @@ describe('ndjsonLines', () => {
         controller.close();
       },
     });
-    expect(await collect(stream)).toEqual(['{"t":"é"}']);
+    expect(await collect(stream)).toEqual(['{"t":"\u00e9"}']);
   });
 
-  it('annule le flux quand la lecture s’arrête avant la fin', async () => {
+  it('cancels the stream when the read stops before the end', async () => {
     let cancelled = false;
     const stream = streamOf(['{"a":1}\n', '{"b":2}\n', '{"c":3}\n'], () => {
       cancelled = true;

@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../../web/src/App.tsx';
+import { t } from '../../shared/i18n/index.ts';
 import { LOCALE_STORAGE_KEY } from '../../web/src/i18n.tsx';
 import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
 import {
@@ -158,10 +159,10 @@ describe('App', () => {
     const user = userEvent.setup();
     let fail = true;
     stubProgress({
-      'GET /api/progress': () => (fail ? jsonResponse({ error: 'Aucun compte Steam local' }, 404) : makeSummary()),
+      'GET /api/progress': () => (fail ? jsonResponse({ error: 'No local Steam account' }, 404) : makeSummary()),
     });
     render(<App />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Aucun compte Steam local');
+    expect(await screen.findByRole('alert')).toHaveTextContent('No local Steam account');
     fail = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('heading', { name: 'Progress' })).toBeInTheDocument();
@@ -249,12 +250,12 @@ describe('App', () => {
   it('syncs the wiki from the settings then loads the data again', async () => {
     const user = userEvent.setup();
     const events: WikiSyncEvent[] = [
-      { step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' },
+      { step: 'core', done: 0, total: 1, message: 'Downloading the achievement list' },
       {
         step: 'done',
         done: 1,
         total: 1,
-        message: 'Synchro terminée',
+        message: 'Sync complete',
         report: {
           achievements: 641,
           pages: 518,
@@ -282,18 +283,18 @@ describe('App', () => {
 
   it('shows the settings even when the progress fails', async () => {
     window.location.hash = '#/settings';
-    stubProgress({ 'GET /api/progress': () => jsonResponse({ error: 'Aucun compte Steam local' }, 404) });
+    stubProgress({ 'GET /api/progress': () => jsonResponse({ error: 'No local Steam account' }, 404) });
     render(<App />);
     expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Impossible de charger la progression' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t('en', 'app.progressFailed') })).not.toBeInTheDocument();
   });
 
   it('offers to try again when the routes of another player fail, or to go back to your profile', async () => {
     const user = userEvent.setup();
     const mock = stubProgress({
-      'GET /api/profile/resolve': () => ({ steamId64: '76561198000000001', name: 'Ami' }),
+      'GET /api/profile/resolve': () => ({ steamId64: '76561198000000001', name: 'Friend' }),
       'GET /api/routes': (url) =>
-        url.searchParams.get('profile') === 'me' ? ROUTES_OK : jsonResponse({ error: 'Profil Steam privé' }, 403),
+        url.searchParams.get('profile') === 'me' ? ROUTES_OK : jsonResponse({ error: 'Steam profile is private' }, 403),
     });
     window.location.hash = '#/routes';
     render(<App />);
@@ -302,7 +303,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'ami');
     await user.click(screen.getByRole('button', { name: 'Load' }));
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Profil Steam privé');
+    expect(alert).toHaveTextContent('Steam profile is private');
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes?profile=76561198000000001')).toBe(2));
     await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Back to my profile' }));
@@ -313,7 +314,7 @@ describe('App', () => {
     const user = userEvent.setup();
     const events: AdvisorEvent[] = [
       { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
-      { kind: 'delta', text: 'Fais Boss Rush avant 20 minutes.' },
+      { kind: 'delta', text: 'Clear Boss Rush before the 20 minute mark.' },
       { kind: 'done' },
     ];
     const bodies: unknown[] = [];
@@ -333,12 +334,12 @@ describe('App', () => {
     expect(field.value).toMatch(/^How do I clear this run with Magdalene in hard mode/);
     expect(field).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Send' }));
-    expect(await screen.findByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
+    expect(await screen.findByText('Clear Boss Rush before the 20 minute mark.')).toBeInTheDocument();
     expect(bodies).toEqual([{ question: expect.stringMatching(/^How do I clear this run/), history: [], profile: 'me', slot: null }]);
     expect(screen.getByText('Advisor: OK')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Dashboard' }));
     await user.click(screen.getByRole('button', { name: 'Advisor' }));
-    expect(screen.getByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
+    expect(screen.getByText('Clear Boss Rush before the 20 minute mark.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Guardian Angel' }));
     expect(window.location.hash).toBe('#/achievements/45');
   });
@@ -426,7 +427,7 @@ describe('App', () => {
     });
     render(<App />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Français');
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
     expect(screen.getByLabelText('Langue')).toBeInTheDocument();
 
     await act(async () => {

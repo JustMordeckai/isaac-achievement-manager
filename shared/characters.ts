@@ -36,12 +36,12 @@ export type CharacterId =
 
 export interface Character {
   id: CharacterId;
-  /** Nom tel qu'il apparaît dans les conditions du wiki. */
+  /** Name as it appears in the conditions of the wiki. */
   name: string;
-  /** Titre de la page du personnage sur le wiki. */
+  /** Title of the character page on the wiki. */
   page: string;
   tainted: boolean;
-  /** Autres graphies rencontrées sur le wiki. */
+  /** Other spellings met on the wiki. */
   aliases: string[];
 }
 
@@ -53,7 +53,7 @@ function tainted(id: CharacterId, name: string, aliases: string[] = []): Charact
   return { id, name: `Tainted ${name}`, page: `Tainted ${name}`, tainted: true, aliases };
 }
 
-/** Les 34 personnages, dans l'ordre de l'écran de sélection. */
+/** The 34 characters, in the order of the selection screen. */
 export const CHARACTERS: Character[] = [
   regular('isaac', 'Isaac'),
   regular('magdalene', 'Magdalene', 'Magdalene', ['Maggy']),
@@ -102,11 +102,11 @@ export function characterByName(name: string): Character | null {
 
 export function characterById(id: CharacterId): Character {
   const found = CHARACTERS.find((c) => c.id === id);
-  if (!found) throw new Error(`Personnage inconnu : ${id}`);
+  if (!found) throw new Error(`Unknown character: ${id}`);
   return found;
 }
 
-/** Toutes les graphies connues, les plus longues d'abord (pour construire des expressions régulières). */
+/** Every known spelling, the longest first (to build regular expressions). */
 export function characterNames(): string[] {
   return [...BY_NAME.keys()].sort((a, b) => b.length - a.length);
 }

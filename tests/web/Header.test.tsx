@@ -35,18 +35,18 @@ describe('Header', () => {
     renderHeader({
       summary: makeSummary({
         sources: {
-          steamCache: { state: 'stale', message: 'Le profil en ligne compte 1 succès de plus que le cache local' },
-          saveFile: { state: 'error', message: 'En-tête inconnu' },
+          steamCache: { state: 'stale', message: 'The online profile holds 1 achievement the local cache does not.' },
+          saveFile: { state: 'error', message: 'Unknown header' },
           profile: { state: 'ok' },
         },
       }),
     });
-    expect(screen.getByText('Steam cache: stale')).toHaveAttribute('title', 'Le profil en ligne compte 1 succès de plus que le cache local');
+    expect(screen.getByText('Steam cache: stale')).toHaveAttribute('title', 'The online profile holds 1 achievement the local cache does not.');
     expect(screen.getByText('Save file: error')).toHaveClass('badge--error');
     expect(screen.getByText('Online profile: OK')).toHaveClass('badge--ok');
     // The messages of the sources in trouble are visible without hovering.
-    expect(screen.getByText('Steam cache: Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
-    expect(screen.getByText('Save file: En-tête inconnu')).toBeInTheDocument();
+    expect(screen.getByText('Steam cache: The online profile holds 1 achievement the local cache does not.')).toBeInTheDocument();
+    expect(screen.getByText('Save file: Unknown header')).toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'Source messages' })).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.queryByText('Save file: Slot 1')).not.toBeInTheDocument();
   });
@@ -60,9 +60,9 @@ describe('Header', () => {
   });
 
   it('shows the last failed sync of a missing base', () => {
-    renderHeader({ kb: { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' } });
+    renderHeader({ kb: { ...KB_ABSENT, message: 'Last sync failed: wiki unreachable' } });
     expect(screen.getByText('Wiki: missing')).toHaveClass('badge--absent');
-    expect(screen.getByText('Wiki: Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
+    expect(screen.getByText('Wiki: Last sync failed: wiki unreachable')).toBeInTheDocument();
   });
 
   it('shows the wiki state even with no progress summary', () => {
@@ -178,7 +178,7 @@ describe('ProfilePicker', () => {
     stubFetch({
       'GET /api/profile/resolve': (url) => {
         expect(url.searchParams.get('input')).toBe('JustAFriend');
-        return { steamId64: '76561198000000001', name: 'Ami' };
+        return { steamId64: '76561198000000001', name: 'Friend' };
       },
     });
     const onChange = vi.fn();
@@ -187,26 +187,26 @@ describe('ProfilePicker', () => {
     await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'JustAFriend');
     await user.click(screen.getByRole('button', { name: 'Load' }));
     expect(onChange).toHaveBeenCalledWith('76561198000000001');
-    expect(JSON.parse(localStorage.getItem(RECENT_PROFILES_KEY) ?? '[]')).toEqual([{ steamId64: '76561198000000001', name: 'Ami' }]);
-    expect(screen.getByRole('option', { name: 'Ami' })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(RECENT_PROFILES_KEY) ?? '[]')).toEqual([{ steamId64: '76561198000000001', name: 'Friend' }]);
+    expect(screen.getByRole('option', { name: 'Friend' })).toBeInTheDocument();
     expect(screen.queryByLabelText('SteamID64, profile URL or nickname')).not.toBeInTheDocument();
   });
 
   it('shows the lookup error', async () => {
     const user = userEvent.setup();
-    stubFetch({ 'GET /api/profile/resolve': () => jsonResponse({ error: 'Profil Steam introuvable' }, 404) });
+    stubFetch({ 'GET /api/profile/resolve': () => jsonResponse({ error: 'Steam profile not found' }, 404) });
     const onChange = vi.fn();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={onChange} />);
     await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
     await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'unknown');
     await user.click(screen.getByRole('button', { name: 'Load' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Profil Steam introuvable');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Steam profile not found');
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it('offers the recent profiles and the other local accounts', async () => {
     const user = userEvent.setup();
-    rememberProfile({ steamId64: '76561198000000001', name: 'Ami' });
+    rememberProfile({ steamId64: '76561198000000001', name: 'Friend' });
     const onChange = vi.fn();
     render(
       <ProfilePicker
@@ -221,7 +221,7 @@ describe('ProfilePicker', () => {
       />,
     );
     expect(screen.getByRole('option', { name: 'Second Player (local account)' })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText('Profile'), 'Ami');
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Friend');
     expect(onChange).toHaveBeenCalledWith('76561198000000001');
   });
 
@@ -287,12 +287,12 @@ describe('ProfilePicker', () => {
     await user.click(screen.getByRole('button', { name: 'Load' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     await act(async () => {
-      resolveFetch({ steamId64: '76561198000000001', name: 'Ami' });
+      resolveFetch({ steamId64: '76561198000000001', name: 'Friend' });
       await pending;
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(onChange).not.toHaveBeenCalled();
-    expect(screen.queryByRole('option', { name: 'Ami' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Friend' })).not.toBeInTheDocument();
     expect(localStorage.getItem(RECENT_PROFILES_KEY)).toBeNull();
   });
 
@@ -322,7 +322,7 @@ describe('ProfilePicker', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith('me');
     await act(async () => {
-      resolveFetch({ steamId64: '76561198000000001', name: 'Ami' });
+      resolveFetch({ steamId64: '76561198000000001', name: 'Friend' });
       await pending;
       await new Promise((r) => setTimeout(r, 0));
     });

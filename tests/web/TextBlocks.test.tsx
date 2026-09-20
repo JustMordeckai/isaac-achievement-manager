@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TextBlocks } from '../../web/src/components/TextBlocks.tsx';
 
 describe('TextBlocks', () => {
-  it('rend paragraphes, listes imbriquées et intertitres, en anglais', () => {
+  it('renders paragraphs, nested lists and subheadings, in English', () => {
     const { container } = render(
       <TextBlocks
         headingLevel={5}
@@ -33,7 +33,7 @@ describe('TextBlocks', () => {
     );
   });
 
-  it('plafonne les intertitres au niveau h6', () => {
+  it('caps the subheadings at h6', () => {
     render(<TextBlocks headingLevel={6} blocks={[{ kind: 'heading', level: 3, text: 'Profond' }]} />);
     expect(screen.getByRole('heading', { level: 6, name: 'Profond' })).toBeInTheDocument();
   });

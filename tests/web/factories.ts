@@ -85,12 +85,12 @@ export const ADVISOR_OFFLINE: AdvisorStatus = {
   message: 'Ollama unreachable at http://127.0.0.1:11434 (ECONNREFUSED)',
 };
 
-/** État du conseiller tel que le donne useAdvisorStatus. */
+/** Advisor state, the way useAdvisorStatus gives it. */
 export function makeAdvisorState(status: AdvisorStatus | null = ADVISOR_OK, checking = false): AdvisorStatusState {
   return { status, checking, recheck: vi.fn(), replace: vi.fn() };
 }
 
-/** Fiche de The Nail (#9) telle que la renvoie /api/achievement/9. */
+/** Card of The Nail (#9), the way /api/achievement/9 returns it. */
 export function makeCard(overrides: Partial<AchievementCard> = {}): AchievementCard {
   return {
     achievement: makeAchievement(9, { name: 'The Nail', description: 'Unlocked a new item.', how: 'mark', character: 'azazel' }),
@@ -130,7 +130,7 @@ export function makeCard(overrides: Partial<AchievementCard> = {}): AchievementC
   };
 }
 
-/** Run de Magdalene telle que la renvoie /api/routes. */
+/** Magdalene run, the way /api/routes returns it. */
 export function makeRun(overrides: Partial<PlannedRun> = {}): PlannedRun {
   return {
     id: 'magdalene-1',
@@ -169,7 +169,7 @@ const NO_MARKS: KnownMarks = {
   beast: 0,
 };
 
-/** Isaac et Magdalene débloqués ; Isaac a Mom's Heart en difficile, Satan et Greed en normal. */
+/** Isaac and Magdalene unlocked; Isaac has Mom's Heart on hard, Satan and Greed on normal. */
 export function makeCharacters(): CharacterProgress[] {
   return CHARACTERS.map((c) => ({
     id: c.id,
@@ -190,7 +190,7 @@ export function makePlan(overrides: Partial<RoutePlan> = {}): RoutePlan {
         character: 'isaac',
         mode: 'greed',
         endings: ['ultraGreed'],
-        steps: ['Lancer une partie en mode Greed.'],
+        steps: ['Start a run in Greed mode.'],
         achievements: [{ id: 193, name: 'Censer' }],
         minutes: 35,
         score: 1.714,

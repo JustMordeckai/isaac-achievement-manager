@@ -9,12 +9,12 @@ const byId = new Map(rows.map((r) => [r.id, r]));
 const how = (id: number) => classifyHow(byId.get(id)?.condition ?? '');
 const unlock = (id: number) => {
   const row = byId.get(id);
-  if (!row) throw new Error(`fiche #${id} absente`);
+  if (!row) throw new Error(`entry #${id} missing`);
   return classifyUnlock(row.displayName, row.description, linked[row.link] ?? null);
 };
 
 describe('classifyHow', () => {
-  it('reconnaît les marques de complétion, y compris en mode difficile', () => {
+  it('recognizes the completion marks, hard mode included', () => {
     expect(how(9)).toEqual({ kind: 'mark', character: 'azazel', ending: 'bossRush', hard: false });
     expect(how(43)).toEqual({ kind: 'mark', character: 'isaac', ending: 'satan', hard: false });
     expect(how(167)).toEqual({ kind: 'mark', character: 'isaac', ending: 'momsHeart', hard: true });
@@ -24,7 +24,7 @@ describe('classifyHow', () => {
     expect(how(433)).toEqual({ kind: 'mark', character: 'jacobAndEsau', ending: 'bossRush', hard: false });
   });
 
-  it('reconnaît les marques multiples des personnages corrompus', () => {
+  it('recognizes the multiple marks of the corrupted characters', () => {
     expect(how(548)).toEqual({
       kind: 'multi-mark',
       character: 'taintedIsaac',
@@ -34,7 +34,7 @@ describe('classifyHow', () => {
     expect(how(618)).toEqual({ kind: 'multi-mark', character: 'taintedIsaac', endings: ['hush', 'bossRush'], hard: false });
   });
 
-  it('reconnaît toutes les marques en difficile, les placards et les défis', () => {
+  it('recognizes every mark on hard, the closets and the challenges', () => {
     expect(how(252)).toEqual({ kind: 'hard-all', character: 'blueBaby' });
     expect(how(156)).toEqual({ kind: 'hard-all', character: 'theLost' });
     expect(how(474)).toEqual({ kind: 'closet', character: 'isaac' });
@@ -43,7 +43,7 @@ describe('classifyHow', () => {
     expect(how(120)).toEqual({ kind: 'challenge', number: 7 });
   });
 
-  it('reconnaît les cumuls et les boss sans personnage imposé', () => {
+  it('recognizes the counters and the bosses with no forced character', () => {
     expect(how(8)).toEqual({ kind: 'counter', total: 3 });
     expect(how(17)).toEqual({ kind: 'counter', total: 30 });
     expect(how(59)).toEqual({ kind: 'counter', total: 900 });
@@ -52,23 +52,23 @@ describe('classifyHow', () => {
     expect(how(41)).toEqual({ kind: 'boss', bosses: ['???', 'The Lamb'] });
   });
 
-  it('découpe une liste de boss comme une liste de fins', () => {
+  it('splits a list of bosses like a list of endings', () => {
     expect(classifyHow('Defeat Hush/Delirium')).toEqual({ kind: 'boss', bosses: ['Hush', 'Delirium'] });
     expect(classifyHow('Defeat Mom, Mom’s Heart and Satan')).toEqual({ kind: 'boss', bosses: ['Mom', 'Mom’s Heart', 'Satan'] });
   });
 
-  it('range le reste en misc', () => {
+  it('files the rest under misc', () => {
     for (const id of [1, 27, 77, 157, 164, 328, 404, 547, 636]) expect(how(id), `#${id}`).toEqual({ kind: 'misc' });
   });
 
-  it('donne le personnage concerné', () => {
+  it('gives the character it is about', () => {
     expect(characterOf(how(9))).toBe('azazel');
     expect(characterOf(how(3))).toBeNull();
   });
 });
 
 describe('classifyUnlock', () => {
-  it('déduit personnage, objet, étage, pilule, carte et défi', () => {
+  it('infers character, item, floor, pill, card and challenge', () => {
     expect(unlock(3)).toEqual({ kind: 'character', name: 'Judas' });
     expect(unlock(32)).toEqual({ kind: 'character', name: '???' });
     expect(unlock(6)).toEqual({ kind: 'item', name: 'Cube of Meat' });
@@ -81,20 +81,20 @@ describe('classifyUnlock', () => {
     expect(unlock(160)).toEqual({ kind: 'challenge', name: 'Suicide King' });
   });
 
-  it('reconnaît bébés, objets de départ et modes par la description', () => {
+  it('recognizes babies, starting items and modes from the description', () => {
     expect(unlock(167)).toEqual({ kind: 'baby', name: 'Lost Baby' });
     expect(unlock(416)).toEqual({ kind: 'baby', name: 'Wisp Baby' });
     expect(unlock(245)).toEqual({ kind: 'starting-item', name: 'Cain holds Paperclip' });
     expect(unlock(33)).toEqual({ kind: 'mode', name: 'Everything Is Terrible!!!' });
   });
 
-  it('ignore les redirections vers la page Achievements', () => {
+  it('skips the redirects to the Achievements page', () => {
     expect(unlock(41)).toEqual({ kind: 'other', name: 'Golden God!' });
     expect(classifyUnlock('X', 'Unlocked a new item.', null)).toEqual({ kind: 'other', name: 'X' });
   });
 });
 
-describe('classification des 640 fiches du wiki', () => {
+describe('classification of the 640 wiki entries', () => {
   const results = rows.map((row) => ({
     id: row.id,
     how: classifyHow(row.condition),
@@ -103,7 +103,7 @@ describe('classification des 640 fiches du wiki', () => {
   const count = (values: string[]) =>
     values.reduce<Record<string, number>>((acc, value) => ({ ...acc, [value]: (acc[value] ?? 0) + 1 }), {});
 
-  it('répartit les types de condition', () => {
+  it('spreads the kinds of condition', () => {
     expect(count(results.map((r) => r.how.kind))).toEqual({
       mark: 305,
       'multi-mark': 34,
@@ -116,7 +116,7 @@ describe('classification des 640 fiches du wiki', () => {
     });
   });
 
-  it('répartit les types de déblocage', () => {
+  it('spreads the kinds of unlock', () => {
     expect(count(results.map((r) => r.unlock.kind))).toEqual({
       character: 34,
       item: 270,
@@ -132,7 +132,7 @@ describe('classification des 640 fiches du wiki', () => {
     });
   });
 
-  it('fige la liste des conditions non classées', () => {
+  it('freezes the list of unclassified conditions', () => {
     expect(results.filter((r) => r.how.kind === 'misc').map((r) => r.id)).toEqual([
       1, 2, 13, 14, 19, 22, 27, 31, 35, 37, 38, 39, 40, 42, 58, 65, 67, 69, 77, 79, 80, 81, 82, 83, 84, 86, 87, 88, 144,
       146, 155, 157, 158, 160, 161, 163, 164, 165, 178, 235, 258, 267, 268, 270, 273, 276, 277, 280, 321, 322, 323, 324,
@@ -142,7 +142,7 @@ describe('classification des 640 fiches du wiki', () => {
     ]);
   });
 
-  it('fige la liste des déblocages de type other', () => {
+  it('freezes the list of unlocks of kind other', () => {
     expect(results.filter((r) => r.unlock.kind === 'other').map((r) => r.id)).toEqual([
       5, 16, 17, 18, 34, 37, 38, 39, 40, 41, 66, 68, 69, 83, 84, 142, 151, 152, 153, 154, 155, 178, 224, 226, 233, 235,
       240, 242, 243, 247, 275, 323, 328, 333, 337, 339, 346, 347, 348, 391, 406, 411, 593, 601, 604, 605, 607, 608, 609,

@@ -4,39 +4,39 @@ import { fixture } from './helpers/fixtures.ts';
 import { vdfBinary } from './helpers/vdf.ts';
 
 describe('parseBinaryVdf', () => {
-  it('lit sous-blocs, chaînes, int32 signés et uint64', () => {
+  it('reads subchunks, strings, signed int32 and uint64', () => {
     const value = { root: { name: 'Isaac', data: -274202881, big: 76561198083722517n, child: { deep: 'ok' } } };
     expect(parseBinaryVdf(vdfBinary(value))).toEqual(value);
   });
 
-  it('lit un float32', () => {
-    // type 0x03, clé "f", valeur 0.75 (0x3f400000 en little endian), fin
+  it('reads a float32', () => {
+    // type 0x03, key "f", value 0.75 (0x3f400000 little endian), end
     const buf = Uint8Array.from([0x03, 0x66, 0x00, 0x00, 0x00, 0x40, 0x3f, 0x08]);
     expect(parseBinaryVdf(buf)).toEqual({ f: 0.75 });
   });
 
-  it('accepte une fin de fichier sans marqueur au niveau racine', () => {
+  it('accepts an end of file with no marker at the root level', () => {
     expect(parseBinaryVdf(vdfBinary({ a: 'b' }).subarray(0, -1))).toEqual({ a: 'b' });
   });
 
-  it('refuse un sous-bloc tronqué', () => {
+  it('refuses a truncated subchunk', () => {
     const buf = vdfBinary({ root: { a: 'b' } }).subarray(0, -2);
-    expect(() => parseBinaryVdf(buf)).toThrow(/fin de fichier/);
+    expect(() => parseBinaryVdf(buf)).toThrow(/unexpected end of file/);
   });
 
-  it('refuse un int32 tronqué', () => {
-    expect(() => parseBinaryVdf(Uint8Array.from([0x02, 0x6e, 0x00, 0x01, 0x02]))).toThrow(/fin de fichier/);
+  it('refuses a truncated int32', () => {
+    expect(() => parseBinaryVdf(Uint8Array.from([0x02, 0x6e, 0x00, 0x01, 0x02]))).toThrow(/unexpected end of file/);
   });
 
-  it('refuse un type inconnu', () => {
-    expect(() => parseBinaryVdf(Uint8Array.from([0x09, 0x6b, 0x00]))).toThrow(/type 0x9 inconnu/);
+  it('refuses an unknown type', () => {
+    expect(() => parseBinaryVdf(Uint8Array.from([0x09, 0x6b, 0x00]))).toThrow(/unknown type 0x9/);
   });
 
-  it('refuse une chaîne non terminée', () => {
-    expect(() => parseBinaryVdf(Uint8Array.from([0x01, 0x6b]))).toThrow(/non terminée/);
+  it('refuses an unterminated string', () => {
+    expect(() => parseBinaryVdf(Uint8Array.from([0x01, 0x6b]))).toThrow(/unterminated/);
   });
 
-  it('lit le schéma Steam réel', () => {
+  it('reads the real Steam schema', () => {
     const app = parseBinaryVdf(fixture('UserGameStatsSchema_250900.bin'))['250900'] as Record<string, any>;
     expect(app.gamename).toBe('The Binding of Isaac Rebirth');
     expect(app.stats['1'].bits['0'].name).toBe('1');
@@ -44,7 +44,7 @@ describe('parseBinaryVdf', () => {
     expect(app.stats['7'].bits).toBeUndefined();
   });
 
-  it('lit les stats Steam réelles', () => {
+  it('reads the real Steam stats', () => {
     const root = parseBinaryVdf(fixture('UserGameStats_123456789_250900.bin')) as Record<string, any>;
     expect(root.cache['1'].data).toBe(-274202881);
     expect(root.cache['1'].AchievementTimes['0']).toBe(1676924125);

@@ -56,7 +56,7 @@ describe('parseProfileStatsXml', () => {
       <achievements><achievement closed="0"><name>Tom &amp; Jerry &#233;</name><apiname>5</apiname>
       <description>A &lt;b&gt;</description></achievement></achievements></playerstats>`;
     expect(parseProfileStatsXml(body).achievements).toEqual([
-      { id: 5, name: 'Tom & Jerry é', description: 'A <b>', icon: '', iconGray: '', unlocked: false, unlockedAt: null },
+      { id: 5, name: 'Tom & Jerry \u00e9', description: 'A <b>', icon: '', iconGray: '', unlocked: false, unlockedAt: null },
     ]);
   });
 

@@ -91,7 +91,7 @@ describe('openChat', () => {
     const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', ...ASK });
     const parts: string[] = [];
     for await (const part of reply) parts.push(part);
-    expect(parts).toEqual(['Bonjour', ' Player.']);
+    expect(parts).toEqual(['Hello', ' Player.']);
     expect(fake.chats).toEqual([
       { model: 'qwen3.5:9b', messages: USER, stream: true, think: false, options: { num_ctx: NUM_CTX, num_predict: NUM_PREDICT } },
     ]);
@@ -148,7 +148,7 @@ describe('openChat', () => {
   it('passes on an error sent in the middle of the stream', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.write(`${chatLines(['Start'])[0]}\n`);
         res.end(`${JSON.stringify({ error: 'out of memory' })}\n`);
       },
     });
@@ -157,35 +157,35 @@ describe('openChat', () => {
     const error = await (async () => {
       for await (const part of reply) parts.push(part);
     })().catch((e: unknown) => e);
-    expect(parts).toEqual(['Début']);
+    expect(parts).toEqual(['Start']);
     expect(error).toMatchObject({ kind: 'upstream', message: 'Ollama error: out of memory' });
   });
 
   it('reports an answer cut short by the length limit', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.end(`${chatLines(['Début'], 'length').join('\n')}\n`);
+        res.end(`${chatLines(['Start'], 'length').join('\n')}\n`);
       },
     });
     const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', ...ASK });
-    expect(await collect(reply)).toBe('Début\n\n(Answer cut short: length limit reached.)');
+    expect(await collect(reply)).toBe('Start\n\n(Answer cut short: length limit reached.)');
     expect(truncatedNotice('en')).toBe('(Answer cut short: length limit reached.)');
   });
 
   it('appends the notice in the locale it is given', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.end(`${chatLines(['Début'], 'length').join('\n')}\n`);
+        res.end(`${chatLines(['Start'], 'length').join('\n')}\n`);
       },
     });
     const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', ...ASK, locale: 'fr' });
-    expect(await collect(reply)).toBe(`Début\n\n${t('fr', 'advisor.truncated')}`);
+    expect(await collect(reply)).toBe(`Start\n\n${t('fr', 'advisor.truncated')}`);
   });
 
   it('reports a stream cut before its final line', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.end(`${chatLines(['Début'])[0]}\n`);
+        res.end(`${chatLines(['Start'])[0]}\n`);
       },
     });
     const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', ...ASK });
@@ -195,7 +195,7 @@ describe('openChat', () => {
   it('gives up on an answer that stops progressing', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.write(`${chatLines(['Start'])[0]}\n`);
       },
     });
     const reply = await openChat({
@@ -213,13 +213,13 @@ describe('openChat', () => {
   it('cuts the request to Ollama when the caller gives up', async () => {
     fake = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
-        res.write(`${chatLines(['Début'])[0]}\n`);
+        res.write(`${chatLines(['Start'])[0]}\n`);
       },
     });
     const controller = new AbortController();
     const reply = await openChat({ url: fake.url, model: 'qwen3.5:9b', ...ASK, signal: controller.signal });
     const first = await reply.next();
-    expect(first.value).toBe('Début');
+    expect(first.value).toBe('Start');
     controller.abort();
     const error = await reply.next().catch((e: unknown) => e);
     expect(error).not.toBeInstanceOf(OllamaError);

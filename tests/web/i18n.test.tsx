@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Locale } from '../../shared/i18n/index.ts';
+import { type Locale, t } from '../../shared/i18n/index.ts';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
 import { guessLocale, LocaleProvider, useT } from '../../web/src/i18n.tsx';
 import { makeSummary } from './factories.ts';
@@ -82,7 +82,7 @@ describe('LanguagePicker', () => {
     render(<LocaleHarness />);
     expect(screen.getByLabelText('Language')).toHaveValue('en');
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Français');
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
 
     expect(await screen.findByLabelText('Langue')).toHaveValue('fr');
     expect(document.documentElement.lang).toBe('fr');
@@ -97,17 +97,17 @@ describe('LanguagePicker', () => {
     stubFetch({ 'POST /api/settings': () => jsonResponse({ error: 'data/settings.json is read-only' }, 500) });
     render(<LocaleHarness />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Français');
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
 
     expect(await screen.findByLabelText('Langue')).toHaveValue('fr');
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "Enregistré dans ce navigateur seulement : impossible d'écrire data/settings.json.",
+      t('fr', 'settings.language.saveFailed'),
     );
   });
 
   it('carries the endonym language on each option for screen readers', () => {
     render(<LocaleHarness />);
     expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('lang', 'en');
-    expect(screen.getByRole('option', { name: 'Français' })).toHaveAttribute('lang', 'fr');
+    expect(screen.getByRole('option', { name: 'Fran\u00e7ais' })).toHaveAttribute('lang', 'fr');
   });
 });

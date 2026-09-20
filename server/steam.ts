@@ -13,6 +13,6 @@ export function accountIdToSteamId64(accountId: number): string {
 }
 
 export function steamId64ToAccountId(steamId64: string): number {
-  if (!isSteamId64(steamId64)) throw new Error(`SteamID64 invalide : ${steamId64}`);
+  if (!isSteamId64(steamId64)) throw new Error(`Invalid SteamID64: ${steamId64}`);
   return Number(BigInt(steamId64) - STEAM_ID64_BASE);
 }

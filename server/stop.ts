@@ -8,7 +8,7 @@ try {
     headers: { 'X-IAM-Action': 'shutdown' },
     signal: AbortSignal.timeout(3000),
   });
-  console.log(res.ok ? 'Serveur arrêté.' : `Le serveur a refusé l'arrêt (HTTP ${res.status}).`);
+  console.log(res.ok ? 'Server stopped.' : `The server refused to stop (HTTP ${res.status}).`);
 } catch {
-  console.log(`Aucun serveur Isaac Achievement Manager sur le port ${port}.`);
+  console.log(`No Isaac Achievement Manager server on port ${port}.`);
 }

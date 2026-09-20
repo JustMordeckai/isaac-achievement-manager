@@ -12,12 +12,12 @@ export interface OffRouteInput {
 
 const RED_KEY = 415;
 
-/** Un succès « battre X » dont tous les boss sont des fins de run est déjà proposé par les routes. */
+/** A "beat X" achievement whose bosses are all run endings is already offered by the routes. */
 function coveredByRuns(bosses: string[]): boolean {
   return bosses.every((boss) => boss === 'Mom' || endingByName(boss) !== null);
 }
 
-/** Défis, compteurs, placards de Home et divers encore à débloquer. */
+/** Challenges, counters, Home closets and miscellaneous achievements still to unlock. */
 export function buildOffRoute({ kb, achievements, unlocked, counters }: OffRouteInput): OffRoute {
   const states = new Map(achievements.map((a) => [a.id, a]));
   const byWikiName = new Map(kb.achievements.map((a) => [a.wikiName.toLowerCase(), a.id]));
@@ -65,7 +65,7 @@ export function buildOffRoute({ kb, achievements, unlocked, counters }: OffRoute
     }
   }
   challenges.sort((a, b) => a.number - b.number);
-  // Les compteurs les plus avancés d'abord, les inconnus à la fin.
+  // The counters closest to their total first, the unknown ones last.
   const ratio = (c: OffRoute['counters'][number]) => (c.value === null ? -1 : Math.min(1, c.value / c.total));
   counterList.sort((a, b) => ratio(b) - ratio(a) || a.id - b.id);
   return { challenges, counters: counterList, closets, redKey: unlocked.has(RED_KEY), misc };

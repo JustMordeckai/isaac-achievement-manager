@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 
 export type RegistryReader = (key: string, name: string) => string | number | null;
 
-/** Extrait une valeur de la sortie de `reg query <clé> /v <nom>`. */
+/** Pulls a value out of the output of `reg query <key> /v <name>`. */
 export function parseRegQueryOutput(output: string, name: string): string | number | null {
   for (const line of output.split(/\r?\n/)) {
     const match = /^\s+(.+?)\s{4}(REG_\w+)\s{4}(.*)$/.exec(line);

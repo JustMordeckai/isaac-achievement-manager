@@ -5,12 +5,12 @@ import { parseBinaryVdf, type VdfObject, type VdfValue } from './vdf-binary.ts';
 
 export interface SchemaEntry {
   def: AchievementDef;
-  /** Clé du bloc de stats (champ de bits) dans le schéma et dans les stats. */
+  /** Key of the stats chunk (bit field) in the schema and in the stats. */
   block: string;
   bit: number;
 }
 
-/** Id du succès vers timestamp Unix en secondes (null si Steam n'a pas de date). */
+/** Achievement id to Unix timestamp in seconds (null when Steam has no date). */
 export type UnlockMap = Map<number, number | null>;
 
 function asObject(value: VdfValue | undefined): VdfObject | undefined {
@@ -23,7 +23,7 @@ function asString(value: VdfValue | undefined): string {
 
 export function parseSchema(buf: Uint8Array): SchemaEntry[] {
   const stats = asObject(asObject(parseBinaryVdf(buf)[APP_ID])?.stats);
-  if (!stats) throw new Error(`Schéma Steam : bloc ${APP_ID}/stats introuvable`);
+  if (!stats) throw new Error(`Steam schema: chunk ${APP_ID}/stats not found`);
   const entries: SchemaEntry[] = [];
   for (const [block, blockValue] of Object.entries(stats)) {
     const bits = asObject(asObject(blockValue)?.bits);
@@ -53,7 +53,7 @@ export function parseSchema(buf: Uint8Array): SchemaEntry[] {
 
 export function parseUserStats(buf: Uint8Array, schema: SchemaEntry[]): UnlockMap {
   const cache = asObject(parseBinaryVdf(buf).cache);
-  if (!cache) throw new Error('Stats Steam : bloc cache introuvable');
+  if (!cache) throw new Error('Steam stats: cache chunk not found');
   const unlocked: UnlockMap = new Map();
   for (const { def, block, bit } of schema) {
     const stats = asObject(cache[block]);

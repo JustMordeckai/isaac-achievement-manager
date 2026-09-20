@@ -2,9 +2,9 @@ import { CHARACTERS } from '../../shared/characters.ts';
 import { type CompletionMarks, MARK_IDS, type MarkId, markLevel } from '../../shared/marks.ts';
 
 /**
- * Index des marques dans le bloc des compteurs (bloc 2), par marque puis dans l'ordre de CHARACTERS.
- * Source : énumération EventCounter de REPENTOGON (valeurs PROGRESSION_*), recoupée avec les éditeurs
- * de sauvegarde communautaires et avec la sauvegarde de Player (2026-09-17).
+ * Indexes of the marks in the counters chunk (chunk 2), by mark then in the order of CHARACTERS.
+ * Source: EventCounter enumeration of REPENTOGON (PROGRESSION_* values), cross checked with the
+ * community save editors and with a real save (2026-09-17).
  */
 export const MARK_COUNTERS: Record<MarkId, readonly number[]> = {
   momsHeart: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 203, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232],
@@ -23,7 +23,7 @@ export const MARK_COUNTERS: Record<MarkId, readonly number[]> = {
 
 const LAST_INDEX = 490;
 
-/** Marques de complétion lues dans les compteurs, null si le bloc est trop court pour les contenir. */
+/** Completion marks read in the counters, null when the chunk is too short to hold them. */
 export function readCompletionMarks(counters: readonly number[]): CompletionMarks | null {
   if (counters.length <= LAST_INDEX) return null;
   const marks = {} as CompletionMarks;

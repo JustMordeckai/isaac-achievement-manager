@@ -12,7 +12,7 @@ export type SourceState = 'ok' | 'absent' | 'stale' | 'error';
 export interface SourceStatus {
   state: SourceState;
   message?: string;
-  /** Date ISO 8601 de la donnée lue, si connue. */
+  /** ISO 8601 date of the data that was read, when it is known. */
   updatedAt?: string;
 }
 
@@ -21,7 +21,7 @@ export interface AchievementDef {
   name: string;
   description: string;
   hidden: boolean;
-  /** Nom de fichier de l'icône Steam, ex. "a36d7e92df7e991758907a75dfa55d36b52548c4.jpg". */
+  /** File name of the Steam icon, for instance "a36d7e92df7e991758907a75dfa55d36b52548c4.jpg". */
   icon: string;
   iconGray: string;
   dlc: Dlc;
@@ -29,9 +29,9 @@ export interface AchievementDef {
 
 export interface AchievementState extends AchievementDef {
   unlocked: boolean;
-  /** Date ISO 8601, null si inconnue ou non débloqué. */
+  /** ISO 8601 date, null when unknown or not unlocked. */
   unlockedAt: string | null;
-  /** Présent dans la sauvegarde ; null quand la sauvegarde n'a pas été lue. */
+  /** Present in the save; null when the save was not read. */
   inSave: boolean | null;
 }
 
@@ -56,7 +56,7 @@ export interface ProgressSummary {
   byDlc: Record<Dlc, { total: number; unlocked: number }>;
   sources: Record<SourceKey, SourceStatus>;
   desyncs: Desync[];
-  /** Dix derniers déblocages datés, du plus récent au plus ancien. */
+  /** Ten latest dated unlocks, from the most recent to the oldest. */
   recent: Array<{ id: number; name: string; icon: string; unlockedAt: string }>;
   save: { slot: number; slots: number[] } | null;
   accounts: LocalAccount[];
@@ -79,7 +79,7 @@ export interface ApiError {
 
 export type HowKind = 'mark' | 'multi-mark' | 'hard-all' | 'closet' | 'challenge' | 'boss' | 'counter' | 'misc';
 
-/** Comment obtenir un succès, déduit de sa condition sur le wiki. */
+/** How an achievement is earned, inferred from its condition on the wiki. */
 export type How =
   | { kind: 'mark'; character: CharacterId; ending: EndingId; hard: boolean }
   | { kind: 'multi-mark'; character: CharacterId; endings: EndingId[]; hard: boolean }
@@ -103,13 +103,13 @@ export type UnlockKind =
   | 'mode'
   | 'other';
 
-/** Ce que débloque un succès. */
+/** What an achievement unlocks. */
 export interface Unlock {
   kind: UnlockKind;
   name: string;
 }
 
-/** Bloc de texte issu du wikitext nettoyé. `level` vaut la profondeur de liste, ou de titre pour `heading`. */
+/** Block of text from the cleaned wikitext. `level` is the list depth, or the heading depth for `heading`. */
 export interface TextBlock {
   kind: 'paragraph' | 'item' | 'heading';
   level: number;
@@ -119,11 +119,11 @@ export interface TextBlock {
 export interface TipSection {
   title: string;
   blocks: TextBlock[];
-  /** Vrai si la section a été coupée (suite sur le wiki). */
+  /** True when the section was cut short (more on the wiki). */
   truncated: boolean;
 }
 
-/** Succès de la liste, enrichi par la base wiki quand elle existe. */
+/** Achievement of the list, enriched by the wiki base when it exists. */
 export interface AchievementEntry extends AchievementState {
   how: HowKind | null;
   character: CharacterId | null;
@@ -133,10 +133,10 @@ export type KbState = 'ok' | 'absent' | 'error';
 
 export interface KbStatus {
   state: KbState;
-  /** Date ISO 8601 de la dernière synchro réussie. */
+  /** ISO 8601 date of the last successful sync. */
   syncedAt: string | null;
   message?: string;
-  /** Une synchro est en cours. */
+  /** A sync is running. */
   running: boolean;
 }
 
@@ -161,16 +161,16 @@ export interface AchievementWiki {
   unlocks: Unlock;
   unlockPage: UnlockPage | null;
   tips: TipSource[];
-  /** Page source des données de la fiche (licence CC BY-SA). */
+  /** Source page of the data of the card (CC BY-SA licence). */
   sourceUrl: string;
 }
 
 export interface AchievementCard {
   achievement: AchievementEntry;
-  /** null si la base wiki est absente ou si le succès n'y figure pas. */
+  /** null when the wiki base is missing or the achievement is not in it. */
   wiki: AchievementWiki | null;
   kb: KbStatus;
-  /** Prérequis et runs du planificateur, null sans base wiki. */
+  /** Prerequisites and runs of the planner, null with no wiki base. */
   plan: CardPlan | null;
 }
 
@@ -181,7 +181,7 @@ export interface WikiSyncReport {
   unknownTemplates: Record<string, number>;
   miscCount: number;
   otherUnlockCount: number;
-  /** Pages reprises du cache après un échec réseau. */
+  /** Pages taken from the cache after a network failure. */
   cachedPages: number;
 }
 
@@ -196,7 +196,7 @@ export interface WikiSyncEvent {
   report?: WikiSyncReport;
 }
 
-/** Réponse de GET /api/settings : chemins et réglages détectés, en lecture seule. */
+/** Answer of GET /api/settings: paths and settings that were detected, read only. */
 export interface SettingsInfo {
   port: number;
   dataDir: string;
@@ -206,21 +206,21 @@ export interface SettingsInfo {
   locale: Locale;
 }
 
-/** Origine des marques de complétion : lues dans la sauvegarde ou déduites des succès. */
+/** Where the completion marks come from: read in the save or inferred from the achievements. */
 export type MarksSource = 'save' | 'inferred';
 
-/** Marques d'un personnage ; null quand aucune source ne permet de savoir (marques déduites). */
+/** Marks of a character; null when no source can tell (inferred marks). */
 export type KnownMarks = Record<MarkId, MarkLevel | null>;
 
 export interface CharacterProgress {
   id: CharacterId;
   unlocked: boolean;
   marks: KnownMarks;
-  /** Succès « toutes les marques en difficile » : obtenu ou non, null si le personnage n'en a pas. */
+  /** "Every mark on hard" achievement: earned or not, null when the character has none. */
   hardAll: boolean | null;
 }
 
-/** Succès à débloquer avant une run ; un seul des succès de `anyOf` suffit. */
+/** Achievement to unlock before a run; one of the achievements of `anyOf` is enough. */
 export interface Requirement {
   anyOf: Array<{ id: number; name: string }>;
   met: boolean;
@@ -232,19 +232,19 @@ export interface PlannedRun {
   id: string;
   character: CharacterId;
   mode: RunMode;
-  /** Fins de run, dans l'ordre où on les atteint. */
+  /** Run endings, in the order they are reached. */
   endings: EndingId[];
-  /** Chemin en étapes, en français. */
+  /** Path as steps, in the language of the reader. */
   steps: string[];
-  /** Succès obtenus par cette run. */
+  /** Achievements this run earns. */
   achievements: Array<{ id: number; name: string }>;
-  /** Succès que cette run rapproche sans les obtenir (run de préparation), vide sinon. */
+  /** Achievements this run brings closer without earning them (prep run), empty otherwise. */
   prepares: Array<{ id: number; name: string }>;
   minutes: number;
   score: number;
-  /** Prérequis encore manquants (vide si la run est jouable). */
+  /** Prerequisites still missing (empty when the run is playable). */
   missing: Requirement[];
-  /** Rappel propre au personnage (ex. Eden Tokens), null sinon. */
+  /** Reminder that belongs to the character (Eden Tokens for instance), null otherwise. */
   note: string | null;
 }
 
@@ -252,13 +252,13 @@ export interface ChallengeTodo {
   id: number;
   name: string;
   number: number;
-  /** Titre de la page du défi, null s'il manque dans la base. */
+  /** Title of the challenge page, null when the base does not have it. */
   title: string | null;
   character: string | null;
   goal: string | null;
   curse: string | null;
   startingItems: string[];
-  /** Succès qui rend le défi disponible, null s'il l'est d'emblée. */
+  /** Achievement that makes the challenge available, null when it already is. */
   requirement: Requirement | null;
 }
 
@@ -267,7 +267,7 @@ export interface CounterTodo {
   name: string;
   condition: string;
   total: number;
-  /** Valeur du compteur dans la sauvegarde, null si inconnue. */
+  /** Value of the counter in the save, null when unknown. */
   value: number | null;
 }
 
@@ -284,12 +284,12 @@ export interface MiscTodo {
   dlc: Dlc;
 }
 
-/** Succès qui ne passent pas par une run planifiée. */
+/** Achievements that do not go through a planned run. */
 export interface OffRoute {
   challenges: ChallengeTodo[];
   counters: CounterTodo[];
   closets: ClosetTodo[];
-  /** Red Key débloquée (sinon le premier passage à Home la donne). */
+  /** Red Key unlocked (otherwise the first visit to Home gives it). */
   redKey: boolean;
   misc: MiscTodo[];
 }
@@ -301,27 +301,27 @@ export interface RoutePlan {
   offRoute: OffRoute;
 }
 
-/** Réponse de GET /api/routes ; `plan` vaut null sans base wiki. */
+/** Answer of GET /api/routes; `plan` is null with no wiki base. */
 export interface RoutesResponse {
   kb: KbStatus;
   plan: RoutePlan | null;
 }
 
-/** Partie planificateur de la fiche d'un succès. */
+/** Planner part of the card of an achievement. */
 export interface CardPlan {
   requirements: Requirement[];
-  /** Runs du plan qui obtiennent le succès ou le préparent. */
+  /** Runs of the plan that earn the achievement or prepare it. */
   runs: Array<
     Pick<PlannedRun, 'id' | 'character' | 'mode' | 'endings' | 'minutes'> & {
-      /** La run a des prérequis manquants. */
+      /** The run has missing prerequisites. */
       blocked: boolean;
-      /** Run de préparation : elle rapproche du succès sans l'obtenir. */
+      /** Prep run: it brings the achievement closer without earning it. */
       preparation: boolean;
     }
   >;
 }
 
-/** Serveur Ollama utilisé par le conseiller (champ `ollama` de data/settings.json). */
+/** Ollama server the advisor uses (`ollama` field of data/settings.json). */
 export interface OllamaSettings {
   url: string;
   model: string;
@@ -329,12 +329,12 @@ export interface OllamaSettings {
 
 export type AdvisorState = 'ok' | 'absent' | 'error';
 
-/** Réponse de GET /api/advisor/status : réglages en cours et état du serveur Ollama. */
+/** Answer of GET /api/advisor/status: current settings and state of the Ollama server. */
 export interface AdvisorStatus extends OllamaSettings {
-  /** `absent` : serveur injoignable ; `error` : réponse inattendue ou modèle absent. */
+  /** `absent`: server unreachable; `error`: unexpected answer or missing model. */
   state: AdvisorState;
   message?: string;
-  /** Modèles installés sur le serveur (vide s'il est injoignable). */
+  /** Models installed on the server (empty when it is unreachable). */
   models: string[];
 }
 
@@ -346,7 +346,7 @@ export interface ChatMessage {
 /** Corps de POST /api/advisor. */
 export interface AdvisorRequest {
   question: string;
-  /** Échanges précédents, du plus ancien au plus récent. */
+  /** Previous exchanges, from the oldest to the most recent. */
   history: ChatMessage[];
   profile: string;
   slot: number | null;

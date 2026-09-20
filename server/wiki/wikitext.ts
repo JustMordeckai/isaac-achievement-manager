@@ -1,6 +1,6 @@
 import type { TextBlock } from '../../shared/types.ts';
 
-/** Compteur des modèles inconnus rencontrés pendant le nettoyage (nom normalisé vers nombre). */
+/** Count of the unknown templates met while cleaning (normalized name to count). */
 export type TemplateCounter = Map<string, number>;
 
 export interface TemplateMatch {
@@ -14,7 +14,7 @@ export function normalizeTemplateName(name: string): string {
   return name.replace(/_/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-/** Fin (exclue) du bloc {{...}} qui commence à `start`, ou -1 s'il n'est pas refermé. */
+/** End (exclusive) of the {{...}} block that starts at `start`, or -1 when it is never closed. */
 function closingBraces(text: string, start: number): number {
   let depth = 0;
   for (let i = start; i < text.length - 1; i++) {
@@ -30,7 +30,7 @@ function closingBraces(text: string, start: number): number {
   return -1;
 }
 
-/** Toutes les occurrences d'un modèle, accolades équilibrées, sans tenir compte de la casse ni des soulignés. */
+/** Every occurrence of a template, with balanced braces, ignoring case and underscores. */
 export function findTemplates(text: string, name: string): TemplateMatch[] {
   const wanted = normalizeTemplateName(name);
   const found: TemplateMatch[] = [];
@@ -46,7 +46,7 @@ export function findTemplates(text: string, name: string): TemplateMatch[] {
   return found;
 }
 
-/** Paramètres d'un modèle brut : nommés tels quels, positionnels sous "1", "2"... */
+/** Parameters of a raw template: named ones as they are, positional ones under "1", "2"... */
 export function templateParams(raw: string): { name: string; params: Record<string, string> } {
   const inner = raw.slice(2, -2);
   const parts: string[] = [];
@@ -101,7 +101,7 @@ function removeTables(text: string): string {
   return kept.join('\n');
 }
 
-/** Retire ce qui n'est jamais affiché : commentaires, notes, galeries, tableaux, mots magiques. */
+/** Removes what is never shown: comments, notes, galleries, tables, magic words. */
 export function stripNoise(text: string): string {
   const cleaned = text
     .replace(/\r\n?/g, '\n')
@@ -116,8 +116,8 @@ export function stripNoise(text: string): string {
 const LEADING_MARKERS = /^(\s*(?:\{\{\s*(?:dlc\+?|plat)\s*(?:\|[^{}]*)?\}\}\s*)+)/i;
 
 /**
- * Un segment est obsolète s'il commence par un marqueur de DLC « retiré dans » (code contenant n,
- * comme nr ou a+nr) ou par un marqueur de plateforme qui n'inclut pas le PC.
+ * A segment is obsolete when it starts with a "removed in" DLC marker (a code holding n,
+ * such as nr or a+nr) or with a platform marker that leaves the PC out.
  */
 function isObsolete(segment: string): boolean {
   const lead = LEADING_MARKERS.exec(segment);
@@ -129,9 +129,9 @@ function isObsolete(segment: string): boolean {
 }
 
 /**
- * Ne garde que le texte valable pour la version actuelle du jeu (Repentance+) : segments séparés par
- * <br> ou par des retours à la ligne, plages {{dlc+|code}} ... {{dlc-}}. Quand un élément de liste est
- * retiré, ses sous-éléments le sont aussi.
+ * Keeps only the text that applies to the current version of the game (Repentance+): segments
+ * separated by <br> or by line breaks, {{dlc+|code}} ... {{dlc-}} ranges. When a list item is
+ * removed, its sub items are removed too.
  */
 export function selectCurrentVariants(text: string): string {
   const withoutSpans = text.replace(
@@ -159,7 +159,7 @@ export function selectCurrentVariants(text: string): string {
   return kept.join('\n');
 }
 
-/** Modèles qui s'affichent comme leur premier paramètre (nom d'objet, de boss, de personnage...). */
+/** Templates shown as their first parameter (name of an item, a boss, a character...). */
 const NAME_TEMPLATES = new Set([
   'e',
   'i',
@@ -181,7 +181,7 @@ const NAME_TEMPLATES = new Set([
   'achievement',
 ]);
 
-/** Modèles connus et volontairement supprimés (icônes, navigation, bugs, vidéos, marqueurs). */
+/** Templates that are known and dropped on purpose (icons, navigation, bugs, videos, markers). */
 const DROPPED_TEMPLATES = new Set([
   'dlc',
   'dlc+',
@@ -233,7 +233,7 @@ const DROPPED_TEMPLATES = new Set([
   'transformation contrib',
 ]);
 
-/** Familles supprimées : infobox, vidéos, sous-pages incluses ({{/Additions}}), galeries de bébés. */
+/** Families that are dropped: infobox, videos, included subpages ({{/Additions}}), baby galleries. */
 const DROPPED_PATTERN = /^(?:infobox|#ev:|\/)|\sbabies$/;
 
 const LITERAL_TEMPLATES: Record<string, string> = { '=': '=', '!': '|' };
@@ -264,7 +264,7 @@ function renderTemplate(raw: string, unknown?: TemplateCounter): string {
   return '';
 }
 
-/** Remplace tous les modèles, du plus imbriqué au plus externe. */
+/** Replaces every template, from the most nested to the outermost. */
 export function renderTemplates(text: string, unknown?: TemplateCounter): string {
   let out = text;
   for (let pass = 0; pass < 20; pass++) {
@@ -279,7 +279,7 @@ function renderLink(inner: string, trail: string, links: string[]): string {
   const pipe = inner.indexOf('|');
   const rawTarget = (pipe < 0 ? inner : inner.slice(0, pipe)).trim();
   const label = pipe < 0 ? null : inner.slice(pipe + 1).trim();
-  // Un deux-points initial affiche le lien (catégorie, fichier) au lieu de l'appliquer à la page.
+  // A leading colon shows the link (category, file) instead of applying it to the page.
   const visible = rawTarget.startsWith(':');
   const target = rawTarget.replace(/^:/, '');
   if (/^(file|image|media|category)\s*:/i.test(target)) {
@@ -304,7 +304,7 @@ const ENTITIES: Record<string, string> = {
   '&times;': '×',
 };
 
-/** Liens, balises, gras, italique et entités d'un texte dont les modèles sont déjà rendus. */
+/** Links, tags, bold, italics and entities of a text whose templates are already rendered. */
 function cleanMarkup(text: string, links: string[]): string {
   let out = text;
   for (let pass = 0; pass < 10; pass++) {
@@ -330,14 +330,14 @@ function cleanMarkup(text: string, links: string[]): string {
     .trim();
 }
 
-/** Texte court nettoyé (condition, champ d'infobox) et liste des pages liées. */
+/** Short cleaned text (condition, infobox field) and the list of linked pages. */
 export function cleanInline(text: string, unknown?: TemplateCounter): { text: string; links: string[] } {
   const links: string[] = [];
   const rendered = renderTemplates(selectCurrentVariants(stripNoise(text)), unknown);
   return { text: cleanMarkup(rendered, links), links };
 }
 
-/** Découpe un texte de page en paragraphes, éléments de liste et termes de définition. */
+/** Splits the text of a page into paragraphs, list items and definition terms. */
 export function toBlocks(raw: string, unknown?: TemplateCounter): TextBlock[] {
   const text = renderTemplates(selectCurrentVariants(stripNoise(raw)), unknown);
   const blocks: TextBlock[] = [];
@@ -373,11 +373,11 @@ export interface RawSection {
   title: string;
   level: number;
   body: string;
-  /** Titre marqué comme retiré de la version actuelle. */
+  /** Heading marked as removed from the current version. */
   obsolete: boolean;
 }
 
-/** Sépare l'introduction et les sections (titres == à ======). */
+/** Separates the intro from the sections (headings == to ======). */
 export function splitSections(text: string): { lead: string; sections: RawSection[] } {
   const lead: string[] = [];
   const sections: RawSection[] = [];
@@ -386,7 +386,7 @@ export function splitSections(text: string): { lead: string; sections: RawSectio
     const heading = /^(={2,6})\s*(.+?)\s*\1\s*$/.exec(line);
     if (heading) {
       current = {
-        // Pas de sélection de variante sur un titre : son marqueur de DLC sert seulement à `obsolete`.
+        // No variant picking on a heading: its DLC marker only feeds `obsolete`.
         title: cleanMarkup(renderTemplates(heading[2]), []),
         level: heading[1].length,
         body: '',
@@ -402,7 +402,7 @@ export function splitSections(text: string): { lead: string; sections: RawSectio
   return { lead: lead.join('\n'), sections };
 }
 
-/** Index de fin (exclue) des sous-sections de la section `index`. */
+/** End index (exclusive) of the subsections of the section at `index`. */
 export function sectionEnd(sections: RawSection[], index: number): number {
   let end = index + 1;
   while (end < sections.length && sections[end].level > sections[index].level) end++;

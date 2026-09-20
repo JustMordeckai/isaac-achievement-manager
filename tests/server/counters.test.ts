@@ -5,7 +5,7 @@ import { fixture } from './helpers/fixtures.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 
 describe('counterIndex', () => {
-  it('reconnaît les conditions cumulatives courantes', () => {
+  it('recognizes the common cumulative conditions', () => {
     expect(counterIndex("Defeat Mom's Heart 11 times")).toBe(1);
     expect(counterIndex('Defeat It Lives! 16 times')).toBe(1);
     expect(counterIndex('Donate 999 Coins to the Donation Machine')).toBe(20);
@@ -16,7 +16,7 @@ describe('counterIndex', () => {
     expect(counterIndex('Beat Basement 40 times')).toBeNull();
   });
 
-  it('associe 77 des 85 succès cumulatifs du wiki à un compteur', async () => {
+  it('ties 77 of the 85 cumulative achievements of the wiki to a counter', async () => {
     const kb = await testKnowledgeBase();
     const counted = kb.achievements.filter((a) => a.how.kind === 'counter');
     const missing = counted.filter((a) => counterIndex(a.condition) === null).map((a) => a.id);
@@ -24,10 +24,10 @@ describe('counterIndex', () => {
     expect(missing).toEqual([16, 17, 18, 337, 349, 356, 360, 373]);
   });
 
-  it('pointe vers des compteurs cohérents avec la sauvegarde de Player', () => {
+  it('points at counters that agree with the reference save', () => {
     const counters = parseSaveFile(fixture('rep+persistentgamedata1.dat')).counters;
     const value = (name: string) => counters[COUNTER_RULES.find((rule) => rule.name === name)?.index ?? -1];
-    // Flooded Caves (It Lives 16 fois) débloqué le 2026-09-16 ; The Negative (Satan 5 fois) le 2026-09-15.
+    // Flooded Caves (It Lives 16 times) unlocked on 2026-09-16; The Negative (Satan 5 times) on 2026-09-15.
     expect(value('MOM_KILLS')).toBe(16);
     expect(value('SATAN_KILLS')).toBe(6);
     expect(value('HUSH_KILLS')).toBe(1);

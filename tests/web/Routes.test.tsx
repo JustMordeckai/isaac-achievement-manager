@@ -237,10 +237,10 @@ describe('Routes: states', () => {
   it('offers to try again after an error, or to go back to your own profile', async () => {
     const user = userEvent.setup();
     const onResetProfile = vi.fn();
-    const { rerender, props } = renderRoutes(null, { state: { status: 'error', message: 'Profil Steam privé' } });
+    const { rerender, props } = renderRoutes(null, { state: { status: 'error', message: 'Steam profile is private' } });
     const alert = screen.getByRole('alert');
     expect(within(alert).getByRole('heading', { level: 2, name: 'The routes could not be computed' })).toBeInTheDocument();
-    expect(alert).toHaveTextContent('Profil Steam privé');
+    expect(alert).toHaveTextContent('Steam profile is private');
     expect(within(alert).queryByRole('button', { name: 'Back to my profile' })).not.toBeInTheDocument();
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(props.onRetry).toHaveBeenCalled();

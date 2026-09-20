@@ -14,12 +14,12 @@ try {
   const report = await kb.sync((event) => {
     if (event.step !== 'error') console.log(event.message);
   }, settings.locale);
-  console.log(`${report.achievements} succès, ${report.pages} pages, ${report.cachedPages} pages servies par le cache`);
+  console.log(`${report.achievements} achievements, ${report.pages} pages, ${report.cachedPages} pages served from the cache`);
   if (report.missingPages.length > 0) console.log(`Pages absentes du wiki : ${report.missingPages.join(', ')}`);
   const unknown = Object.entries(report.unknownTemplates);
-  if (unknown.length > 0) console.log(`Modèles inconnus : ${unknown.map(([name, count]) => `${name} (${count})`).join(', ')}`);
-  console.log(`Non classés : ${report.miscCount} conditions et ${report.otherUnlockCount} déblocages`);
+  if (unknown.length > 0) console.log(`Unknown templates: ${unknown.map(([name, count]) => `${name} (${count})`).join(', ')}`);
+  console.log(`Unclassified: ${report.miscCount} conditions and ${report.otherUnlockCount} unlocks`);
 } catch (error) {
-  console.error(`Synchro échouée : ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`Sync failed: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 }

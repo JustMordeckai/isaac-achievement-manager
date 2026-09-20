@@ -24,7 +24,7 @@ describe('catalogues', () => {
   });
 
   it('names each language in its own language', () => {
-    expect(LOCALE_NAMES).toEqual({ en: 'English', fr: 'Français' });
+    expect(LOCALE_NAMES).toEqual({ en: 'English', fr: 'Fran\u00e7ais' });
   });
 });
 

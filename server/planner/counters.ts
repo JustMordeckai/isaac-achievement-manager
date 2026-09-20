@@ -1,8 +1,8 @@
 /**
- * Compteurs de la sauvegarde (bloc 2) associés aux succès cumulatifs, reconnus sur la condition du wiki.
- * Index et noms : énumération EventCounter de REPENTOGON, vérifiés sur la sauvegarde de Player (2026-09-17).
- * Les succès sans compteur identifié (étages terminés, portails, Little Horn, anges, tours d'honneur)
- * n'affichent que leur condition.
+ * Counters of the save (chunk 2) tied to the cumulative achievements, recognized on the wiki condition.
+ * Indexes and names: EventCounter enumeration of REPENTOGON, checked against a real save (2026-09-17).
+ * The achievements with no identified counter (floors cleared, portals, Little Horn, angels, victory laps)
+ * only show their condition.
  */
 export interface CounterRule {
   pattern: RegExp;
@@ -45,7 +45,7 @@ export const COUNTER_RULES: CounterRule[] = [
   { pattern: /^Donate to Battery Bums until they pay out with an item \d+ times$/, index: 495, name: 'BATTERY_BUM_COLLECTIBLE_PAYOUTS' },
 ];
 
-/** Index du compteur qui suit une condition cumulative, null s'il n'est pas identifié. */
+/** Index of the counter that follows a cumulative condition, null when it is not identified. */
 export function counterIndex(condition: string): number | null {
   return COUNTER_RULES.find((rule) => rule.pattern.test(condition))?.index ?? null;
 }

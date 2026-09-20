@@ -6,7 +6,7 @@ import { emptyMarks, MARK_IDS, markForEnding, markLevel } from '../../shared/mar
 import { fixture } from './helpers/fixtures.ts';
 
 describe('MARK_COUNTERS', () => {
-  it('donne un index distinct par personnage et par marque', () => {
+  it('gives a distinct index per character and per mark', () => {
     for (const mark of MARK_IDS) expect(MARK_COUNTERS[mark]).toHaveLength(CHARACTERS.length);
     const all = MARK_IDS.flatMap((mark) => MARK_COUNTERS[mark]);
     expect(new Set(all).size).toBe(408);
@@ -25,13 +25,13 @@ describe('markLevel', () => {
     [5, 1],
     [8, 2],
     [12, 2],
-  ])('la valeur brute %i donne le niveau %i', (raw, level) => {
+  ])('raw value %i gives level %i', (raw, level) => {
     expect(markLevel(raw)).toBe(level);
   });
 });
 
 describe('markForEnding', () => {
-  it('range Greed et Greedier sous la même marque', () => {
+  it('files Greed and Greedier under the same mark', () => {
     expect(markForEnding('ultraGreed')).toEqual({ mark: 'greed', level: 1 });
     expect(markForEnding('ultraGreedier')).toEqual({ mark: 'greed', level: 2 });
     expect(markForEnding('lamb')).toEqual({ mark: 'lamb', level: 1 });
@@ -39,7 +39,7 @@ describe('markForEnding', () => {
 });
 
 describe('readCompletionMarks', () => {
-  it('lit les marques de la sauvegarde de Player', () => {
+  it('reads the marks of the reference save', () => {
     const marks = readCompletionMarks(parseSaveFile(fixture('rep+persistentgamedata1.dat')).counters);
     expect(marks?.isaac).toEqual({
       momsHeart: 2,
@@ -60,7 +60,7 @@ describe('readCompletionMarks', () => {
     }
   });
 
-  it('place chaque personnage à son index', () => {
+  it('puts every character at its index', () => {
     const counters = new Array<number>(523).fill(0);
     counters[MARK_COUNTERS.beast[33]] = 2;
     counters[MARK_COUNTERS.greed[14]] = 1;
@@ -70,7 +70,7 @@ describe('readCompletionMarks', () => {
     expect(marks?.theForgotten.beast).toBe(0);
   });
 
-  it('renvoie null si le bloc des compteurs est trop court', () => {
+  it('returns null when the counters chunk is too short', () => {
     expect(readCompletionMarks(new Array<number>(490).fill(0))).toBeNull();
   });
 });

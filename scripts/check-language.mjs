@@ -1,79 +1,39 @@
 #!/usr/bin/env node
 /**
- * Fails when a file that has already been converted to English holds French: an accented
- * letter, or one of a handful of French stop words. Run: node scripts/check-language.mjs
+ * Fails when a source file holds French: an accented letter, or one of a handful of French stop
+ * words. The whole repository is scanned, except the French catalogue, the documents and the test
+ * fixtures. Run: node scripts/check-language.mjs
  *
  * This script is itself one of the files it scans, so the stop words below are never spelled
  * out as plain text: they are rebuilt from character codes, and the search pattern is built
  * from that decoded list at run time rather than written as a literal regular expression.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 
-/** Files converted to English so far; every extraction task appends the files it converts. */
-const CLEAN = [
-  'shared/i18n/en.ts',
-  'shared/i18n/index.ts',
-  'web/src/i18n.tsx',
-  'scripts/check-language.mjs',
-  'server/app.ts',
-  'server/config.ts',
-  'server/progress-service.ts',
-  'server/kb-service.ts',
-  'server/icons.ts',
-  'server/http-error.ts',
-  'server/sources/steam-profile.ts',
-  'server/sources/save-file.ts',
-  'server/sources/progress.ts',
-  'server/wiki/client.ts',
-  'server/wiki/sync.ts',
-  'server/wiki/setup.ts',
-  'server/planner/plan.ts',
-  'server/planner/combos.ts',
-  'server/planner/targets.ts',
-  'server/planner/characters.ts',
-  'server/planner/marks.ts',
-  'server/planner/requirements.ts',
-  'server/planner/card-plan.ts',
-  'server/advisor/context.ts',
-  'server/advisor/ollama.ts',
-  'server/advisor/request.ts',
-  'server/advisor/service.ts',
-  'web/src/api.ts',
-  'web/src/advisor-question.ts',
-  'web/src/useAdvisor.ts',
-  'web/src/pages/Advisor.tsx',
-  'web/src/labels.ts',
-  'web/src/components/SourceBadges.tsx',
-  'web/src/components/ProgressBar.tsx',
-  'web/src/components/AchievementIcon.tsx',
-  'web/src/components/CharacterGrid.tsx',
-  'web/src/pages/Dashboard.tsx',
-  'web/src/pages/Achievements.tsx',
-  'web/src/components/AchievementCardPanel.tsx',
-  'web/src/components/RequirementNames.tsx',
-  'web/src/components/RunCard.tsx',
-  'web/src/pages/Routes.tsx',
-  'web/src/App.tsx',
-  'web/src/main.tsx',
-  'web/src/components/Header.tsx',
-  'web/src/components/ProfilePicker.tsx',
-  'web/src/components/TextBlocks.tsx',
-  'web/src/pages/Settings.tsx',
-  'web/src/useWiki.ts',
-  'web/src/useHashTab.ts',
-  'web/src/useProgress.ts',
-  'web/src/useRoutes.ts',
-  'web/src/recent-profiles.ts',
-  'web/src/theme.ts',
-  'web/src/lib/filter.ts',
-];
+/** Directories never scanned: dependencies, build output, player data, documents and fixtures. */
+const SKIPPED_DIRS = new Set([
+  '.git',
+  '.superpowers',
+  'node_modules',
+  'data',
+  'dist',
+  'docs',
+  'fixtures',
+  '.vite',
+]);
 
-const ACCENTED_LETTER = /[\u00C0-\u00FF]/;
+/** The French catalogue is the one file that holds French on purpose. */
+const SKIPPED_FILES = new Set([path.join('shared', 'i18n', 'fr.ts')]);
+
+const SCANNED_EXTENSIONS = new Set(['.ts', '.tsx', '.mjs', '.js', '.css', '.html', '.json', '.md', '.cmd', '.vbs']);
+
+/** Latin 1 letters only: the range leaves out the multiplication and division signs. */
+const ACCENTED_LETTER = /[\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF]/;
 
 const STOP_WORD_CODES = [
   [108, 101],
@@ -93,12 +53,30 @@ const STOP_WORD_CODES = [
 const STOP_WORDS = STOP_WORD_CODES.map((codes) => String.fromCharCode(...codes));
 const STOP_WORD_PATTERN = new RegExp(`\\b(${STOP_WORDS.join('|')})\\b`, 'i');
 
-function offendingFiles() {
+/** Every scanned file of the repository, as paths relative to its root. */
+function scannedFiles(directory = '') {
+  const files = [];
+  for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
+    const relative = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIPPED_DIRS.has(entry.name)) files.push(...scannedFiles(relative));
+    } else if (SCANNED_EXTENSIONS.has(path.extname(entry.name)) && !SKIPPED_FILES.has(relative)) {
+      files.push(relative);
+    }
+  }
+  return files;
+}
+
+/** Code that only looks French: the generic CSS font family. */
+const CODE_TOKENS = /sans-serif/gi;
+
+function offendingLines(files) {
   const offenses = [];
-  for (const file of CLEAN) {
+  for (const file of files) {
     const lines = readFileSync(path.join(root, file), 'utf8').split('\n');
     lines.forEach((line, index) => {
-      if (ACCENTED_LETTER.test(line) || STOP_WORD_PATTERN.test(line)) {
+      const text = line.replace(CODE_TOKENS, '');
+      if (ACCENTED_LETTER.test(text) || STOP_WORD_PATTERN.test(text)) {
         offenses.push({ file, line: index + 1, text: line.trim() });
       }
     });
@@ -106,13 +84,14 @@ function offendingFiles() {
   return offenses;
 }
 
-const offenses = offendingFiles();
+const files = scannedFiles();
+const offenses = offendingLines(files);
 if (offenses.length > 0) {
   for (const offense of offenses) {
-    console.error(`${offense.file}:${offense.line}: ${offense.text}`);
+    console.error(`${offense.file.split(path.sep).join('/')}:${offense.line}: ${offense.text}`);
   }
   console.error(`check-language: French text found in ${offenses.length} line(s).`);
   process.exit(1);
 }
 
-console.log(`check-language: ${CLEAN.length} file(s) clean.`);
+console.log(`check-language: ${files.length} file(s) clean.`);
