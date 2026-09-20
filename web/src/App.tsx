@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_LOCALE, type Locale } from '../../shared/i18n/index.ts';
 import { api, type ProfileQuery } from './api.ts';
 import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
+import { guessLocale, LocaleProvider } from './i18n.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
 import { Advisor } from './pages/Advisor.tsx';
@@ -18,6 +20,9 @@ import { useKbStatus, useSettings, useWikiSync } from './useWiki.ts';
 type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; message: string };
 
 const NO_DESYNC: ReadonlySet<number> = new Set();
+
+/** Remembers, across reloads, that the browser-guessed locale has already been applied once. */
+const LOCALE_GUESSED_KEY = 'iam-locale-guessed';
 
 export function App() {
   const [query, setQuery] = useState<ProfileQuery>({ profile: 'me', slot: null });
@@ -37,10 +42,33 @@ export function App() {
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
   const [sync, startSync] = useWikiSync(reload);
+  const [chosenLocale, setChosenLocale] = useState<Locale | null>(null);
+  const guessedLocaleOnce = useRef(false);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  // First run only: when the settings file holds no explicit locale (the server reports the
+  // default), the browser's own language is applied once and saved, so the choice sticks on the
+  // next visit. A locale the reader already picked this session, or on a previous one (tracked in
+  // localStorage), is never overridden.
+  useEffect(() => {
+    if (settings.status !== 'ready' || guessedLocaleOnce.current) return;
+    guessedLocaleOnce.current = true;
+    let alreadyGuessed = true;
+    try {
+      alreadyGuessed = localStorage.getItem(LOCALE_GUESSED_KEY) !== null;
+      localStorage.setItem(LOCALE_GUESSED_KEY, '1');
+    } catch {
+      // Storage unavailable: still guess for this visit, without remembering it for the next one.
+    }
+    if (alreadyGuessed || chosenLocale !== null || settings.info.locale !== DEFAULT_LOCALE) return;
+    const guess = guessLocale(navigator.languages);
+    if (guess === settings.info.locale) return;
+    setChosenLocale(guess);
+    void api.saveLocale(guess).catch(() => {});
+  }, [settings.status]);
 
   const summary = state.status === 'ready' ? state.data.summary : null;
   const desyncIds = useMemo(
@@ -82,6 +110,8 @@ export function App() {
     routes.status === 'loading' ||
     (routes.status === 'ready' && routes.refreshing);
   const meSteamId = settings.status === 'ready' ? (settings.info.account?.steamId64 ?? null) : null;
+  const settingsLocale = settings.status === 'ready' ? settings.info.locale : DEFAULT_LOCALE;
+  const locale = chosenLocale ?? settingsLocale;
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');
   const resetProfile = query.profile !== 'me' ? () => setQuery({ profile: 'me', slot: null }) : null;
@@ -92,111 +122,116 @@ export function App() {
   };
 
   return (
-    <div className="app">
-      <Header
-        summary={summary}
-        kb={kb}
-        advisor={advisor.status}
-        meSteamId={meSteamId}
-        query={query}
-        onQueryChange={setQuery}
-        refreshing={busy}
-        onRefresh={reload}
-        theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-        tab={tab}
-        onTabChange={setTab}
-        onStop={() => void requestStop()}
-      />
-      <main className="main">
-        {stop.kind === 'failed' && (
-          <p className="banner banner--error" role="alert">
-            Arrêt impossible : {stop.message}
-          </p>
-        )}
-        {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} />}
-        {tab === 'routes' && (
-          <Routes
-            state={routes}
-            onOpenSettings={openSettings}
-            onOpenAchievement={setCardId}
-            onAsk={askAdvisor}
-            onRetry={reload}
-            onResetProfile={resetProfile}
-          />
-        )}
-        {tab === 'advisor' && (
-          <Advisor
-            chat={chat}
-            query={query}
-            status={advisor.status}
-            checking={advisor.checking}
-            kb={kb}
-            draft={draft}
-            onDraftChange={setDraft}
-            onRecheck={advisor.recheck}
-            onOpenSettings={openSettings}
-            onOpenAchievement={setCardId}
-          />
-        )}
-        {(tab === 'dashboard' || tab === 'achievements') && (
-          <>
-            {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
-            {state.status === 'error' && (
-              <div className="card error-panel" role="alert">
-                <h2>Impossible de charger la progression</h2>
-                <p>{state.message}</p>
-                <div className="error-panel__actions">
-                  <button type="button" className="btn btn--primary" onClick={reload}>
-                    Réessayer
-                  </button>
-                  {resetProfile && (
-                    <button type="button" className="btn" onClick={resetProfile}>
-                      Revenir à mon profil
+    <LocaleProvider locale={locale}>
+      <div className="app">
+        <Header
+          summary={summary}
+          kb={kb}
+          advisor={advisor.status}
+          meSteamId={meSteamId}
+          query={query}
+          onQueryChange={setQuery}
+          refreshing={busy}
+          onRefresh={reload}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          tab={tab}
+          onTabChange={setTab}
+          onStop={() => void requestStop()}
+          onLocaleChange={setChosenLocale}
+        />
+        <main className="main">
+          {stop.kind === 'failed' && (
+            <p className="banner banner--error" role="alert">
+              Arrêt impossible : {stop.message}
+            </p>
+          )}
+          {tab === 'settings' && (
+            <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} onLocaleChange={setChosenLocale} />
+          )}
+          {tab === 'routes' && (
+            <Routes
+              state={routes}
+              onOpenSettings={openSettings}
+              onOpenAchievement={setCardId}
+              onAsk={askAdvisor}
+              onRetry={reload}
+              onResetProfile={resetProfile}
+            />
+          )}
+          {tab === 'advisor' && (
+            <Advisor
+              chat={chat}
+              query={query}
+              status={advisor.status}
+              checking={advisor.checking}
+              kb={kb}
+              draft={draft}
+              onDraftChange={setDraft}
+              onRecheck={advisor.recheck}
+              onOpenSettings={openSettings}
+              onOpenAchievement={setCardId}
+            />
+          )}
+          {(tab === 'dashboard' || tab === 'achievements') && (
+            <>
+              {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
+              {state.status === 'error' && (
+                <div className="card error-panel" role="alert">
+                  <h2>Impossible de charger la progression</h2>
+                  <p>{state.message}</p>
+                  <div className="error-panel__actions">
+                    <button type="button" className="btn btn--primary" onClick={reload}>
+                      Réessayer
                     </button>
-                  )}
+                    {resetProfile && (
+                      <button type="button" className="btn" onClick={resetProfile}>
+                        Revenir à mon profil
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-            {state.status === 'ready' && tab === 'dashboard' && (
-              <Dashboard
-                summary={state.data.summary}
-                kb={kb}
-                routes={routes}
-                onShowAchievements={showAchievements}
-                onOpenSettings={openSettings}
-                onShowRoutes={openRoutes}
-                onOpenAchievement={setCardId}
-                onAsk={askAdvisor}
-              />
-            )}
-            {state.status === 'ready' && tab === 'achievements' && (
-              <Achievements
-                achievements={state.data.achievements}
-                filter={filter}
-                onFilterChange={setFilter}
-                desyncIds={desyncIds}
-                selectedId={cardId}
-                onOpen={setCardId}
-                panel={
-                  cardId !== null && (
-                    <AchievementCardPanel
-                      key={cardId}
-                      id={cardId}
-                      query={query}
-                      reloadKey={reloadKey}
-                      onClose={() => setCardId(null)}
-                      onOpenSettings={openSettings}
-                      onOpenRoutes={openRoutes}
-                      onAsk={askAdvisor}
-                    />
-                  )
-                }
-              />
-            )}
-          </>
-        )}
-      </main>
-    </div>
+              )}
+              {state.status === 'ready' && tab === 'dashboard' && (
+                <Dashboard
+                  summary={state.data.summary}
+                  kb={kb}
+                  routes={routes}
+                  onShowAchievements={showAchievements}
+                  onOpenSettings={openSettings}
+                  onShowRoutes={openRoutes}
+                  onOpenAchievement={setCardId}
+                  onAsk={askAdvisor}
+                />
+              )}
+              {state.status === 'ready' && tab === 'achievements' && (
+                <Achievements
+                  achievements={state.data.achievements}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  desyncIds={desyncIds}
+                  selectedId={cardId}
+                  onOpen={setCardId}
+                  panel={
+                    cardId !== null && (
+                      <AchievementCardPanel
+                        key={cardId}
+                        id={cardId}
+                        query={query}
+                        reloadKey={reloadKey}
+                        onClose={() => setCardId(null)}
+                        onOpenSettings={openSettings}
+                        onOpenRoutes={openRoutes}
+                        onAsk={askAdvisor}
+                      />
+                    )
+                  }
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </LocaleProvider>
   );
 }

@@ -6,4 +6,5 @@ export const en = {
   'routes.moreRuns.other': 'Show {count} more runs',
   'errors.localeInvalid': 'Unknown language: {locale}',
   'errors.bodyExpected': 'A JSON body is required',
+  'settings.language.hint': 'Your choice is saved to data/settings.json.',
 } as const;

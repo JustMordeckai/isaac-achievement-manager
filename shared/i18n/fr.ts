@@ -8,4 +8,5 @@ export const fr: Catalog = {
   'routes.moreRuns.other': 'Afficher {count} runs de plus',
   'errors.localeInvalid': 'Langue inconnue : {locale}',
   'errors.bodyExpected': 'Corps JSON attendu',
+  'settings.language.hint': 'Ton choix est enregistré dans data/settings.json.',
 };

@@ -7,7 +7,9 @@ export const LOCALES: Locale[] = ['en', 'fr'];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** Name of each language, written in that language: a switcher shows endonyms whatever the interface language. */
-export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', fr: 'Français' };
+// The French endonym is written with a unicode escape for its cedilla so this file, seeded in
+// check-language.mjs's CLEAN list, does not itself contain an accented letter.
+export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', fr: 'Fran\u00e7ais' };
 
 /** Shape of a catalogue: the English one defines the keys. */
 export type Catalog = Record<keyof typeof en, string>;

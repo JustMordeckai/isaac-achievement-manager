@@ -23,6 +23,7 @@ function renderSettings(overrides: Partial<SettingsProps> = {}) {
     sync: { kind: 'idle' },
     onSync: vi.fn(),
     advisor: makeAdvisorState(),
+    onLocaleChange: vi.fn(),
     ...overrides,
   };
   const view = render(<Settings {...props} />);
@@ -110,6 +111,30 @@ describe('Settings', () => {
     expect(screen.getByText("Lecture de l'état de la base…")).toBeInTheDocument();
     rerender(<Settings {...props} settings={{ status: 'error', message: 'Erreur HTTP 500' }} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Réglages indisponibles : Erreur HTTP 500');
+  });
+});
+
+describe('Settings: language', () => {
+  it('offers both languages, with the current one selected, and explains where the choice is stored', () => {
+    renderSettings();
+    const section = within(screen.getByRole('region', { name: 'Language' }));
+    expect(section.getByRole('option', { name: 'English' })).toBeInTheDocument();
+    expect(section.getByRole('option', { name: 'Français' })).toBeInTheDocument();
+    expect(section.getByLabelText('Language')).toHaveValue('en');
+    expect(section.getByText(/data\/settings\.json/)).toBeInTheDocument();
+  });
+
+  it('saves the picked language and switches immediately', async () => {
+    const user = userEvent.setup();
+    const mock = stubFetch({ 'POST /api/settings': () => ({ ...SETTINGS, locale: 'fr' }) });
+    const { props } = renderSettings();
+    const section = within(screen.getByRole('region', { name: 'Language' }));
+    await user.selectOptions(section.getByLabelText('Language'), 'Français');
+    expect(props.onLocaleChange).toHaveBeenCalledWith('fr');
+    await vi.waitFor(() => expect(mock.mock.calls.some(([input]) => String(input) === '/api/settings')).toBe(true));
+    const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/settings')!;
+    expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('settings');
+    expect(JSON.parse(String(init?.body))).toEqual({ locale: 'fr' });
   });
 });
 

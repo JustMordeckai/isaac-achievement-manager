@@ -22,6 +22,7 @@ function renderHeader(overrides: Partial<HeaderProps> = {}) {
     tab: 'dashboard',
     onTabChange: vi.fn(),
     onStop: vi.fn(),
+    onLocaleChange: vi.fn(),
     ...overrides,
   };
   render(<Header {...props} />);

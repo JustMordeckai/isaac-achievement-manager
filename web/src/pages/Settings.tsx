@@ -1,7 +1,9 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
+import { DEFAULT_LOCALE, LOCALE_NAMES, LOCALES, toLocale, type Locale } from '../../../shared/i18n/index.ts';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
+import { useLocale, useT } from '../i18n.tsx';
 import { formatDate } from '../labels.ts';
 import type { AdvisorStatusState } from '../useAdvisor.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
@@ -12,6 +14,8 @@ export interface SettingsProps {
   sync: WikiSyncState;
   onSync(): void;
   advisor: AdvisorStatusState;
+  /** Applies the picked language immediately and persists it to data/settings.json. */
+  onLocaleChange(locale: Locale): void;
 }
 
 function accountText({ account, forcedAccountId }: SettingsInfo): string {
@@ -203,7 +207,36 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   );
 }
 
-export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps) {
+/** Interface language, saved to data/settings.json and applied without reloading. */
+function LanguageSettings({ onLocaleChange }: { onLocaleChange(locale: Locale): void }) {
+  const t = useT();
+  const locale = useLocale();
+
+  function handleChange(event: ChangeEvent<HTMLSelectElement>) {
+    const next = toLocale(event.target.value) ?? DEFAULT_LOCALE;
+    onLocaleChange(next);
+    void api.saveLocale(next).catch(() => {});
+  }
+
+  return (
+    <section className="card" aria-labelledby="language-title">
+      <h2 id="language-title">{t('app.language')}</h2>
+      <label className="field">
+        <span className="visually-hidden">{t('app.language')}</span>
+        <select value={locale} onChange={handleChange}>
+          {LOCALES.map((code) => (
+            <option key={code} value={code}>
+              {LOCALE_NAMES[code]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="hint">{t('settings.language.hint')}</p>
+    </section>
+  );
+}
+
+export function Settings({ settings, kb, sync, onSync, advisor, onLocaleChange }: SettingsProps) {
   const running = sync.kind === 'running' || kb?.running === true;
   return (
     <div className="settings">
@@ -249,6 +282,8 @@ export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps)
           </>
         )}
       </section>
+
+      <LanguageSettings onLocaleChange={onLocaleChange} />
     </div>
   );
 }
