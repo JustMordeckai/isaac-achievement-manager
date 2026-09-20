@@ -1,7 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { t } from '../../shared/i18n/index.ts';
 import { RunCard } from '../../web/src/components/RunCard.tsx';
+import { LocaleProvider } from '../../web/src/i18n.tsx';
 import { makeRun } from './factories.ts';
 
 function renderCard(run = makeRun(), onOpenAchievement = vi.fn(), onAsk = vi.fn()) {
@@ -9,42 +11,52 @@ function renderCard(run = makeRun(), onOpenAchievement = vi.fn(), onAsk = vi.fn(
 }
 
 describe('RunCard', () => {
-  it('résume la run et ouvre la fiche d’un succès', async () => {
+  it('sums up the run and opens the card of an achievement', async () => {
     const user = userEvent.setup();
     const onOpenAchievement = vi.fn();
     renderCard(makeRun(), onOpenAchievement);
     const card = screen.getByRole('article', { name: 'Magdalene' });
     expect(within(card).getByRole('heading', { level: 3 }).firstElementChild).toHaveAttribute('lang', 'en');
     expect(within(card).getByText('Hard')).toHaveClass('run__mode--strong');
-    expect(within(card).getByText('environ 1 h 14')).toBeInTheDocument();
-    expect(within(card).getByText(/^Battre/)).toHaveTextContent("Battre Boss Rush, Mom's Heart, Satan, The Lamb");
+    expect(within(card).getByText('about 1 h 14')).toBeInTheDocument();
+    expect(within(card).getByText(/^Beat/)).toHaveTextContent("Beat Boss Rush, Mom's Heart, Satan, The Lamb");
     expect(
-      within(card).getByText('2 succès, soit 1,6 par heure (pondéré par la difficulté estimée du personnage)'),
+      within(card).getByText('2 achievements, that is 1.6 per hour (weighted by the estimated difficulty of the character)'),
     ).toBeInTheDocument();
-    const chips = within(within(card).getByRole('list', { name: 'Succès obtenus' })).getAllByRole('button');
+    const chips = within(within(card).getByRole('list', { name: 'Achievements earned' })).getAllByRole('button');
     expect(chips.map((c) => c.textContent)).toEqual(['Guardian Angel', "Maggy's Faith"]);
     await user.click(chips[1]);
     expect(onOpenAchievement).toHaveBeenCalledWith(71);
-    expect(within(card).queryByText(/À débloquer d'abord/)).not.toBeInTheDocument();
+    expect(within(card).queryByText(/To unlock first/)).not.toBeInTheDocument();
   });
 
-  it('déplie le chemin étape par étape', async () => {
+  it('speaks French inside a French locale', () => {
+    render(
+      <LocaleProvider locale="fr">
+        <RunCard run={makeRun()} onOpenAchievement={vi.fn()} onAsk={vi.fn()} />
+      </LocaleProvider>,
+    );
+    expect(screen.getByRole('button', { name: t('fr', 'run.ask') })).toBeInTheDocument();
+    expect(screen.getByText(t('fr', 'run.about', { minutes: '1 h 14' }))).toBeInTheDocument();
+  });
+
+  it('unfolds the path step by step', async () => {
     const user = userEvent.setup();
     const { container } = renderCard();
-    const summary = screen.getByText('Chemin en 2 étapes');
+    const summary = screen.getByText('Path in 2 steps');
     await user.click(summary);
     expect(summary.closest('details')).toHaveAttribute('open');
     const steps = [...container.querySelectorAll('.run__path li')].map((li) => li.textContent);
     expect(steps).toEqual(makeRun().steps);
   });
 
-  it('accorde le chemin à une seule étape', () => {
+  it('uses the singular for a path of one step', () => {
     const run = makeRun({ steps: ['Traverser Basement, Caves et Depths, puis battre Mom en Depths II.'] });
     renderCard(run);
-    expect(screen.getByText('Chemin en 1 étape')).toBeInTheDocument();
+    expect(screen.getByText('Path in 1 step')).toBeInTheDocument();
   });
 
-  it('présente une run de préparation et ouvre les succès qu’elle rapproche', async () => {
+  it('shows a prep run and opens the achievements it brings closer', async () => {
     const user = userEvent.setup();
     const onOpenAchievement = vi.fn();
     const run = makeRun({
@@ -58,11 +70,11 @@ describe('RunCard', () => {
     renderCard(run, onOpenAchievement);
     const card = screen.getByRole('article', { name: 'Isaac' });
     expect(
-      within(card).getByText('Run de préparation : aucun succès tout de suite, elle rapproche de'),
+      within(card).getByText('Prep run: no achievement right away, it brings these closer'),
     ).toBeInTheDocument();
-    expect(within(card).queryByText(/par heure/)).not.toBeInTheDocument();
-    expect(within(card).queryByRole('list', { name: 'Succès obtenus' })).not.toBeInTheDocument();
-    const chip = within(within(card).getByRole('list', { name: 'Succès préparés' })).getByRole('button');
+    expect(within(card).queryByText(/per hour/)).not.toBeInTheDocument();
+    expect(within(card).queryByRole('list', { name: 'Achievements earned' })).not.toBeInTheDocument();
+    const chip = within(within(card).getByRole('list', { name: 'Achievements this run prepares' })).getByRole('button');
     expect(chip).toHaveClass('chip', 'chip--link');
     expect(chip).toHaveTextContent('Buddy Baby');
     expect(chip.firstElementChild).toHaveAttribute('lang', 'en');
@@ -70,7 +82,7 @@ describe('RunCard', () => {
     expect(onOpenAchievement).toHaveBeenCalledWith(253);
   });
 
-  it('indique les prérequis manquants et la note du personnage', () => {
+  it('lists the missing prerequisites and the note of the character', () => {
     const run = makeRun({
       mode: 'normal',
       missing: [
@@ -81,9 +93,9 @@ describe('RunCard', () => {
     });
     renderCard(run);
     expect(screen.getByText('Normal')).not.toHaveClass('run__mode--strong');
-    const missing = screen.getByText(/^À débloquer d'abord/);
-    expect(missing).toHaveTextContent("À débloquer d'abord : A Secret Exit, The Polaroid ou The Negative");
-    // Chaque nom est en anglais, les liaisons restent en français.
+    const missing = screen.getByText(/^To unlock first/);
+    expect(missing).toHaveTextContent('To unlock first: A Secret Exit, The Polaroid or The Negative');
+    // Every name stays English, the connectors follow the interface language.
     expect([...missing.querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([
       'A Secret Exit',
       'The Polaroid',
@@ -92,10 +104,10 @@ describe('RunCard', () => {
     expect(screen.getByText('Eden change de départ à chaque partie.')).toHaveClass('hint');
   });
 
-  it('demande au conseiller comment réussir la run', async () => {
+  it('asks the advisor how to clear the run', async () => {
     const user = userEvent.setup();
     const { onAsk } = renderCard();
-    const ask = screen.getByRole('button', { name: 'Demander au conseiller' });
+    const ask = screen.getByRole('button', { name: 'Ask the advisor' });
     expect(ask).toHaveAccessibleDescription('Magdalene');
     await user.click(ask);
     expect(onAsk).toHaveBeenCalledWith(
@@ -103,7 +115,7 @@ describe('RunCard', () => {
     );
   });
 
-  it('demande au conseiller comment mener une run de préparation', async () => {
+  it('asks the advisor how to run a prep run', async () => {
     const user = userEvent.setup();
     const run = makeRun({
       character: 'isaac',
@@ -113,7 +125,7 @@ describe('RunCard', () => {
       prepares: [{ id: 253, name: 'Buddy Baby' }],
     });
     const { onAsk } = renderCard(run);
-    await user.click(screen.getByRole('button', { name: 'Demander au conseiller' }));
+    await user.click(screen.getByRole('button', { name: 'Ask the advisor' }));
     expect(onAsk).toHaveBeenCalledWith(
       "How do I clear this run with Isaac in Greedier mode (beating Ultra Greedier)? It is a prep run for Buddy Baby (#253).",
     );

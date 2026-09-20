@@ -169,7 +169,7 @@ describe('Dashboard: route plan', () => {
     expect(props.onOpenAchievement).toHaveBeenCalledWith(45);
     await user.click(within(section).getByRole('button', { name: 'See every route' }));
     expect(props.onShowRoutes).toHaveBeenCalled();
-    await user.click(within(runs[1]).getByRole('button', { name: 'Demander au conseiller' }));
+    await user.click(within(runs[1]).getByRole('button', { name: 'Ask the advisor' }));
     expect(props.onAsk).toHaveBeenCalledWith(
       'How do I clear this run with Isaac in Greed mode (beating Ultra Greed)? It should give Censer (#193).',
     );

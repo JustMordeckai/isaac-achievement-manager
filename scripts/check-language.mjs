@@ -55,6 +55,9 @@ const CLEAN = [
   'web/src/pages/Dashboard.tsx',
   'web/src/pages/Achievements.tsx',
   'web/src/components/AchievementCardPanel.tsx',
+  'web/src/components/RequirementNames.tsx',
+  'web/src/components/RunCard.tsx',
+  'web/src/pages/Routes.tsx',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

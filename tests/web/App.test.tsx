@@ -97,7 +97,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'See every route' }));
     expect(window.location.hash).toBe('#/routes');
     expect(screen.getByRole('button', { name: 'Routes' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Progress' })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Guardian Angel' })[0]);
     expect(window.location.hash).toBe('#/succes/45');
@@ -110,11 +110,11 @@ describe('App', () => {
     const mock = stubProgress();
     window.location.hash = '#/routes';
     render(<App />);
-    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    await screen.findByRole('heading', { name: 'Suggested runs' });
     expect(callsTo(mock, '/api/routes')).toBe(1);
     await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes')).toBe(2));
-    expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
   });
 
   it('garde Actualiser occupé tant que les routes se rechargent', async () => {
@@ -132,7 +132,7 @@ describe('App', () => {
     });
     window.location.hash = '#/routes';
     render(<App />);
-    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    await screen.findByRole('heading', { name: 'Suggested runs' });
     await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
     await vi.waitFor(() => expect(pending.release).toBeDefined());
     // La progression est relue tout de suite ; seules les routes restent en attente.
@@ -297,16 +297,16 @@ describe('App', () => {
     });
     window.location.hash = '#/routes';
     render(<App />);
-    await screen.findByRole('heading', { name: 'Runs conseillées' });
+    await screen.findByRole('heading', { name: 'Suggested runs' });
     await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
     await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'ami');
     await user.click(screen.getByRole('button', { name: 'Charger' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Profil Steam privé');
-    await user.click(within(alert).getByRole('button', { name: 'Réessayer' }));
+    await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes?profile=76561198000000001')).toBe(2));
-    await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Revenir à mon profil' }));
-    expect(await screen.findByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
+    await user.click(within(await screen.findByRole('alert')).getByRole('button', { name: 'Back to my profile' }));
+    expect(await screen.findByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
   });
 
   it('pose au conseiller la question d’une run et garde la conversation entre les onglets', async () => {
@@ -325,8 +325,8 @@ describe('App', () => {
     });
     window.location.hash = '#/routes';
     render(<App />);
-    const [magdalene] = within(await screen.findByRole('region', { name: 'Runs conseillées' })).getAllByRole('article');
-    await user.click(within(magdalene).getByRole('button', { name: 'Demander au conseiller' }));
+    const [magdalene] = within(await screen.findByRole('region', { name: 'Suggested runs' })).getAllByRole('article');
+    await user.click(within(magdalene).getByRole('button', { name: 'Ask the advisor' }));
     expect(window.location.hash).toBe('#/conseiller');
     expect(screen.getByRole('button', { name: 'Conseiller' })).toHaveAttribute('aria-current', 'page');
     const field = screen.getByLabelText<HTMLTextAreaElement>('Your question');

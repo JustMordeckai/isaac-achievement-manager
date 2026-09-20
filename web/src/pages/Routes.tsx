@@ -5,6 +5,7 @@ import type { KbStatus, OffRoute, RoutePlan } from '../../../shared/types.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { RequirementNames } from '../components/RequirementNames.tsx';
 import { RunCard } from '../components/RunCard.tsx';
+import { useT, useTPlural } from '../i18n.tsx';
 import { characterName, DLC_LABELS } from '../labels.ts';
 import type { RoutesState } from '../useRoutes.ts';
 
@@ -14,7 +15,7 @@ export interface RoutesProps {
   onOpenAchievement(id: number): void;
   onAsk(question: string): void;
   onRetry(): void;
-  /** Revenir au profil local après l'échec d'un autre profil, null si c'est déjà le cas. */
+  /** Back to the local profile after another profile failed; null when that is already the case. */
   onResetProfile: (() => void) | null;
 }
 
@@ -29,16 +30,18 @@ function AchievementLink({ id, name, onOpen }: { id: number; name: string; onOpe
 }
 
 function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id: number): void }) {
+  const t = useT();
   const closetCharacters = [...new Set(offRoute.closets.map((c) => c.character))];
   return (
     <section className="off-route" aria-labelledby="off-route-title">
-      <h2 id="off-route-title">Hors routes</h2>
+      <h2 id="off-route-title">{t('routes.offTitle')}</h2>
       <details className="card">
-        <summary>Défis ({offRoute.challenges.length})</summary>
+        <summary>{t('routes.challenges', { count: offRoute.challenges.length })}</summary>
         <ul className="todo-list">
           {offRoute.challenges.map((c) => (
             <li key={c.id}>
-              <AchievementLink id={c.id} name={c.name} onOpen={onOpen} /> : défi n° {c.number}
+              <AchievementLink id={c.id} name={c.name} onOpen={onOpen} />
+              {t('routes.challengeNumber', { number: c.number })}
               {c.title && (
                 <>
                   {' '}
@@ -47,28 +50,33 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
               )}
               {c.character && (
                 <>
-                  , avec <span lang="en">{c.character}</span>
+                  {t('routes.challengeWith')}
+                  <span lang="en">{c.character}</span>
                 </>
               )}
               {c.goal && (
                 <>
-                  , objectif <span lang="en">{c.goal}</span>
+                  {t('routes.challengeGoal')}
+                  <span lang="en">{c.goal}</span>
                 </>
               )}
               {c.curse && (
                 <>
-                  , malédiction <span lang="en">{c.curse}</span>
+                  {t('routes.challengeCurse')}
+                  <span lang="en">{c.curse}</span>
                 </>
               )}
               {c.startingItems.length > 0 && (
                 <>
-                  , objets de départ : <span lang="en">{c.startingItems.join(', ')}</span>
+                  {t('routes.challengeItems')}
+                  <span lang="en">{c.startingItems.join(', ')}</span>
                 </>
               )}
               {c.requirement && !c.requirement.met && (
                 <span className="todo-list__missing">
                   {' '}
-                  (à débloquer d'abord : <RequirementNames requirements={[c.requirement]} />)
+                  {t('routes.challengeUnlockFirst')}
+                  <RequirementNames requirements={[c.requirement]} />)
                 </span>
               )}
             </li>
@@ -76,12 +84,14 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
         </ul>
       </details>
       <details className="card">
-        <summary>Compteurs ({offRoute.counters.length})</summary>
+        <summary>{t('routes.counters', { count: offRoute.counters.length })}</summary>
         <ul className="todo-list">
           {offRoute.counters.map((c) => (
             <li key={c.id} className="todo-list__counter">
               <span>
-                <AchievementLink id={c.id} name={c.name} onOpen={onOpen} /> : <span lang="en">{c.condition}</span>
+                <AchievementLink id={c.id} name={c.name} onOpen={onOpen} />
+                {t('routes.colonSpace')}
+                <span lang="en">{c.condition}</span>
               </span>
               {c.value !== null && (
                 <>
@@ -96,23 +106,35 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
         </ul>
       </details>
       <details className="card">
-        <summary>Placards de Home ({offRoute.closets.length})</summary>
+        <summary>{t('routes.closets', { count: offRoute.closets.length })}</summary>
         <p className="hint">
-          Ils s'ouvrent pendant la route de <span lang="en">The Beast</span>, avec une{' '}
-          <span lang="en">Red Key</span>, une <span lang="en">Cracked Key</span> ou{' '}
-          <span lang="en">Soul of Cain</span>.
+          {t('routes.closetsHintStart')}
+          <span lang="en">The Beast</span>
+          {t('routes.closetsHintMiddle')}
+          <span lang="en">Red Key</span>
+          {t('routes.closetsHintOr1')}
+          <span lang="en">Cracked Key</span>
+          {t('routes.closetsHintOr2')}
+          <span lang="en">Soul of Cain</span>
+          {t('routes.closetsHintEnd')}
           {!offRoute.redKey && (
             <>
               {' '}
-              Le coffre de <span lang="en">Mom</span> donne la <span lang="en">Red Key</span> au premier passage à{' '}
-              <span lang="en">Home</span>.
+              {t('routes.redKeyStart')}
+              <span lang="en">Mom</span>
+              {t('routes.redKeyMiddle')}
+              <span lang="en">Red Key</span>
+              {t('routes.redKeyEnd')}
+              <span lang="en">Home</span>
+              {t('routes.closetsHintEnd')}
             </>
           )}
         </p>
         <ul className="todo-list">
           {closetCharacters.map((character: CharacterId) => (
             <li key={character}>
-              <span lang="en">{characterName(character)}</span> :{' '}
+              <span lang="en">{characterName(character)}</span>
+              {t('routes.colonSpace')}
               {offRoute.closets
                 .filter((c) => c.character === character)
                 .map((c) => (
@@ -123,7 +145,7 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
         </ul>
       </details>
       <details className="card">
-        <summary>Divers ({offRoute.misc.length})</summary>
+        <summary>{t('routes.misc', { count: offRoute.misc.length })}</summary>
         {DLC_ORDER.map((dlc) => {
           const items = offRoute.misc.filter((m) => m.dlc === dlc);
           if (items.length === 0) return null;
@@ -136,8 +158,8 @@ function OffRouteSections({ offRoute, onOpen }: { offRoute: OffRoute; onOpen(id:
                     <AchievementLink id={m.id} name={m.name} onOpen={onOpen} />
                     {m.condition && (
                       <>
-                        {' '}
-                        : <span lang="en">{m.condition}</span>
+                        {t('routes.colonSpace')}
+                        <span lang="en">{m.condition}</span>
                       </>
                     )}
                   </li>
@@ -158,11 +180,13 @@ interface RunListProps {
 }
 
 function RunList({ plan, onOpen, onAsk }: RunListProps) {
+  const t = useT();
+  const tp = useTPlural();
   const [character, setCharacter] = useState<CharacterId | 'all'>('all');
   const [withLocked, setWithLocked] = useState(false);
   const [shown, setShown] = useState(PAGE_SIZE);
   const present = new Set(plan.runs.map((r) => r.character));
-  // Après une actualisation, un personnage sorti du plan ne filtre plus rien : retour à « Tous ».
+  // After a refresh, a character no longer in the plan filters nothing: back to "All".
   const selected = character !== 'all' && present.has(character) ? character : 'all';
   const runs = plan.runs.filter(
     (r) => (selected === 'all' || r.character === selected) && (withLocked || r.missing.length === 0),
@@ -173,14 +197,13 @@ function RunList({ plan, onOpen, onAsk }: RunListProps) {
   return (
     <section aria-labelledby="runs-title">
       <div className="card routes-head">
-        <h2 id="runs-title">Runs conseillées</h2>
+        <h2 id="runs-title">{t('routes.title')}</h2>
         <p className="muted">
-          {playable} {playable <= 1 ? 'run jouable' : 'runs jouables'} tout de suite sur {plan.runs.length}, triées par
-          succès obtenus par heure. Les durées sont des estimations.
+          {tp('routes.playable', playable, { total: plan.runs.length })}
         </p>
         <form className="filters" onSubmit={(e) => e.preventDefault()}>
           <label className="field">
-            <span>Personnage</span>
+            <span>{t('routes.character')}</span>
             <select
               value={selected}
               onChange={(e) => {
@@ -188,7 +211,7 @@ function RunList({ plan, onOpen, onAsk }: RunListProps) {
                 setShown(PAGE_SIZE);
               }}
             >
-              <option value="all">Tous</option>
+              <option value="all">{t('routes.allCharacters')}</option>
               {CHARACTERS.filter((c) => present.has(c.id)).map((c) => (
                 <option key={c.id} value={c.id} lang="en">
                   {c.name}
@@ -205,15 +228,15 @@ function RunList({ plan, onOpen, onAsk }: RunListProps) {
                 setShown(PAGE_SIZE);
               }}
             />
-            Afficher aussi les runs à débloquer
+            {t('routes.withLocked')}
           </label>
         </form>
       </div>
       {runs.length === 0 ? (
         <p className="placeholder">
           {plan.runs.length === 0
-            ? 'Aucune run à proposer : les succès liés aux marques sont tous obtenus.'
-            : "Aucune run jouable pour ce choix : affiche les runs à débloquer pour voir quoi débloquer d'abord."}
+            ? t('routes.noRunAtAll')
+            : t('routes.noRunForChoice')}
         </p>
       ) : (
         <div className="run-list">
@@ -224,7 +247,7 @@ function RunList({ plan, onOpen, onAsk }: RunListProps) {
       )}
       {runs.length > shown && (
         <button type="button" className="btn load-more" onClick={() => setShown((n) => n + PAGE_SIZE)}>
-          Afficher {more} {more === 1 ? 'run' : 'runs'} de plus
+          {tp('routes.moreRuns', more)}
         </button>
       )}
     </section>
@@ -232,35 +255,37 @@ function RunList({ plan, onOpen, onAsk }: RunListProps) {
 }
 
 function KbMissing({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): void }) {
+  const t = useT();
   return (
     <div className="banner banner--info" role="status">
       <p>
         {kb.state === 'error'
-          ? `Base wiki inutilisable : ${kb.message ?? 'erreur inconnue'}`
-          : 'Base wiki absente : les routes se calculent à partir du wiki. Synchronise-la depuis les paramètres.'}
+          ? t('routes.kbUnusable', { message: kb.message ?? t('dashboard.unknownError') })
+          : t('routes.kbAbsent')}
       </p>
       <button type="button" className="btn" onClick={onOpenSettings}>
-        Ouvrir les paramètres
+        {t('app.openSettings')}
       </button>
     </div>
   );
 }
 
-/** Écran Routes : runs conseillées puis succès hors routes. */
+/** Routes screen: suggested runs then the achievements off the routes. */
 export function Routes({ state, onOpenSettings, onOpenAchievement, onAsk, onRetry, onResetProfile }: RoutesProps) {
-  if (state.status === 'loading') return <p className="placeholder">Calcul des routes…</p>;
+  const t = useT();
+  if (state.status === 'loading') return <p className="placeholder">{t('routes.computing')}</p>;
   if (state.status === 'error') {
     return (
       <div className="card error-panel" role="alert">
-        <h2>Impossible de calculer les routes</h2>
+        <h2>{t('routes.failedTitle')}</h2>
         <p>{state.message}</p>
         <div className="error-panel__actions">
           <button type="button" className="btn btn--primary" onClick={onRetry}>
-            Réessayer
+            {t('routes.retry')}
           </button>
           {onResetProfile && (
             <button type="button" className="btn" onClick={onResetProfile}>
-              Revenir à mon profil
+              {t('routes.backToMyProfile')}
             </button>
           )}
         </div>

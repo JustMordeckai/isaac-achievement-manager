@@ -164,6 +164,11 @@ export function formatDate(locale: Locale, iso: string): string {
   return format.format(new Date(iso));
 }
 
+/** One decimal, with the separator of the locale (a rate of achievements per hour, for instance). */
+export function formatDecimal(locale: Locale, value: number): string {
+  return new Intl.NumberFormat(REGION[locale], { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+}
+
 export function percent(locale: Locale, value: number, total: number): string {
   const ratio = total === 0 ? 0 : (value / total) * 100;
   const number = new Intl.NumberFormat(REGION[locale], { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ratio);

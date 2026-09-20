@@ -108,7 +108,7 @@ describe('AchievementCardPanel', () => {
     const items = within(section).getAllByRole('listitem');
     expect(items.map((li) => li.textContent)).toEqual([
       'Azazel: unlocked',
-      'The Polaroid ou The Negative: still to unlock',
+      'The Polaroid or The Negative: still to unlock',
       "Run Azazel (Hard): beat Boss Rush, Mom's Heart, about 38 min",
     ]);
     expect([...items[1].querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([

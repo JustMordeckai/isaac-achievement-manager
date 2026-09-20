@@ -1,18 +1,14 @@
 import type { PlannedRun } from '../../../shared/types.ts';
 import { runQuestion } from '../advisor-question.ts';
-import { useLocale } from '../i18n.tsx';
-import { characterName, endingList, formatMinutes, runModeLabel } from '../labels.ts';
+import { useLocale, useT, useTPlural } from '../i18n.tsx';
+import { characterName, endingList, formatDecimal, formatMinutes, runModeLabel } from '../labels.ts';
 import { RequirementNames } from './RequirementNames.tsx';
 
 export interface RunCardProps {
   run: PlannedRun;
   onOpenAchievement(id: number): void;
-  /** Ouvre le conseiller avec une question sur cette run. */
+  /** Opens the advisor with a question about this run. */
   onAsk(question: string): void;
-}
-
-function perHour(score: number): string {
-  return score.toFixed(1).replace('.', ',');
 }
 
 interface AchievementChipsProps {
@@ -21,7 +17,7 @@ interface AchievementChipsProps {
   onOpen(id: number): void;
 }
 
-/** Succès de la run en boutons qui ouvrent leur fiche. */
+/** Achievements of the run, as buttons that open their card. */
 function AchievementChips({ label, list, onOpen }: AchievementChipsProps) {
   return (
     <ul className="chips run__achievements" aria-label={label}>
@@ -36,9 +32,11 @@ function AchievementChips({ label, list, onOpen }: AchievementChipsProps) {
   );
 }
 
-/** Une run planifiée : personnage, fins, succès obtenus, prérequis et chemin dépliable. */
+/** One planned run: character, endings, achievements earned, prerequisites and the path to unfold. */
 export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
   const locale = useLocale();
+  const t = useT();
+  const tp = useTPlural();
   const titleId = `run-${run.id}`;
   const count = run.achievements.length;
   const preparation = count === 0 && run.prepares.length > 0;
@@ -51,34 +49,32 @@ export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
         <span className={`badge run__mode${run.mode === 'normal' ? '' : ' run__mode--strong'}`}>
           {runModeLabel(locale, run.mode)}
         </span>
-        <span className="run__time">environ {formatMinutes(run.minutes)}</span>
+        <span className="run__time">{t('run.about', { minutes: formatMinutes(run.minutes) })}</span>
       </header>
       <p className="run__endings">
-        Battre <span lang="en">{endingList(run.endings)}</span>
+        {t('run.beatPrefix')}
+        <span lang="en">{endingList(run.endings)}</span>
       </p>
       {preparation ? (
         <>
-          <p className="muted">Run de préparation : aucun succès tout de suite, elle rapproche de</p>
-          <AchievementChips label="Succès préparés" list={run.prepares} onOpen={onOpenAchievement} />
+          <p className="muted">{t('run.prepRun')}</p>
+          <AchievementChips label={t('run.preparedLabel')} list={run.prepares} onOpen={onOpenAchievement} />
         </>
       ) : (
         <>
-          <p className="muted">
-            {count} succès, soit {perHour(run.score)} par heure (pondéré par la difficulté estimée du personnage)
-          </p>
-          <AchievementChips label="Succès obtenus" list={run.achievements} onOpen={onOpenAchievement} />
+          <p className="muted">{tp('run.perHour', count, { rate: formatDecimal(locale, run.score) })}</p>
+          <AchievementChips label={t('run.earnedLabel')} list={run.achievements} onOpen={onOpenAchievement} />
         </>
       )}
       {run.missing.length > 0 && (
         <p className="run__missing">
-          À débloquer d'abord : <RequirementNames requirements={run.missing} />
+          {t('run.unlockFirst')}
+          <RequirementNames requirements={run.missing} />
         </p>
       )}
       {run.note && <p className="hint">{run.note}</p>}
       <details className="run__path">
-        <summary>
-          Chemin en {run.steps.length} {run.steps.length === 1 ? 'étape' : 'étapes'}
-        </summary>
+        <summary>{tp('run.path', run.steps.length)}</summary>
         <ol>
           {run.steps.map((step) => (
             <li key={step}>{step}</li>
@@ -91,7 +87,7 @@ export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
         aria-describedby={titleId}
         onClick={() => onAsk(runQuestion(locale, run))}
       >
-        Demander au conseiller
+        {t('run.ask')}
       </button>
     </article>
   );
