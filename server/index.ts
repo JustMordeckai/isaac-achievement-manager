@@ -10,11 +10,13 @@ import { APP_NAME, createApp } from './app.ts';
 import { chooseAccount, detectSteamEnv, loadSettings, saveSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
+import { createSeaStatic, isStandalone, seaModule } from './sea.ts';
 import { createProgressService } from './progress-service.ts';
 import { createProfileClient } from './sources/steam-profile.ts';
 import { createWikiKb } from './wiki/setup.ts';
 
 const args = new Set(process.argv.slice(2));
+const standalone = isStandalone();
 const dev = args.has('--dev');
 const shouldOpen = args.has('--open');
 
@@ -86,7 +88,8 @@ const app = createApp({
 });
 const server = http.createServer(app);
 
-if (dev) {
+/** Vite in middleware mode, for `npm run dev` only: the executable never loads it. */
+async function attachVite(): Promise<void> {
   const { createServer } = await import('vite');
   const vite = await createServer({
     configFile: path.join(ROOT, 'vite.config.ts'),
@@ -94,6 +97,17 @@ if (dev) {
     appType: 'spa',
   });
   app.use(vite.middlewares);
+}
+
+// Nothing here is awaited at the top level: the executable is bundled as one CommonJS file, and
+// that format has no top-level await. In dev, the listen waits for Vite through `ready`.
+const ready: Promise<void> = dev ? attachVite() : Promise.resolve();
+
+if (dev) {
+  // The middlewares are attached by `ready` above.
+} else if (standalone) {
+  // The interface travels inside the executable: nothing to read from the disk.
+  app.use(createSeaStatic(seaModule()!));
 } else if (existsSync(path.join(WEB_DIST, 'index.html'))) {
   app.use(express.static(WEB_DIST));
 } else {
@@ -130,9 +144,11 @@ server.on('error', async (error: Error) => {
   process.exit(1);
 });
 
-server.listen(settings.port, '127.0.0.1', () => {
-  console.log(`Isaac Achievement Manager: ${url}`);
-  const name = account ? (account.personaName ?? `account ${account.accountId}`) : 'none';
-  console.log(`Steam: ${env.steamPath ?? 'not found'}; account used: ${name}`);
-  if (shouldOpen) openBrowser(url);
+void ready.then(() => {
+  server.listen(settings.port, '127.0.0.1', () => {
+    console.log(`Isaac Achievement Manager: ${url}`);
+    const name = account ? (account.personaName ?? `account ${account.accountId}`) : 'none';
+    console.log(`Steam: ${env.steamPath ?? 'not found'}; account used: ${name}`);
+    if (shouldOpen) openBrowser(url);
+  });
 });

@@ -41,6 +41,15 @@ npm start
 
 To stop it: the power button in the header, or `npm run stop`.
 
+### Standalone executable
+
+`npm run build:exe` packs Node, the server and the interface into one file,
+`dist/Isaac Achievement Manager.exe` (about 100 MB). It needs nothing installed: double click it and
+it serves the app, keeping its `data/` folder next to itself. `--with-kb` copies the wiki base along
+with it, so the first launch is already complete.
+
+Windows shows a SmartScreen warning the first time, because the file is not signed.
+
 On the first launch the wiki base does not exist yet: a banner says so and leads to the settings,
 whose **Sync the wiki** button downloads it (about 600 pages, around twenty seconds). The same sync
 exists on the command line: `npm run sync-wiki`. It never runs on its own, so start it again after a
@@ -175,9 +184,10 @@ The save slot shown by default is the most recently modified one; a picker chang
 
 ```
 npm run dev        # server plus Vite (hot reload) on http://127.0.0.1:5250/
-npm test           # 629 Vitest tests (server and front)
+npm test           # 637 Vitest tests (server and front)
 npm run typecheck  # TypeScript
 npm run sync-wiki  # wiki sync with no interface
+npm run build:exe  # dist/Isaac Achievement Manager.exe, Node included
 node scripts/check-language.mjs  # fails when French leaks outside shared/i18n/fr.ts
 ```
 

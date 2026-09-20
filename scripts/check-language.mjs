@@ -22,6 +22,7 @@ const SKIPPED_DIRS = new Set([
   'node_modules',
   'data',
   'dist',
+  'build',
   'fixtures',
   '.vite',
 ]);
