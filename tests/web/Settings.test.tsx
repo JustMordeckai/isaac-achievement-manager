@@ -131,6 +131,87 @@ describe('Settings', () => {
   });
 });
 
+const SETUP_MISSING = { installed: false, canInstall: true, vramGb: null, recommended: 'qwen3.5:4b' };
+const SETUP_READY = { installed: true, canInstall: true, vramGb: 16, recommended: 'qwen3.5:9b' };
+
+/** NDJSON answer, the way the two setup routes send their progress. */
+const ndjson = (events: unknown[]) => new Response(events.map((event) => `${JSON.stringify(event)}\n`).join(''));
+
+describe('Settings: advisor setup', () => {
+  it('offers to install Ollama when the machine has none, and follows the install', async () => {
+    const user = userEvent.setup();
+    const mock = stubFetch({
+      'GET /api/advisor/setup': () => SETUP_MISSING,
+      'POST /api/advisor/install': () =>
+        ndjson([
+          { step: 'progress', message: 'Downloading Ollama' },
+          { step: 'done', message: 'Ollama is installed.' },
+        ]),
+    });
+    const advisor = makeAdvisorState(ADVISOR_OFFLINE);
+    renderSettings({ advisor });
+
+    const section = advisorSection();
+    expect(await section.findByText('Ollama is not installed on this machine.')).toBeInTheDocument();
+
+    await user.click(section.getByRole('button', { name: 'Install Ollama' }));
+
+    expect(await section.findByText('Ollama is installed.')).toBeInTheDocument();
+    expect(advisor.recheck).toHaveBeenCalled();
+    const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/advisor/install')!;
+    expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor-install');
+  });
+
+  it('says what the card can run and downloads the model, byte by byte', async () => {
+    const user = userEvent.setup();
+    const mock = stubFetch({
+      'GET /api/advisor/setup': () => SETUP_READY,
+      'POST /api/advisor/pull': () =>
+        ndjson([
+          { step: 'progress', message: 'pulling manifest' },
+          { step: 'progress', message: 'pulling 1a2b', done: 5 * 1024 * 1024, total: 20 * 1024 * 1024 },
+          { step: 'done', message: 'qwen3.5:9b is ready.' },
+        ]),
+    });
+    const advisor = makeAdvisorState({ ...ADVISOR_OK, state: 'error', model: 'qwen3.5:9b', models: [] });
+    renderSettings({ advisor });
+
+    const section = advisorSection();
+    expect(await section.findByText(/16 GB of video memory detected/)).toBeInTheDocument();
+    expect(section.getByText(/Recommended model: qwen3.5:9b/)).toBeInTheDocument();
+
+    await user.click(section.getByRole('button', { name: 'Download qwen3.5:9b' }));
+
+    expect(await section.findByText('qwen3.5:9b is ready.')).toBeInTheDocument();
+    const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/advisor/pull')!;
+    expect(JSON.parse(String(init?.body))).toEqual({ model: 'qwen3.5:9b' });
+  });
+
+  it('reports a refused job and stays out of the way once the advisor answers', async () => {
+    const user = userEvent.setup();
+    stubFetch({
+      'GET /api/advisor/setup': () => SETUP_READY,
+      'POST /api/advisor/pull': () => ndjson([{ step: 'error', message: 'The download was refused (HTTP 500).' }]),
+    });
+    const { rerender, props } = renderSettings({ advisor: makeAdvisorState({ ...ADVISOR_OK, state: 'error', models: [] }) });
+
+    await user.click(await advisorSection().findByRole('button', { name: /^Download / }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The download was refused (HTTP 500).');
+
+    rerender(<Settings {...props} advisor={makeAdvisorState()} />);
+    expect(screen.queryByRole('heading', { name: 'Set up the advisor' })).not.toBeInTheDocument();
+  });
+
+  it('leaves the card out when the detection fails', async () => {
+    stubFetch({ 'GET /api/advisor/setup': () => jsonResponse({ error: 'nope' }, 500) });
+    renderSettings({ advisor: makeAdvisorState(ADVISOR_OFFLINE) });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('heading', { name: 'Set up the advisor' })).not.toBeInTheDocument();
+  });
+});
+
 describe('Settings: language', () => {
   it('offers both languages, with the current one selected, and explains where the choice is stored', () => {
     renderSettings();
@@ -195,7 +276,7 @@ describe('Settings: advisor', () => {
     await user.type(section.getByLabelText('Model'), 'qwen3.5:4b');
     await user.click(section.getByRole('button', { name: 'Save' }));
     expect(await section.findByRole('status')).toHaveTextContent('Settings saved.');
-    const [, init] = mock.mock.calls[0];
+    const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/advisor/settings')!;
     expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor-settings');
     expect(JSON.parse(String(init?.body))).toEqual({ url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' });
     expect(advisor.replace).toHaveBeenCalledWith(saved);

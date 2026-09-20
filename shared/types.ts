@@ -338,6 +338,24 @@ export interface AdvisorStatus extends OllamaSettings {
   models: string[];
 }
 
+/** What the advisor setup needs to know before it offers anything. */
+export interface AdvisorSetupState {
+  /** The ollama command answers on this machine. */
+  installed: boolean;
+  /** winget is there, so the app can install Ollama itself. */
+  canInstall: boolean;
+  /** Video memory in gigabytes, null when nothing readable answered. */
+  vramGb: number | null;
+  /** Model this machine should run, from the two the app knows. */
+  recommended: string;
+}
+
+/** One line of an install or of a model download, streamed as NDJSON. */
+export type AdvisorSetupEvent =
+  | { step: 'progress'; message: string; done?: number; total?: number }
+  | { step: 'done'; message: string }
+  | { step: 'error'; message: string };
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

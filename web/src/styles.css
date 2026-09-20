@@ -1255,6 +1255,29 @@ html {
   gap: 8px;
 }
 
+/* Advisor setup: install Ollama, then download one model. */
+.setup {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-sunk);
+}
+
+.setup h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.setup p {
+  margin: 6px 0;
+}
+
+.setup__progress .progress {
+  display: block;
+  margin-top: 6px;
+}
+
 /* Advisor settings */
 .settings-form {
   display: grid;

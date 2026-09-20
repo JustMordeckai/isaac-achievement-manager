@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../shared/i18n/index.ts';
-import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
+import type { AdvisorSetupEvent, AdvisorSetupState, AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
 import { type AdvisorService, createAdvisorService } from '../../server/advisor/service.ts';
+import type { AdvisorSetupService } from '../../server/advisor/setup.ts';
 import { createApp, type AppDeps } from '../../server/app.ts';
 import { HttpError } from '../../server/http-error.ts';
 import type { KbService } from '../../server/kb-service.ts';
@@ -49,9 +50,22 @@ function fakeAdvisor(overrides: Partial<AdvisorService> = {}): AdvisorService {
   return {
     status: vi.fn(async () => ADVISOR_OK),
     configure: vi.fn(async () => ADVISOR_OK),
+    settings: vi.fn(() => ({ url: ADVISOR_OK.url, model: ADVISOR_OK.model })),
     chat: vi.fn(async () => {
       throw new Error('not simulated');
     }),
+    ...overrides,
+  };
+}
+
+const SETUP_STATE: AdvisorSetupState = { installed: true, canInstall: true, vramGb: 16, recommended: 'qwen3.5:9b' };
+
+function fakeSetup(overrides: Partial<AdvisorSetupService> = {}): AdvisorSetupService {
+  return {
+    detect: vi.fn(async () => SETUP_STATE),
+    install: vi.fn(async (send) => send({ step: 'done', message: 'installed' })),
+    pull: vi.fn(async (_model, send) => send({ step: 'done', message: 'pulled' })),
+    isRunning: vi.fn(() => false),
     ...overrides,
   };
 }
@@ -77,6 +91,7 @@ async function start(overrides: Partial<AppDeps> = {}): Promise<string> {
     icons: { get: vi.fn(async () => new Uint8Array([0xff, 0xd8])) },
     kb: fakeKb(),
     advisor: fakeAdvisor(),
+    setup: fakeSetup(),
     settings: SETTINGS,
     ...overrides,
   });
@@ -492,6 +507,55 @@ describe('API advisor', () => {
       .map((line) => JSON.parse(line));
 
   const QUESTION = { question: 'How do I get The Nail (#9)?', history: [], profile: 'me', slot: null };
+
+  it('exposes what the machine has for the advisor', async () => {
+    const base = await start();
+    expect(await (await fetch(`${base}/api/advisor/setup`)).json()).toEqual(SETUP_STATE);
+  });
+
+  it('streams the install of Ollama, with the dedicated header', async () => {
+    const install = vi.fn(async (send: (event: AdvisorSetupEvent) => void) => {
+      send({ step: 'progress', message: 'Downloading' });
+      send({ step: 'done', message: 'Ollama is installed.' });
+    });
+    const base = await start({ setup: fakeSetup({ install }) });
+
+    const refused = await fetch(`${base}/api/advisor/install`, { method: 'POST' });
+    expect(refused.status).toBe(403);
+
+    const res = await fetch(`${base}/api/advisor/install`, { method: 'POST', headers: { 'X-IAM-Action': 'advisor-install' } });
+    expect(res.headers.get('Content-Type')).toMatch(/ndjson/);
+    expect(await lines(res)).toEqual([
+      { step: 'progress', message: 'Downloading' },
+      { step: 'done', message: 'Ollama is installed.' },
+    ]);
+    expect(install).toHaveBeenCalled();
+  });
+
+  it('streams the download of a model and refuses an unusable name', async () => {
+    const pull = vi.fn(async (_model: string, send: (event: AdvisorSetupEvent) => void) => {
+      send({ step: 'progress', message: 'pulling', done: 1, total: 2 });
+      send({ step: 'done', message: 'ready' });
+    });
+    const base = await start({ setup: fakeSetup({ pull }) });
+    const post = (body: unknown) =>
+      fetch(`${base}/api/advisor/pull`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-IAM-Action': 'advisor-pull' },
+        body: JSON.stringify(body),
+      });
+
+    expect((await post({ model: '' })).status).toBe(400);
+    expect((await post({})).status).toBe(400);
+    expect((await post([])).status).toBe(400);
+
+    const res = await post({ model: 'qwen3.5:4b' });
+    expect(await lines(res)).toEqual([
+      { step: 'progress', message: 'pulling', done: 1, total: 2 },
+      { step: 'done', message: 'ready' },
+    ]);
+    expect(pull).toHaveBeenCalledWith('qwen3.5:4b', expect.any(Function), 'en');
+  });
 
   it('exposes the advisor status', async () => {
     const base = await start();

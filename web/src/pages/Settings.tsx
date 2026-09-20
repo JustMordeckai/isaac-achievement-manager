@@ -1,10 +1,12 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
 import { api } from '../api.ts';
+import { AdvisorSetup } from '../components/AdvisorSetup.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { LanguagePicker, useLocale, useT } from '../i18n.tsx';
 import { formatDate, formatTime } from '../labels.ts';
 import type { AdvisorStatusState } from '../useAdvisor.ts';
+import { useAdvisorSetup } from '../useAdvisorSetup.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
 
 type Translate = ReturnType<typeof useT>;
@@ -124,6 +126,8 @@ function AdvisorStatusText({ status }: { status: AdvisorStatus | null }) {
 function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   const t = useT();
   const locale = useLocale();
+  // The setup card detects what the machine has, and reads the advisor state again once it is done.
+  const setup = useAdvisorSetup(0, advisor.recheck);
   const { status } = advisor;
   const [url, setUrl] = useState(status?.url ?? '');
   const [model, setModel] = useState(status?.model ?? '');
@@ -165,6 +169,7 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
     <section className="card" aria-labelledby="advisor-settings-title">
       <h2 id="advisor-settings-title">{t('settings.advisorTitle')}</h2>
       <AdvisorStatusText status={status} />
+      <AdvisorSetup setup={setup} status={status} />
       <form className="settings-form" onSubmit={save}>
         <label className="field">
           <span>{t('settings.ollamaUrl')}</span>

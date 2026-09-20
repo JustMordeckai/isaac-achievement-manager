@@ -8,6 +8,8 @@ export interface AdvisorService {
   /** Saves new settings, applies them without a restart and returns the state they produce. */
   configure(settings: OllamaSettings, locale: Locale): Promise<AdvisorStatus>;
   chat(messages: OllamaMessage[], signal: AbortSignal, locale: Locale): Promise<AsyncGenerator<string>>;
+  /** Settings in use, address included: the setup downloads the model on that same server. */
+  settings(): OllamaSettings;
 }
 
 export interface AdvisorServiceOptions {
@@ -34,6 +36,7 @@ export function createAdvisorService({ settings, save, idleTimeoutMs }: AdvisorS
 
   return {
     status,
+    settings: () => ({ ...current }),
     async configure(next, locale) {
       await save(next);
       current = { ...next };

@@ -47,6 +47,16 @@ export function parseAdvisorRequest(body: unknown, locale: Locale): AdvisorReque
 }
 
 /** Validates the body of POST /api/advisor/settings (400 otherwise). */
+/** Model name of a download request. */
+export function parseModelName(body: unknown, locale: Locale): string {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new HttpError(400, t(locale, 'errors.bodyExpected'));
+  }
+  const model = ollamaModel((body as { model?: unknown }).model);
+  if (!model) throw new HttpError(400, t(locale, 'advisor.modelInvalid'));
+  return model;
+}
+
 export function parseOllamaSettings(body: unknown, locale: Locale): OllamaSettings {
   const { url, model } = fields(body, locale);
   const cleanUrl = ollamaUrl(url);

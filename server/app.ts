@@ -3,6 +3,7 @@ import { t, toLocale, type Locale } from '../shared/i18n/index.ts';
 import type {
   AchievementCard,
   AdvisorEvent,
+  AdvisorSetupEvent,
   ApiError,
   RoutesResponse,
   SettingsInfo,
@@ -11,8 +12,9 @@ import type {
 } from '../shared/types.ts';
 import { buildAdvisorContext } from './advisor/context.ts';
 import { OllamaError, type OllamaErrorKind, type OllamaMessage } from './advisor/ollama.ts';
-import { parseAdvisorRequest, parseOllamaSettings } from './advisor/request.ts';
+import { parseAdvisorRequest, parseModelName, parseOllamaSettings } from './advisor/request.ts';
 import type { AdvisorService } from './advisor/service.ts';
+import type { AdvisorSetupService } from './advisor/setup.ts';
 import { saveSettings } from './config.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
@@ -31,6 +33,7 @@ export interface AppDeps {
   icons: IconCache;
   kb: KbService;
   advisor: AdvisorService;
+  setup: AdvisorSetupService;
   settings: SettingsInfo;
   /** Called once the response to POST /api/shutdown has been sent. */
   onShutdown?: () => void;
@@ -189,6 +192,33 @@ export function createApp(deps: AppDeps): express.Express {
       // The "error" event has already been sent in the stream.
     }
     if (!res.destroyed) res.end();
+  });
+
+  api.get('/advisor/setup', async (_req, res) => {
+    res.json(await deps.setup.detect());
+  });
+
+  // Installing Ollama and downloading a model both take minutes: they stream their progress the way
+  // the wiki sync does, and keep going when the browser goes away.
+  const streamSetup = (res: Response, job: (send: (event: AdvisorSetupEvent) => void) => Promise<void>) => {
+    res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.flushHeaders();
+    res.on('error', () => {});
+    const send = (event: AdvisorSetupEvent) => {
+      if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
+    };
+    return job(send).finally(() => {
+      if (!res.destroyed) res.end();
+    });
+  };
+
+  api.post('/advisor/install', requireAction('advisor-install', deps.settings), async (_req, res) => {
+    await streamSetup(res, (send) => deps.setup.install(send, deps.settings.locale));
+  });
+
+  api.post('/advisor/pull', requireAction('advisor-pull', deps.settings), jsonBody(deps.settings), async (req, res) => {
+    const model = parseModelName(req.body, deps.settings.locale);
+    await streamSetup(res, (send) => deps.setup.pull(model, send, deps.settings.locale));
   });
 
   api.get('/advisor/status', async (_req, res) => {

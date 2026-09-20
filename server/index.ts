@@ -5,6 +5,7 @@ import path from 'node:path';
 import { format } from 'node:util';
 import express from 'express';
 import { createAdvisorService } from './advisor/service.ts';
+import { createAdvisorSetup } from './advisor/setup.ts';
 import { APP_NAME, createApp } from './app.ts';
 import { chooseAccount, detectSteamEnv, loadSettings, saveSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
@@ -57,6 +58,10 @@ const env = detectSteamEnv({ extraAccountIds: settings.accountId !== null ? [set
 const account = chooseAccount(env, settings.accountId);
 const profiles = createProfileClient();
 const progress = createProgressService({ env, forcedAccountId: settings.accountId, profiles });
+const advisor = createAdvisorService({
+  settings: settings.ollama,
+  save: (ollama) => saveSettings(DATA_DIR, { ollama }, settings.locale),
+});
 const url = `http://127.0.0.1:${settings.port}/`;
 
 const app = createApp({
@@ -64,7 +69,8 @@ const app = createApp({
   profiles,
   icons: createIconCache(path.join(DATA_DIR, 'icons')),
   kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
-  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveSettings(DATA_DIR, { ollama }, settings.locale) }),
+  advisor,
+  setup: createAdvisorSetup({ url: () => advisor.settings().url }),
   settings: {
     port: settings.port,
     dataDir: DATA_DIR,

@@ -5,6 +5,8 @@ import type {
   AchievementEntry,
   AdvisorEvent,
   AdvisorRequest,
+  AdvisorSetupEvent,
+  AdvisorSetupState,
   AdvisorStatus,
   KbStatus,
   OllamaSettings,
@@ -86,6 +88,26 @@ async function syncWiki(locale: Locale, onEvent: (event: WikiSyncEvent) => void)
   return last;
 }
 
+/** Runs one setup job (install or download) and passes on every line of its NDJSON stream. */
+async function runSetup(
+  url: string,
+  action: string,
+  body: string | undefined,
+  locale: Locale,
+  onEvent: (event: AdvisorSetupEvent) => void,
+): Promise<AdvisorSetupEvent> {
+  const headers: Record<string, string> = { 'X-IAM-Action': action };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetch(url, { method: 'POST', headers, body });
+  if (!res.ok) throw await errorOf(res);
+  if (!res.body) throw new ApiRequestError(res.status, t(locale, 'wiki.syncEmptyReply'));
+  const last = await readEvents(res, res.body, onEvent, t(locale, 'wiki.syncUnreadableReply'));
+  if (!last || (last.step !== 'done' && last.step !== 'error')) {
+    throw new ApiRequestError(res.status, t(locale, 'wiki.syncNoResult'));
+  }
+  return last;
+}
+
 /**
  * Asks the advisor a question and passes on every line of the NDJSON stream. Returns the last event
  * (`done` or `error`); a refusal before the stream (Ollama unreachable, model missing) throws an ApiRequestError.
@@ -139,6 +161,11 @@ export const api = {
       body: JSON.stringify(settings),
     }),
   askAdvisor,
+  advisorSetup: (signal?: AbortSignal) => request<AdvisorSetupState>('/api/advisor/setup', { signal }),
+  installOllama: (locale: Locale, onEvent: (event: AdvisorSetupEvent) => void) =>
+    runSetup('/api/advisor/install', 'advisor-install', undefined, locale, onEvent),
+  pullModel: (model: string, locale: Locale, onEvent: (event: AdvisorSetupEvent) => void) =>
+    runSetup('/api/advisor/pull', 'advisor-pull', JSON.stringify({ model }), locale, onEvent),
   shutdown: async (): Promise<void> => {
     await request<{ ok: boolean }>('/api/shutdown', { method: 'POST', headers: { 'X-IAM-Action': 'shutdown' } });
   },
