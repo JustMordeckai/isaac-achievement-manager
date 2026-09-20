@@ -415,6 +415,20 @@ describe('App', () => {
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
   });
 
+  it('reads the server rendered data again once the language is saved', async () => {
+    const user = userEvent.setup();
+    const mock = stubProgress({ 'POST /api/settings': () => ({ ...SETTINGS, locale: 'fr' }) });
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Progress' });
+    const before = { progress: progressCalls(mock), routes: callsTo(mock, '/api/routes') };
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+
+    // The plan and the source messages come from the server: they are asked again in the new language.
+    await vi.waitFor(() => expect(progressCalls(mock)).toBe(before.progress + 1));
+    expect(callsTo(mock, '/api/routes')).toBe(before.routes + 1);
+  });
+
   it('keeps a language picked while settings are still loading', async () => {
     const user = userEvent.setup();
     let resolveSettings: (value: unknown) => void = () => {};

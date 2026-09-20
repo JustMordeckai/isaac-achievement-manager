@@ -66,10 +66,10 @@ function baseHeaderProps(): HeaderProps {
 }
 
 /** Mirrors how App.tsx wires the header: the picked locale drives the provider straight back. */
-function LocaleHarness() {
+function LocaleHarness({ onLocaleSaved }: { onLocaleSaved?(locale: Locale): void }) {
   const [locale, setLocale] = useState<Locale>('en');
   return (
-    <LocaleProvider locale={locale} onLocaleChange={setLocale}>
+    <LocaleProvider locale={locale} onLocaleChange={setLocale} onLocaleSaved={onLocaleSaved}>
       <Header {...baseHeaderProps()} />
     </LocaleProvider>
   );
@@ -103,6 +103,27 @@ describe('LanguagePicker', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       t('fr', 'settings.language.saveFailed'),
     );
+  });
+
+  it('reports the saved language, and says nothing when the save fails', async () => {
+    const user = userEvent.setup();
+    const saved = vi.fn();
+    stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
+    const view = render(<LocaleHarness onLocaleSaved={saved} />);
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+
+    await vi.waitFor(() => expect(saved).toHaveBeenCalledWith('fr'));
+    view.unmount();
+
+    stubFetch({ 'POST /api/settings': () => jsonResponse({ error: 'data/settings.json is read-only' }, 500) });
+    const failing = vi.fn();
+    render(<LocaleHarness onLocaleSaved={failing} />);
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(failing).not.toHaveBeenCalled();
   });
 
   it('carries the endonym language on each option for screen readers', () => {

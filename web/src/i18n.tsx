@@ -14,25 +14,40 @@ import { api } from './api.ts';
 interface LocaleContextValue {
   locale: Locale;
   onLocaleChange(locale: Locale): void;
+  onLocaleSaved(locale: Locale): void;
 }
 
-const LocaleContext = createContext<LocaleContextValue>({ locale: DEFAULT_LOCALE, onLocaleChange: () => {} });
+const LocaleContext = createContext<LocaleContextValue>({
+  locale: DEFAULT_LOCALE,
+  onLocaleChange: () => {},
+  onLocaleSaved: () => {},
+});
 
 export interface LocaleProviderProps {
   locale: Locale;
   /** Called when the reader picks a language through a LanguagePicker; a no-op when left out. */
   onLocaleChange?(locale: Locale): void;
+  /**
+   * Called once the server has taken the new language, so that whatever it renders (the plan, the
+   * cards, the source messages) can be read again. Not called when the save fails: the server then
+   * still answers in the language the loaded data is already written in.
+   */
+  onLocaleSaved?(locale: Locale): void;
   children: ReactNode;
 }
 
 /** Publishes the interface language to the component tree and keeps `<html lang>` in sync with it. */
-export function LocaleProvider({ locale, onLocaleChange, children }: LocaleProviderProps) {
+export function LocaleProvider({ locale, onLocaleChange, onLocaleSaved, children }: LocaleProviderProps) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
   const value = useMemo<LocaleContextValue>(
-    () => ({ locale, onLocaleChange: onLocaleChange ?? (() => {}) }),
-    [locale, onLocaleChange],
+    () => ({
+      locale,
+      onLocaleChange: onLocaleChange ?? (() => {}),
+      onLocaleSaved: onLocaleSaved ?? (() => {}),
+    }),
+    [locale, onLocaleChange, onLocaleSaved],
   );
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
@@ -92,14 +107,17 @@ export interface LanguagePickerProps {
  * go through. Header.tsx and Settings.tsx both render this instead of duplicating the interaction.
  */
 export function LanguagePicker({ hint }: LanguagePickerProps) {
-  const { locale, onLocaleChange } = useContext(LocaleContext);
+  const { locale, onLocaleChange, onLocaleSaved } = useContext(LocaleContext);
   const [saveFailed, setSaveFailed] = useState(false);
 
   function handleChange(event: ChangeEvent<HTMLSelectElement>) {
     const next = toLocale(event.target.value) ?? DEFAULT_LOCALE;
     setSaveFailed(false);
     onLocaleChange(next);
-    void api.saveLocale(next).catch(() => setSaveFailed(true));
+    void api.saveLocale(next).then(
+      () => onLocaleSaved(next),
+      () => setSaveFailed(true),
+    );
   }
 
   return (

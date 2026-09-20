@@ -110,9 +110,12 @@ export function App() {
     setLocale(next);
     storeLocale(next);
   };
+  // The interface switches at once, but the plan, the cards and the source messages are written by
+  // the server: they are read again as soon as the server has taken the new language.
+  const handleLocaleSaved = reload;
 
   return (
-    <LocaleProvider locale={locale} onLocaleChange={handleLocaleChange}>
+    <LocaleProvider locale={locale} onLocaleChange={handleLocaleChange} onLocaleSaved={handleLocaleSaved}>
       <div className="app">
         <Header
           summary={summary}
