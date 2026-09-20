@@ -51,6 +51,8 @@ const CLEAN = [
   'web/src/components/SourceBadges.tsx',
   'web/src/components/ProgressBar.tsx',
   'web/src/components/AchievementIcon.tsx',
+  'web/src/components/CharacterGrid.tsx',
+  'web/src/pages/Dashboard.tsx',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

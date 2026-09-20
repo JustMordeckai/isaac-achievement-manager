@@ -49,8 +49,8 @@ describe('App', () => {
     stubProgress();
     render(<App />);
     expect(screen.getByText('Chargement de la progression…')).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Progression' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Voir les 516 succès manquants' }));
+    expect(await screen.findByRole('heading', { name: 'Progress' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'See the 516 missing achievements' }));
     expect(window.location.hash).toBe('#/succes');
     expect(screen.getByText('Cain')).toBeInTheDocument();
     expect(screen.getByText('Play Online')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('App', () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Voir dans la liste' }));
+    await user.click(await screen.findByRole('button', { name: 'See them in the list' }));
     expect(screen.getByLabelText('Écarts sauvegarde/Steam')).toBeChecked();
     expect(screen.getByText('1 succès')).toBeInTheDocument();
   });
@@ -70,7 +70,7 @@ describe('App', () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Succès' }));
     await user.type(screen.getByLabelText('Recherche'), 'cain');
     await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
@@ -82,23 +82,23 @@ describe('App', () => {
     const user = userEvent.setup();
     const mock = stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     expect(progressCalls(mock)).toBe(1);
     await user.click(screen.getByRole('button', { name: 'Actualiser' }));
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
     expect(await screen.findByRole('button', { name: 'Actualiser' })).toBeEnabled();
-    expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
   it('ouvre les routes depuis le tableau de bord, puis une fiche depuis une run', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Voir toutes les routes' }));
+    await user.click(await screen.findByRole('button', { name: 'See every route' }));
     expect(window.location.hash).toBe('#/routes');
     expect(screen.getByRole('button', { name: 'Routes' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { name: 'Runs conseillées' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Progression' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Progress' })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Guardian Angel' })[0]);
     expect(window.location.hash).toBe('#/succes/45');
     expect(await screen.findByRole('complementary', { name: 'Guardian Angel' })).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('App', () => {
     const user = userEvent.setup();
     const mock = stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.selectOptions(screen.getByLabelText('Sauvegarde'), 'Slot 2');
     await vi.waitFor(() =>
       expect(mock.mock.calls.some(([input]) => String(input) === '/api/progress?profile=me&slot=2')).toBe(true),
@@ -164,14 +164,14 @@ describe('App', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Aucun compte Steam local');
     fail = false;
     await user.click(screen.getByRole('button', { name: 'Réessayer' }));
-    expect(await screen.findByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
   it('change de thème et le mémorise', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     expect(document.documentElement.dataset.theme).toBe('dark');
     await user.click(screen.getByRole('button', { name: 'Passer au thème clair' }));
     expect(document.documentElement.dataset.theme).toBe('light');
@@ -183,7 +183,7 @@ describe('App', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubProgress({ 'POST /api/shutdown': () => ({ ok: true }) });
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Arrêter' }));
     expect(await screen.findByRole('heading', { name: 'Serveur arrêté' })).toBeInTheDocument();
   });
@@ -193,10 +193,10 @@ describe('App', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     const mock = stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Arrêter' }));
     expect(mock.mock.calls.some(([input]) => String(input) === '/api/shutdown')).toBe(false);
-    expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
   it('affiche une erreur si l’arrêt échoue et garde le tableau de bord', async () => {
@@ -204,17 +204,17 @@ describe('App', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubProgress({ 'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403) });
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Arrêter' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Arrêt impossible');
-    expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
   it('ouvre la fiche d’un succès puis rend le focus à la liste en la fermant', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Succès' }));
     const cain = screen.getByRole('button', { name: 'Cain' });
     await user.click(cain);
@@ -239,9 +239,9 @@ describe('App', () => {
     const user = userEvent.setup();
     stubProgress({ 'GET /api/wiki/status': () => KB_ABSENT });
     render(<App />);
-    expect(await screen.findByText(/^Base wiki absente/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Wiki base missing/)).toBeInTheDocument();
     expect(screen.getByText('Wiki: missing')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Ouvrir les paramètres' }));
+    await user.click(screen.getByRole('button', { name: 'Open the settings' }));
     expect(window.location.hash).toBe('#/parametres');
     expect(screen.getByRole('heading', { name: 'Base wiki' })).toBeInTheDocument();
   });
@@ -269,7 +269,7 @@ describe('App', () => {
     const body = events.map((e) => `${JSON.stringify(e)}\n`).join('');
     const mock = stubProgress({ 'POST /api/wiki/sync': () => new Response(body) });
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Paramètres' }));
     expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Synchroniser le wiki' }));
@@ -388,7 +388,7 @@ describe('App', () => {
         }),
     });
     render(<App />);
-    await screen.findByRole('heading', { name: 'Progression' });
+    await screen.findByRole('heading', { name: 'Progress' });
     await vi.waitFor(() =>
       expect(within(screen.getByLabelText('Profil')).getAllByRole('option').map((o) => o.textContent)).toEqual([
         'Mon profil (Player)',

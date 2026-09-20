@@ -4,7 +4,7 @@ import { AchievementIcon } from '../components/AchievementIcon.tsx';
 import { CharacterGrid } from '../components/CharacterGrid.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { RunCard } from '../components/RunCard.tsx';
-import { useLocale } from '../i18n.tsx';
+import { useLocale, useT, useTPlural } from '../i18n.tsx';
 import { desyncLabel, DLC_LABELS, formatDate, percent } from '../labels.ts';
 import type { RoutesState } from '../useRoutes.ts';
 
@@ -27,25 +27,26 @@ export interface DashboardProps {
 
 const BEST_RUNS = 3;
 
-/** Meilleures runs jouables et note des personnages ; rien sans base wiki (le bandeau le signale déjà). */
+/** Best playable runs and the note of the characters; nothing without a wiki base (the banner already says so). */
 function PlanSections({
   routes,
   onShowRoutes,
   onOpenAchievement,
   onAsk,
 }: Pick<DashboardProps, 'routes' | 'onShowRoutes' | 'onOpenAchievement' | 'onAsk'>) {
+  const t = useT();
   if (routes.status === 'loading') {
     return (
       <section className="card wide" aria-labelledby="best-runs-title">
-        <h2 id="best-runs-title">Meilleures runs</h2>
-        <p className="placeholder">Calcul des routes…</p>
+        <h2 id="best-runs-title">{t('dashboard.bestRuns')}</h2>
+        <p className="placeholder">{t('dashboard.computingRoutes')}</p>
       </section>
     );
   }
   if (routes.status === 'error') {
     return (
       <p className="banner banner--error wide" role="alert">
-        Impossible de calculer les routes : {routes.message}
+        {t('dashboard.routesFailed', { message: routes.message })}
       </p>
     );
   }
@@ -55,11 +56,9 @@ function PlanSections({
   return (
     <>
       <section className="card wide" aria-labelledby="best-runs-title">
-        <h2 id="best-runs-title">Meilleures runs</h2>
+        <h2 id="best-runs-title">{t('dashboard.bestRuns')}</h2>
         {best.length === 0 ? (
-          <p className="muted">
-            {plan.runs.length === 0 ? 'Aucune run à proposer.' : "Aucune run jouable : débloque d'abord les prérequis indiqués dans les routes."}
-          </p>
+          <p className="muted">{plan.runs.length === 0 ? t('dashboard.noRun') : t('dashboard.noPlayableRun')}</p>
         ) : (
           <div className="run-list run-list--compact">
             {best.map((run) => (
@@ -68,11 +67,11 @@ function PlanSections({
           </div>
         )}
         <button type="button" className="btn" onClick={onShowRoutes}>
-          Voir toutes les routes
+          {t('dashboard.seeAllRoutes')}
         </button>
       </section>
       <section className="card wide" aria-labelledby="marks-title">
-        <h2 id="marks-title">Marques de complétion</h2>
+        <h2 id="marks-title">{t('dashboard.marksTitle')}</h2>
         <CharacterGrid characters={plan.characters} source={plan.marksSource} />
       </section>
     </>
@@ -84,11 +83,13 @@ const SHOWN_PER_KIND = 10;
 
 function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
   const locale = useLocale();
+  const tp = useTPlural();
   return (
     <div className="desync-groups">
       {DESYNC_ORDER.map((kind) => {
         const items = desyncs.filter((d) => d.kind === kind);
         if (items.length === 0) return null;
+        const more = items.length - SHOWN_PER_KIND;
         return (
           <div key={kind} className="desync-group">
             <h3>
@@ -100,9 +101,7 @@ function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
                   #{d.id} {d.name}
                 </li>
               ))}
-              {items.length > SHOWN_PER_KIND && (
-                <li className="chip chip--more">et {items.length - SHOWN_PER_KIND} {items.length - SHOWN_PER_KIND === 1 ? 'autre' : 'autres'}</li>
-              )}
+              {more > 0 && <li className="chip chip--more">{tp('dashboard.moreDesync', more)}</li>}
             </ul>
           </div>
         );
@@ -111,18 +110,19 @@ function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
   );
 }
 
-/** Bandeau affiché tant que la base wiki n'est pas utilisable ; le reste du tableau de bord fonctionne sans. */
+/** Banner shown while the wiki base is unusable; the rest of the dashboard works without it. */
 function KbBanner({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): void }) {
+  const t = useT();
   if (kb.state === 'ok') return null;
   return (
     <div className="banner banner--info kb-banner">
       <p>
         {kb.state === 'absent'
-          ? "Base wiki absente : synchronise-la pour afficher les fiches, les méthodes d'obtention et les filtres par personnage."
-          : `Base wiki inutilisable : ${kb.message ?? 'erreur inconnue'}`}
+          ? t('dashboard.kbAbsent')
+          : t('dashboard.kbUnusable', { message: kb.message ?? t('dashboard.unknownError') })}
       </p>
       <button type="button" className="btn" onClick={onOpenSettings}>
-        Ouvrir les paramètres
+        {t('app.openSettings')}
       </button>
     </div>
   );
@@ -139,6 +139,8 @@ export function Dashboard({
   onAsk,
 }: DashboardProps) {
   const locale = useLocale();
+  const t = useT();
+  const tp = useTPlural();
   const missing = summary.total - summary.unlocked;
   const dlcs = DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0);
 
@@ -146,13 +148,13 @@ export function Dashboard({
     <div className="dashboard">
       {kb && <KbBanner kb={kb} onOpenSettings={onOpenSettings} />}
       <section className="card hero" aria-labelledby="progress-title">
-        <h2 id="progress-title">Progression</h2>
+        <h2 id="progress-title">{t('dashboard.progress')}</h2>
         <p className="hero__count">
-          <strong>{summary.unlocked}</strong> / {summary.total} succès
+          <strong>{summary.unlocked}</strong> / {summary.total} {t('dashboard.achievements')}
         </p>
-        <ProgressBar value={summary.unlocked} max={summary.total} label="Progression globale" />
+        <ProgressBar value={summary.unlocked} max={summary.total} label={t('dashboard.progressBarLabel')} />
         <p className="hero__meta">
-          {percent(locale, summary.unlocked, summary.total)}, {missing} {missing <= 1 ? 'manquant' : 'manquants'}
+          {tp('dashboard.percentMissing', missing, { percent: percent(locale, summary.unlocked, summary.total) })}
         </p>
         {missing > 0 && (
           <button
@@ -160,13 +162,13 @@ export function Dashboard({
             className="btn btn--primary"
             onClick={() => onShowAchievements({ status: 'missing', dlc: 'all', onlyDesync: false })}
           >
-            {missing === 1 ? 'Voir le succès manquant' : `Voir les ${missing} succès manquants`}
+            {tp('dashboard.seeMissing', missing)}
           </button>
         )}
       </section>
 
       <section className="card" aria-labelledby="dlc-title">
-        <h2 id="dlc-title">Par extension</h2>
+        <h2 id="dlc-title">{t('dashboard.byDlc')}</h2>
         <ul className="dlc-list">
           {dlcs.map((dlc) => {
             const stats = summary.byDlc[dlc];
@@ -175,7 +177,7 @@ export function Dashboard({
                 <button
                   type="button"
                   className="dlc-row"
-                  aria-label={`${DLC_LABELS[dlc]} : ${stats.unlocked} sur ${stats.total}, voir les manquants`}
+                  aria-label={t('dashboard.dlcRow', { dlc: DLC_LABELS[dlc], unlocked: stats.unlocked, total: stats.total })}
                   onClick={() => onShowAchievements({ status: 'missing', dlc, onlyDesync: false })}
                 >
                   <span className="dlc-row__name">{DLC_LABELS[dlc]}</span>
@@ -191,9 +193,9 @@ export function Dashboard({
       </section>
 
       <section className="card" aria-labelledby="recent-title">
-        <h2 id="recent-title">Derniers déblocages</h2>
+        <h2 id="recent-title">{t('dashboard.recent')}</h2>
         {summary.recent.length === 0 ? (
-          <p className="muted">Aucune date de déblocage connue.</p>
+          <p className="muted">{t('dashboard.noUnlockDate')}</p>
         ) : (
           <ol className="recent-list">
             {summary.recent.map((item) => (
@@ -210,25 +212,20 @@ export function Dashboard({
       <PlanSections routes={routes} onShowRoutes={onShowRoutes} onOpenAchievement={onOpenAchievement} onAsk={onAsk} />
 
       <section className="card" aria-labelledby="desync-title">
-        <h2 id="desync-title">Écarts entre sources</h2>
+        <h2 id="desync-title">{t('dashboard.desyncTitle')}</h2>
         {summary.desyncs.length === 0 ? (
-          <p className="muted">Aucun écart : sauvegarde, cache Steam et profil en ligne concordent.</p>
+          <p className="muted">{t('dashboard.noDesync')}</p>
         ) : (
           <>
             <DesyncGroups desyncs={summary.desyncs} />
-            {summary.desyncs.some((d) => d.kind === 'steamOnly') && (
-              <p className="hint">
-                Astuce du wiki : sur l'écran des statistiques du jeu, Alt+F2 recopie dans la sauvegarde les succès
-                Steam qui y manquent.
-              </p>
-            )}
+            {summary.desyncs.some((d) => d.kind === 'steamOnly') && <p className="hint">{t('dashboard.altF2Tip')}</p>}
             {summary.desyncs.some((d) => d.kind === 'saveOnly' || d.kind === 'steamOnly') && (
               <button
                 type="button"
                 className="btn"
                 onClick={() => onShowAchievements({ status: 'all', dlc: 'all', onlyDesync: true })}
               >
-                Voir dans la liste
+                {t('dashboard.seeInList')}
               </button>
             )}
           </>

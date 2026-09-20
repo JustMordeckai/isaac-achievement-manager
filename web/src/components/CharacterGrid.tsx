@@ -1,7 +1,8 @@
 import { characterById } from '../../../shared/characters.ts';
+import type { MessageKey } from '../../../shared/i18n/index.ts';
 import { MARK_IDS, type MarkId, type MarkLevel } from '../../../shared/marks.ts';
 import type { CharacterProgress, MarksSource } from '../../../shared/types.ts';
-import { useLocale } from '../i18n.tsx';
+import { useLocale, useT } from '../i18n.tsx';
 import { MARK_LABELS, marksSourceLabel } from '../labels.ts';
 
 export interface CharacterGridProps {
@@ -9,11 +10,12 @@ export interface CharacterGridProps {
   source: MarksSource;
 }
 
-function levelText(mark: MarkId, level: MarkLevel | null): string {
-  if (level === null) return 'inconnue';
-  if (level === 0) return 'absente';
+/** Level of one mark, as a key; Greed and Greedier are names of the game and stay as they are. */
+function levelText(t: (key: MessageKey) => string, mark: MarkId, level: MarkLevel | null): string {
+  if (level === null) return t('dashboard.marks.unknown');
+  if (level === 0) return t('dashboard.marks.none');
   if (mark === 'greed') return level === 2 ? 'Greedier' : 'Greed';
-  return level === 2 ? 'difficile' : 'normal';
+  return level === 2 ? t('dashboard.marks.hard') : t('dashboard.marks.normal');
 }
 
 function levelClass(level: MarkLevel | null): string {
@@ -21,16 +23,17 @@ function levelClass(level: MarkLevel | null): string {
   return ['mark--none', 'mark--normal', 'mark--hard'][level];
 }
 
-/** Note de complétion des 34 personnages, une colonne par marque. */
+/** Completion note of the 34 characters, one column per mark. */
 export function CharacterGrid({ characters, source }: CharacterGridProps) {
   const locale = useLocale();
+  const t = useT();
   return (
     <div className="character-grid">
       <div className="character-grid__scroll">
         <table>
           <thead>
             <tr>
-              <th scope="col">Personnage</th>
+              <th scope="col">{t('dashboard.marks.character')}</th>
               {MARK_IDS.map((mark) => (
                 <th key={mark} scope="col">
                   <abbr title={MARK_LABELS[mark].name} lang="en">
@@ -48,23 +51,28 @@ export function CharacterGrid({ characters, source }: CharacterGridProps) {
                   {!character.unlocked && (
                     <>
                       {' '}
-                      <span className="tag">verrouillé</span>
+                      <span className="tag">{t('dashboard.marks.locked')}</span>
                     </>
                   )}
                   {character.hardAll && (
                     <>
                       {' '}
-                      <span className="tag tag--ok">note complète</span>
+                      <span className="tag tag--ok">{t('dashboard.marks.fullNote')}</span>
                     </>
                   )}
                 </th>
                 {MARK_IDS.map((mark) => {
                   const level = character.marks[mark];
-                  const text = levelText(mark, level);
+                  const text = levelText(t, mark, level);
                   return (
-                    <td key={mark} className={`mark ${levelClass(level)}`} title={`${MARK_LABELS[mark].name} : ${text}`}>
+                    <td
+                      key={mark}
+                      className={`mark ${levelClass(level)}`}
+                      title={t('dashboard.marks.cell', { mark: MARK_LABELS[mark].name, level: text })}
+                    >
                       <span className="visually-hidden">
-                        <span lang="en">{MARK_LABELS[mark].name}</span> : {text}
+                        <span lang="en">{MARK_LABELS[mark].name}</span>
+                        {t('dashboard.marks.levelSuffix', { level: text })}
                       </span>
                       {level === null && <span aria-hidden="true">?</span>}
                     </td>
@@ -76,8 +84,7 @@ export function CharacterGrid({ characters, source }: CharacterGridProps) {
         </table>
       </div>
       <p className="hint">
-        Case pleine : difficile (Greedier pour Greed) ; contour : normal (Greed) ; vide : absente ; ? : inconnue.{' '}
-        {marksSourceLabel(locale, source)}
+        {t('dashboard.marks.legend')} {marksSourceLabel(locale, source)}
       </p>
     </div>
   );
