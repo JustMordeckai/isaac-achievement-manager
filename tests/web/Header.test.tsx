@@ -145,13 +145,14 @@ describe('Header', () => {
     const props = renderHeader();
     await user.click(screen.getByRole('button', { name: 'Achievements' }));
     await user.click(screen.getByRole('button', { name: 'Refresh' }));
-    await user.click(screen.getByRole('button', { name: 'Switch to the light theme' }));
+    await user.click(screen.getByRole('switch', { name: 'Dark theme' }));
     await user.click(screen.getByRole('button', { name: 'Stop' }));
     expect(props.onTabChange).toHaveBeenCalledWith('achievements');
     expect(props.onRefresh).toHaveBeenCalled();
     expect(props.onToggleTheme).toHaveBeenCalled();
     expect(props.onStop).toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('switch', { name: 'Dark theme' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('disables Refresh while loading and with no summary', () => {

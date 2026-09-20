@@ -80,11 +80,12 @@ describe('LanguagePicker', () => {
     const user = userEvent.setup();
     const mock = stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
     render(<LocaleHarness />);
-    expect(screen.getByLabelText('Language')).toHaveValue('en');
+    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
 
-    expect(await screen.findByLabelText('Langue')).toHaveValue('fr');
+    expect(await screen.findByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('aria-pressed', 'true');
     expect(document.documentElement.lang).toBe('fr');
     await vi.waitFor(() => expect(mock.mock.calls.some(([input]) => String(input) === '/api/settings')).toBe(true));
     const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/settings')!;
@@ -97,9 +98,10 @@ describe('LanguagePicker', () => {
     stubFetch({ 'POST /api/settings': () => jsonResponse({ error: 'data/settings.json is read-only' }, 500) });
     render(<LocaleHarness />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
 
-    expect(await screen.findByLabelText('Langue')).toHaveValue('fr');
+    expect(await screen.findByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByRole('alert')).toHaveTextContent(
       t('fr', 'settings.language.saveFailed'),
     );
@@ -111,7 +113,7 @@ describe('LanguagePicker', () => {
     stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
     const view = render(<LocaleHarness onLocaleSaved={saved} />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
 
     await vi.waitFor(() => expect(saved).toHaveBeenCalledWith('fr'));
     view.unmount();
@@ -120,15 +122,15 @@ describe('LanguagePicker', () => {
     const failing = vi.fn();
     render(<LocaleHarness onLocaleSaved={failing} />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(failing).not.toHaveBeenCalled();
   });
 
-  it('carries the endonym language on each option for screen readers', () => {
+  it('names each flag in its own language, for screen readers', () => {
     render(<LocaleHarness />);
-    expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('lang', 'en');
-    expect(screen.getByRole('option', { name: 'Fran\u00e7ais' })).toHaveAttribute('lang', 'fr');
+    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('lang', 'en');
+    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('lang', 'fr');
   });
 });

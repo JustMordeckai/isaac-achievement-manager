@@ -14,6 +14,8 @@ export interface AdvisorStatusState {
   /** A new check is running. */
   checking: boolean;
   recheck(): void;
+  /** When the last check finished, reachable server or not; null while the first one runs. */
+  checkedAt: number | null;
   /** Replaces the state after the settings have been saved. */
   replace(status: AdvisorStatus): void;
 }
@@ -24,6 +26,7 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
   const [status, setStatus] = useState<AdvisorStatus | null>(null);
   const [checks, setChecks] = useState(0);
   const [checking, setChecking] = useState(true);
+  const [checkedAt, setCheckedAt] = useState<number | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setChecking(true);
@@ -33,6 +36,7 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
         if (controller.signal.aborted) return;
         setStatus(next);
         setChecking(false);
+        setCheckedAt(Date.now());
       },
       (error: unknown) => {
         if (controller.signal.aborted) return;
@@ -45,12 +49,13 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
           message: t(locale, 'advisor.statusUnavailable', { message: messageOf(error) }),
         }));
         setChecking(false);
+        setCheckedAt(Date.now());
       },
     );
     return () => controller.abort();
   }, [reloadKey, checks, locale]);
   const recheck = useCallback(() => setChecks((n) => n + 1), []);
-  return { status, checking, recheck, replace: setStatus };
+  return { status, checking, checkedAt, recheck, replace: setStatus };
 }
 
 export type ExchangeState = 'waiting' | 'streaming' | 'done' | 'stopped' | 'failed';

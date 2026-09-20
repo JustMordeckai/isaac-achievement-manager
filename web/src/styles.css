@@ -83,13 +83,20 @@ html {
 }
 
 .header__top,
-.header__bottom {
+.header__bottom,
+.header .tabs {
   max-width: 1100px;
   margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+/* The title shares its row with the actions; the tabs take the row below. */
+.header .tabs {
+  margin-top: 8px;
+  gap: 4px;
 }
 
 .header__bottom {
@@ -133,7 +140,122 @@ html {
   margin-left: auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A button that shows an icon instead of a word: its name lives in aria-label and title. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.icon-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.icon-btn--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.icon {
+  display: block;
+}
+
+/* Language: one flag per served language, the current one marked by aria-pressed. */
+.lang {
+  display: flex;
+  gap: 4px;
+}
+
+.lang__flag {
+  display: inline-flex;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.lang__flag:hover {
+  border-color: var(--border);
+}
+
+.lang__flag[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.lang__flag[aria-pressed='false'] .flag {
+  opacity: 0.55;
+}
+
+.flag {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+/* Theme: a switch, so the state is read from the knob as much as from the icon. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.switch__track {
+  display: flex;
+  align-items: center;
+  width: 46px;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-sunk);
+}
+
+.switch__knob {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-elev);
+  transform: translateX(0);
+  transition: transform 0.12s ease-out;
+}
+
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(20px);
+}
+
+.switch:hover .switch__track {
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch__knob {
+    transition: none;
+  }
 }
 
 /* Boutons et champs */
@@ -442,11 +564,6 @@ html {
   font-size: 0.85rem;
 }
 
-.desync-group h3 {
-  margin: 8px 0 6px;
-  font-size: 0.9rem;
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -458,10 +575,6 @@ html {
   border-radius: 4px;
   background: var(--bg-sunk);
   font-size: 0.85rem;
-}
-
-.chip--more {
-  color: var(--text-muted);
 }
 
 /* Achievement list */

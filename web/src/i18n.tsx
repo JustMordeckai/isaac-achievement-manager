@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   DEFAULT_LOCALE,
   LOCALE_NAMES,
@@ -9,6 +9,7 @@ import {
   type Locale,
   type MessageKey,
 } from '../../shared/i18n/index.ts';
+import { FLAGS } from './components/icons.tsx';
 import { api } from './api.ts';
 
 interface LocaleContextValue {
@@ -97,23 +98,24 @@ export function storeLocale(locale: Locale): void {
 }
 
 export interface LanguagePickerProps {
-  /** Shows the explanatory hint below the select; used in Settings, left out in the compact header. */
+  /** Shows the explanatory hint below the flags; used in Settings, left out in the compact header. */
   hint?: boolean;
 }
 
 /**
- * The one language switcher in the interface: a labelled select built from LOCALES, the call that
- * applies the pick immediately, the save to the server, and the failure line if that save does not
- * go through. Header.tsx and Settings.tsx both render this instead of duplicating the interaction.
+ * The one language switcher in the interface: one flag per served language, the call that applies
+ * the pick immediately, the save to the server, and the failure line if that save does not go
+ * through. Each flag is drawn, never written: the accessible name of the button is the language in
+ * its own language, so a screen reader announces "English" and "Francais" rather than a country.
+ * Header.tsx and Settings.tsx both render this instead of duplicating the interaction.
  */
 export function LanguagePicker({ hint }: LanguagePickerProps) {
   const { locale, onLocaleChange, onLocaleSaved } = useContext(LocaleContext);
   const [saveFailed, setSaveFailed] = useState(false);
 
-  function handleChange(event: ChangeEvent<HTMLSelectElement>) {
-    const next = toLocale(event.target.value) ?? DEFAULT_LOCALE;
+  function pick(next: Locale) {
     setSaveFailed(false);
-    onLocaleChange(next);
+    if (next !== locale) onLocaleChange(next);
     void api.saveLocale(next).then(
       () => onLocaleSaved(next),
       () => setSaveFailed(true),
@@ -122,16 +124,25 @@ export function LanguagePicker({ hint }: LanguagePickerProps) {
 
   return (
     <>
-      <label className="field">
-        <span className="visually-hidden">{t(locale, 'app.language')}</span>
-        <select value={locale} onChange={handleChange}>
-          {LOCALES.map((code) => (
-            <option key={code} value={code} lang={code}>
-              {LOCALE_NAMES[code]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="lang" role="group" aria-label={t(locale, 'app.language')}>
+        {LOCALES.map((code) => {
+          const Flag = FLAGS[code];
+          return (
+            <button
+              key={code}
+              type="button"
+              className="lang__flag"
+              lang={code}
+              aria-label={LOCALE_NAMES[code]}
+              title={LOCALE_NAMES[code]}
+              aria-pressed={code === locale}
+              onClick={() => pick(code)}
+            >
+              <Flag />
+            </button>
+          );
+        })}
+      </div>
       {saveFailed && <p role="alert">{t(locale, 'settings.language.saveFailed')}</p>}
       {hint && <p className="hint">{t(locale, 'settings.language.hint')}</p>}
     </>

@@ -135,9 +135,8 @@ describe('Settings: language', () => {
   it('offers both languages, with the current one selected, and explains where the choice is stored', () => {
     renderSettings();
     const section = within(screen.getByRole('region', { name: 'Language' }));
-    expect(section.getByRole('option', { name: 'English' })).toBeInTheDocument();
-    expect(section.getByRole('option', { name: 'Fran\u00e7ais' })).toBeInTheDocument();
-    expect(section.getByLabelText('Language')).toHaveValue('en');
+    expect(section.getByRole('button', { name: 'Fran\u00e7ais' })).toBeInTheDocument();
+    expect(section.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
     expect(section.getByText(/data\/settings\.json/)).toBeInTheDocument();
   });
 });

@@ -86,8 +86,12 @@ export const ADVISOR_OFFLINE: AdvisorStatus = {
 };
 
 /** Advisor state, the way useAdvisorStatus gives it. */
-export function makeAdvisorState(status: AdvisorStatus | null = ADVISOR_OK, checking = false): AdvisorStatusState {
-  return { status, checking, recheck: vi.fn(), replace: vi.fn() };
+export function makeAdvisorState(
+  status: AdvisorStatus | null = ADVISOR_OK,
+  checking = false,
+  checkedAt: number | null = null,
+): AdvisorStatusState {
+  return { status, checking, checkedAt, recheck: vi.fn(), replace: vi.fn() };
 }
 
 /** Card of The Nail (#9), the way /api/achievement/9 returns it. */

@@ -58,15 +58,6 @@ describe('App', () => {
     expect(screen.queryByText('Magdalene')).not.toBeInTheDocument();
   });
 
-  it('opens the list filtered on the differences from the dashboard', async () => {
-    const user = userEvent.setup();
-    stubProgress();
-    render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'See them in the list' }));
-    expect(screen.getByLabelText('Save and Steam differences')).toBeChecked();
-    expect(screen.getByText('1 achievement')).toBeInTheDocument();
-  });
-
   it('keeps the filters when the tab changes', async () => {
     const user = userEvent.setup();
     stubProgress();
@@ -174,7 +165,7 @@ describe('App', () => {
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
     expect(document.documentElement.dataset.theme).toBe('dark');
-    await user.click(screen.getByRole('button', { name: 'Switch to the light theme' }));
+    await user.click(screen.getByRole('switch', { name: 'Dark theme' }));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('iam-theme')).toBe('light');
   });
@@ -274,7 +265,8 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Sync the wiki' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Sync complete.');
+    const wiki = within(screen.getByRole('region', { name: 'Wiki base' }));
+    expect(await wiki.findByRole('status')).toHaveTextContent('Sync complete.');
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
     expect(callsTo(mock, '/api/achievements')).toBe(2);
     expect(callsTo(mock, '/api/wiki/status')).toBe(2);
@@ -403,15 +395,15 @@ describe('App', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
     stubProgress();
     render(<App />);
-    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
   });
 
   it('lets the server locale override the remembered one once settings answer', async () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
     stubProgress({ 'GET /api/settings': () => ({ ...SETTINGS, locale: 'en' }) });
     render(<App />);
-    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
-    expect(await screen.findByLabelText('Language')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Language' })).toBeInTheDocument();
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
   });
 
@@ -422,7 +414,7 @@ describe('App', () => {
     await screen.findByRole('heading', { name: 'Progress' });
     const before = { progress: progressCalls(mock), routes: callsTo(mock, '/api/routes') };
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
 
     // The plan and the source messages come from the server: they are asked again in the new language.
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(before.progress + 1));
@@ -441,8 +433,8 @@ describe('App', () => {
     });
     render(<App />);
 
-    await user.selectOptions(screen.getByLabelText('Language'), 'Fran\u00e7ais');
-    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
 
     await act(async () => {
       resolveSettings({ ...SETTINGS, locale: 'en' });
@@ -450,7 +442,7 @@ describe('App', () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('fr');
   });
 });

@@ -89,31 +89,6 @@ describe('Dashboard', () => {
     expect(screen.getByText('No known unlock date.')).toBeInTheDocument();
   });
 
-  it('lists the differences and opens the matching filter', async () => {
-    const user = userEvent.setup();
-    const { props } = renderDashboard();
-    expect(screen.getByRole('heading', { name: 'Unlocked in the save, missing from Steam (1)' })).toBeInTheDocument();
-    expect(screen.getByText('#638 Play Online')).toBeInTheDocument();
-    expect(screen.queryByText(/Alt\+F2/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'See them in the list' }));
-    expect(props.onShowAchievements).toHaveBeenCalledWith({ status: 'all', dlc: 'all', onlyDesync: true });
-  });
-
-  it('sums up long lists and gives the Alt+F2 tip', () => {
-    const desyncs: Desync[] = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: `Achievement ${i + 1}`, kind: 'steamOnly' }));
-    renderDashboard(makeSummary({ desyncs }));
-    expect(screen.getByText('#10 Achievement 10')).toBeInTheDocument();
-    expect(screen.queryByText('#11 Achievement 11')).not.toBeInTheDocument();
-    expect(screen.getByText('and 2 more')).toBeInTheDocument();
-    expect(screen.getByText(/Alt\+F2/)).toBeInTheDocument();
-  });
-
-  it('says when there is no difference', () => {
-    renderDashboard(makeSummary({ desyncs: [] }));
-    expect(screen.getByText(/No difference/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'See them in the list' })).not.toBeInTheDocument();
-  });
-
   it('uses the singular for a single missing achievement', () => {
     renderDashboard(makeSummary({ unlocked: 640, total: 641 }));
     expect(screen.getByText('99.8 %, 1 missing')).toBeInTheDocument();
@@ -124,23 +99,6 @@ describe('Dashboard', () => {
     renderDashboard(makeSummary({ unlocked: 641, total: 641 }));
     expect(screen.getByText('100.0 %, 0 missing')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /missing achievement/ })).not.toBeInTheDocument();
-  });
-
-  it('hides the "See them in the list" button with no save or Steam difference', () => {
-    const desyncs: Desync[] = [{ id: 343, name: 'Flooded Caves', kind: 'profileAhead' }];
-    renderDashboard(makeSummary({ desyncs }));
-    expect(
-      screen.getByRole('heading', { name: 'On the online profile, not in the local cache yet (1)' }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'See them in the list' })).not.toBeInTheDocument();
-  });
-
-  it('uses the singular for a single difference left out', () => {
-    const desyncs: Desync[] = Array.from({ length: 11 }, (_, i) => ({ id: i + 1, name: `Achievement ${i + 1}`, kind: 'steamOnly' }));
-    renderDashboard(makeSummary({ desyncs }));
-    expect(screen.getByText('#10 Achievement 10')).toBeInTheDocument();
-    expect(screen.queryByText('#11 Achievement 11')).not.toBeInTheDocument();
-    expect(screen.getByText('and 1 more')).toBeInTheDocument();
   });
 
   it('offers the sync while the wiki base is missing or unusable', async () => {
@@ -187,7 +145,8 @@ describe('Dashboard: route plan', () => {
     expect(within(grid).getAllByRole('row')).toHaveLength(35);
     const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(titles.indexOf('Best runs')).toBeLessThan(titles.indexOf('Completion marks'));
-    expect(titles.indexOf('Completion marks')).toBeLessThan(titles.indexOf('Differences between sources'));
+    // The marks close the dashboard: the differences live in the header badges and the list filter.
+    expect(titles.at(-1)).toBe('Completion marks');
   });
 
   it('reports that no run is playable', () => {

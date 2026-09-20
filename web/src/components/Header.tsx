@@ -5,6 +5,7 @@ import type { ProfileQuery } from '../api.ts';
 import { LanguagePicker, useT } from '../i18n.tsx';
 import type { Theme } from '../theme.ts';
 import type { Tab } from '../useHashTab.ts';
+import { MoonIcon, PowerIcon, RefreshIcon, SunIcon } from './icons.tsx';
 import { ProfilePicker } from './ProfilePicker.tsx';
 import { SourceBadges } from './SourceBadges.tsx';
 
@@ -50,42 +51,78 @@ function useHeaderHeight() {
   return ref;
 }
 
+/**
+ * Dark and light, as a switch rather than a button: its name is what it controls and its state is
+ * carried by aria-checked, so a screen reader says "dark theme, on" instead of an instruction.
+ */
+function ThemeSwitch({ theme, onToggle }: { theme: Theme; onToggle(): void }) {
+  const t = useT();
+  const dark = theme === 'dark';
+  return (
+    <button
+      type="button"
+      role="switch"
+      className="switch"
+      aria-checked={dark}
+      aria-label={t('app.themeSwitch')}
+      title={dark ? t('app.toLightTheme') : t('app.toDarkTheme')}
+      onClick={onToggle}
+    >
+      <span className="switch__track">
+        <span className="switch__knob">{dark ? <MoonIcon /> : <SunIcon />}</span>
+      </span>
+    </button>
+  );
+}
+
 export function Header(props: HeaderProps) {
   const t = useT();
   const { summary, query } = props;
   const save = summary?.save ?? null;
   const ref = useHeaderHeight();
+  const refreshLabel = props.refreshing ? t('app.refreshing') : t('app.refresh');
 
   return (
     <header className="header" ref={ref}>
       <div className="header__top">
         <h1 className="brand">{t('app.brand')}</h1>
-        <nav className="tabs" aria-label={t('app.sections')}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className="tab"
-              aria-current={props.tab === tab.id ? 'page' : undefined}
-              onClick={() => props.onTabChange(tab.id)}
-            >
-              {t(tab.key)}
-            </button>
-          ))}
-        </nav>
         <div className="header__actions">
-          <button type="button" className="btn" onClick={props.onRefresh} disabled={props.refreshing}>
-            {props.refreshing ? t('app.refreshing') : t('app.refresh')}
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={refreshLabel}
+            title={refreshLabel}
+            onClick={props.onRefresh}
+            disabled={props.refreshing}
+          >
+            <RefreshIcon />
           </button>
           <LanguagePicker />
-          <button type="button" className="btn btn--ghost" onClick={props.onToggleTheme}>
-            {props.theme === 'dark' ? t('app.toLightTheme') : t('app.toDarkTheme')}
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={props.onStop}>
-            {t('app.stop')}
+          <ThemeSwitch theme={props.theme} onToggle={props.onToggleTheme} />
+          <button
+            type="button"
+            className="icon-btn icon-btn--danger"
+            aria-label={t('app.stop')}
+            title={t('app.stop')}
+            onClick={props.onStop}
+          >
+            <PowerIcon />
           </button>
         </div>
       </div>
+      <nav className="tabs" aria-label={t('app.sections')}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className="tab"
+            aria-current={props.tab === tab.id ? 'page' : undefined}
+            onClick={() => props.onTabChange(tab.id)}
+          >
+            {t(tab.key)}
+          </button>
+        ))}
+      </nav>
       <div className="header__bottom">
         <ProfilePicker
           profile={query.profile}

@@ -1,11 +1,11 @@
 import { DLC_ORDER } from '../../../shared/dlc.ts';
-import type { Desync, DesyncKind, Dlc, KbStatus, ProgressSummary } from '../../../shared/types.ts';
+import type { Dlc, KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import { AchievementIcon } from '../components/AchievementIcon.tsx';
 import { CharacterGrid } from '../components/CharacterGrid.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { RunCard } from '../components/RunCard.tsx';
 import { useLocale, useT, useTPlural } from '../i18n.tsx';
-import { desyncLabel, DLC_LABELS, formatDate, percent } from '../labels.ts';
+import { DLC_LABELS, formatDate, percent } from '../labels.ts';
 import type { RoutesState } from '../useRoutes.ts';
 
 export interface FilterPatch {
@@ -75,38 +75,6 @@ function PlanSections({
         <CharacterGrid characters={plan.characters} source={plan.marksSource} />
       </section>
     </>
-  );
-}
-
-const DESYNC_ORDER: DesyncKind[] = ['saveOnly', 'steamOnly', 'profileAhead', 'cacheAhead'];
-const SHOWN_PER_KIND = 10;
-
-function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
-  const locale = useLocale();
-  const tp = useTPlural();
-  return (
-    <div className="desync-groups">
-      {DESYNC_ORDER.map((kind) => {
-        const items = desyncs.filter((d) => d.kind === kind);
-        if (items.length === 0) return null;
-        const more = items.length - SHOWN_PER_KIND;
-        return (
-          <div key={kind} className="desync-group">
-            <h3>
-              {desyncLabel(locale, kind)} ({items.length})
-            </h3>
-            <ul className="chips">
-              {items.slice(0, SHOWN_PER_KIND).map((d) => (
-                <li key={d.id} className="chip">
-                  #{d.id} {d.name}
-                </li>
-              ))}
-              {more > 0 && <li className="chip chip--more">{tp('dashboard.moreDesync', more)}</li>}
-            </ul>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -210,27 +178,6 @@ export function Dashboard({
       </section>
 
       <PlanSections routes={routes} onShowRoutes={onShowRoutes} onOpenAchievement={onOpenAchievement} onAsk={onAsk} />
-
-      <section className="card" aria-labelledby="desync-title">
-        <h2 id="desync-title">{t('dashboard.desyncTitle')}</h2>
-        {summary.desyncs.length === 0 ? (
-          <p className="muted">{t('dashboard.noDesync')}</p>
-        ) : (
-          <>
-            <DesyncGroups desyncs={summary.desyncs} />
-            {summary.desyncs.some((d) => d.kind === 'steamOnly') && <p className="hint">{t('dashboard.altF2Tip')}</p>}
-            {summary.desyncs.some((d) => d.kind === 'saveOnly' || d.kind === 'steamOnly') && (
-              <button
-                type="button"
-                className="btn"
-                onClick={() => onShowAchievements({ status: 'all', dlc: 'all', onlyDesync: true })}
-              >
-                {t('dashboard.seeInList')}
-              </button>
-            )}
-          </>
-        )}
-      </section>
     </div>
   );
 }

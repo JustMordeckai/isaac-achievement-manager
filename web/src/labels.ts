@@ -66,17 +66,6 @@ export function advisorStateLabel(locale: Locale, state: AdvisorState): string {
   return t(locale, ADVISOR_STATE_KEYS[state]);
 }
 
-const DESYNC_KEYS: Record<DesyncKind, MessageKey> = {
-  saveOnly: 'sources.desync.saveOnly',
-  steamOnly: 'sources.desync.steamOnly',
-  profileAhead: 'sources.desync.profileAhead',
-  cacheAhead: 'sources.desync.cacheAhead',
-};
-
-export function desyncLabel(locale: Locale, kind: DesyncKind): string {
-  return t(locale, DESYNC_KEYS[kind]);
-}
-
 const HOW_KEYS: Record<HowKind, MessageKey> = {
   mark: 'labels.how.mark',
   'multi-mark': 'labels.how.multiMark',
@@ -162,6 +151,18 @@ export function formatDate(locale: Locale, iso: string): string {
     dateFormats.set(locale, format);
   }
   return format.format(new Date(iso));
+}
+
+const timeFormats = new Map<Locale, Intl.DateTimeFormat>();
+
+/** Clock time alone, seconds included: it is read to tell one check of a server from the next. */
+export function formatTime(locale: Locale, time: number): string {
+  let format = timeFormats.get(locale);
+  if (!format) {
+    format = new Intl.DateTimeFormat(REGION[locale], { timeStyle: 'medium' });
+    timeFormats.set(locale, format);
+  }
+  return format.format(new Date(time));
 }
 
 /** One decimal, with the separator of the locale (a rate of achievements per hour, for instance). */

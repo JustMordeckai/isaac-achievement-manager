@@ -3,7 +3,7 @@ import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../.
 import { api } from '../api.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { LanguagePicker, useLocale, useT } from '../i18n.tsx';
-import { formatDate } from '../labels.ts';
+import { formatDate, formatTime } from '../labels.ts';
 import type { AdvisorStatusState } from '../useAdvisor.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
 
@@ -123,6 +123,7 @@ function AdvisorStatusText({ status }: { status: AdvisorStatus | null }) {
 /** Address of the Ollama server and model, saved to data/settings.json with no restart. */
 function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   const t = useT();
+  const locale = useLocale();
   const { status } = advisor;
   const [url, setUrl] = useState(status?.url ?? '');
   const [model, setModel] = useState(status?.model ?? '');
@@ -202,6 +203,12 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
             {advisor.checking ? t('settings.checking') : t('settings.checkConnection')}
           </button>
         </div>
+        {/* A check of a server that answers changes nothing on screen: the time says it ran. */}
+        {advisor.checkedAt !== null && (
+          <p className="hint" role="status">
+            {t('settings.lastCheck', { time: formatTime(locale, advisor.checkedAt) })}
+          </p>
+        )}
         {saved && <p role="status">{t('settings.saved')}</p>}
         {error && (
           <p className="banner banner--error" role="alert">
