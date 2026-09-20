@@ -155,7 +155,7 @@ describe('Dashboard : plan de routes', () => {
     expect(props.onShowRoutes).toHaveBeenCalled();
     await user.click(within(runs[1]).getByRole('button', { name: 'Demander au conseiller' }));
     expect(props.onAsk).toHaveBeenCalledWith(
-      'Comment réussir cette run avec Isaac en mode Greed (battre Ultra Greed) ? Elle doit donner Censer (#193).',
+      'How do I clear this run with Isaac in Greed mode (beating Ultra Greed)? It should give Censer (#193).',
     );
   });
 

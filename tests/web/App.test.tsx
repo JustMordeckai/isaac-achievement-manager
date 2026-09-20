@@ -329,12 +329,12 @@ describe('App', () => {
     await user.click(within(magdalene).getByRole('button', { name: 'Demander au conseiller' }));
     expect(window.location.hash).toBe('#/conseiller');
     expect(screen.getByRole('button', { name: 'Conseiller' })).toHaveAttribute('aria-current', 'page');
-    const field = screen.getByLabelText<HTMLTextAreaElement>('Ta question');
-    expect(field.value).toMatch(/^Comment réussir cette run avec Magdalene en mode difficile/);
+    const field = screen.getByLabelText<HTMLTextAreaElement>('Your question');
+    expect(field.value).toMatch(/^How do I clear this run with Magdalene in hard mode/);
     expect(field).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Envoyer' }));
+    await user.click(screen.getByRole('button', { name: 'Send' }));
     expect(await screen.findByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
-    expect(bodies).toEqual([{ question: expect.stringMatching(/^Comment réussir/), history: [], profile: 'me', slot: null }]);
+    expect(bodies).toEqual([{ question: expect.stringMatching(/^How do I clear this run/), history: [], profile: 'me', slot: null }]);
     expect(screen.getByText('Conseiller : OK')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
     await user.click(screen.getByRole('button', { name: 'Conseiller' }));
@@ -352,7 +352,7 @@ describe('App', () => {
     const panel = await screen.findByRole('complementary', { name: 'Cain' });
     await user.click(within(panel).getByRole('button', { name: 'Demander au conseiller' }));
     expect(window.location.hash).toBe('#/conseiller');
-    expect(screen.getByLabelText('Ta question')).toHaveValue('Comment obtenir Cain (#2) ?');
+    expect(screen.getByLabelText('Your question')).toHaveValue('How do I get Cain (#2)?');
   });
 
   it('enregistre les réglages Ollama depuis les paramètres et met à jour la pastille du conseiller', async () => {

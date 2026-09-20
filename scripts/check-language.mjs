@@ -43,6 +43,10 @@ const CLEAN = [
   'server/advisor/ollama.ts',
   'server/advisor/request.ts',
   'server/advisor/service.ts',
+  'web/src/api.ts',
+  'web/src/advisor-question.ts',
+  'web/src/useAdvisor.ts',
+  'web/src/pages/Advisor.tsx',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

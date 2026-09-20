@@ -5,7 +5,7 @@ import { ADVISOR_OK, KB_OK, makeCard, makeSummary, ROUTES_OK, SETTINGS } from '.
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 describe('api', () => {
-  it('transmet le profil et le slot', async () => {
+  it('passes the profile and the slot', async () => {
     const fetchMock = stubFetch({
       'GET /api/progress': (url) => {
         expect(url.searchParams.get('profile')).toBe('76561198000000001');
@@ -17,7 +17,7 @@ describe('api', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('omet le slot quand il est nul', async () => {
+  it('leaves the slot out when it is null', async () => {
     stubFetch({
       'GET /api/achievements': (url) => {
         expect(url.search).toBe('?profile=me');
@@ -27,19 +27,19 @@ describe('api', () => {
     expect(await api.achievements({ profile: 'me', slot: null })).toEqual([]);
   });
 
-  it('remonte le message d’erreur du serveur', async () => {
-    stubFetch({ 'GET /api/progress': () => jsonResponse({ error: 'Aucun compte' }, 404) });
+  it('passes on the error message from the server', async () => {
+    stubFetch({ 'GET /api/progress': () => jsonResponse({ error: 'No account' }, 404) });
     const error = await api.progress({ profile: 'me', slot: null }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiRequestError);
-    expect(error).toMatchObject({ status: 404, message: 'Aucun compte' });
+    expect(error).toMatchObject({ status: 404, message: 'No account' });
   });
 
-  it('gère une erreur sans corps JSON', async () => {
+  it('handles an error with no JSON body', async () => {
     stubFetch({ 'GET /api/progress': () => new Response('boom', { status: 500 }) });
-    await expect(api.progress({ profile: 'me', slot: null })).rejects.toMatchObject({ status: 500, message: 'Erreur HTTP 500' });
+    await expect(api.progress({ profile: 'me', slot: null })).rejects.toMatchObject({ status: 500, message: 'HTTP 500' });
   });
 
-  it('encode l’entrée de résolution', async () => {
+  it('encodes the input of the profile lookup', async () => {
     stubFetch({
       'GET /api/profile/resolve': (url) => {
         expect(url.searchParams.get('input')).toBe('https://steamcommunity.com/id/Ami/');
@@ -49,7 +49,7 @@ describe('api', () => {
     expect(await api.resolveProfile('https://steamcommunity.com/id/Ami/')).toEqual({ steamId64: '76561198000000001', name: 'Ami' });
   });
 
-  it('envoie l’en-tête d’arrêt', async () => {
+  it('sends the shutdown header', async () => {
     stubFetch({
       'POST /api/shutdown': (_url, init) => {
         expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('shutdown');
@@ -59,16 +59,16 @@ describe('api', () => {
     await expect(api.shutdown()).resolves.toBeUndefined();
   });
 
-  it('signale un arrêt refusé', async () => {
-    stubFetch({ 'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403) });
+  it('reports a refused shutdown', async () => {
+    stubFetch({ 'POST /api/shutdown': () => jsonResponse({ error: 'no' }, 403) });
     await expect(api.shutdown()).rejects.toMatchObject({ status: 403 });
   });
 
-  it('construit l’URL des icônes', () => {
+  it('builds the icon URL', () => {
     expect(iconUrl('abc.jpg')).toBe('/api/icons/abc.jpg');
   });
 
-  it('demande la fiche d’un succès pour le profil courant', async () => {
+  it('asks for the card of an achievement for the current profile', async () => {
     stubFetch({
       'GET /api/achievement/9': (url) => {
         expect(url.search).toBe('?profile=me&slot=2');
@@ -78,7 +78,7 @@ describe('api', () => {
     expect((await api.achievement(9, { profile: 'me', slot: 2 })).wiki?.name).toBe('The Nail');
   });
 
-  it('demande le plan de routes du profil courant', async () => {
+  it('asks for the route plan of the current profile', async () => {
     stubFetch({
       'GET /api/routes': (url) => {
         expect(url.search).toBe('?profile=76561198000000001');
@@ -88,7 +88,7 @@ describe('api', () => {
     expect(await api.routes({ profile: '76561198000000001', slot: null })).toEqual(ROUTES_OK);
   });
 
-  it('lit l’état du wiki et les réglages', async () => {
+  it('reads the wiki state and the settings', async () => {
     stubFetch({ 'GET /api/wiki/status': () => KB_OK, 'GET /api/settings': () => SETTINGS });
     expect(await api.wikiStatus()).toEqual(KB_OK);
     expect(await api.settings()).toEqual(SETTINGS);
@@ -106,8 +106,8 @@ describe('api', () => {
   });
 });
 
-describe('api : conseiller', () => {
-  it('lit l’état du conseiller et enregistre ses réglages avec l’en-tête dédié', async () => {
+describe('api: advisor', () => {
+  it('reads the advisor state and saves its settings with the dedicated header', async () => {
     const mock = stubFetch({
       'GET /api/advisor/status': () => ADVISOR_OK,
       'POST /api/advisor/settings': (_url, init) => {
@@ -123,16 +123,16 @@ describe('api : conseiller', () => {
 });
 
 describe('api.askAdvisor', () => {
-  const REQUEST = { question: 'Quelle run faire ?', history: [], profile: 'me', slot: 1 };
+  const REQUEST = { question: 'Which run should I do?', history: [], profile: 'me', slot: 1 };
   const EVENTS: AdvisorEvent[] = [
     { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
-    { kind: 'delta', text: 'Commence par ' },
+    { kind: 'delta', text: 'Start with ' },
     { kind: 'delta', text: 'Magdalene.' },
     { kind: 'done' },
   ];
   const body = (events: AdvisorEvent[]) => new Response(events.map((e) => `${JSON.stringify(e)}\n`).join(''));
 
-  it('envoie la question avec l’en-tête dédié et transmet chaque événement', async () => {
+  it('sends the question with the dedicated header and passes on every event', async () => {
     const mock = stubFetch({
       'POST /api/advisor': (_url, init) => {
         expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor');
@@ -140,33 +140,33 @@ describe('api.askAdvisor', () => {
       },
     });
     const seen: AdvisorEvent[] = [];
-    expect(await api.askAdvisor(REQUEST, (event) => seen.push(event))).toEqual({ kind: 'done' });
+    expect(await api.askAdvisor(REQUEST, 'en', (event: AdvisorEvent) => seen.push(event))).toEqual({ kind: 'done' });
     expect(seen).toEqual(EVENTS);
     expect(JSON.parse(String(mock.mock.calls[0][1]?.body))).toEqual(REQUEST);
   });
 
-  it('renvoie l’erreur envoyée dans le flux', async () => {
-    const error: AdvisorEvent = { kind: 'error', message: "Erreur d'Ollama : out of memory" };
+  it('returns the error sent in the stream', async () => {
+    const error: AdvisorEvent = { kind: 'error', message: 'Ollama error: out of memory' };
     stubFetch({ 'POST /api/advisor': () => body([EVENTS[0], error]) });
-    expect(await api.askAdvisor(REQUEST, () => {})).toEqual(error);
+    expect(await api.askAdvisor(REQUEST, 'en', () => {})).toEqual(error);
   });
 
-  it('remonte un refus avant le flux, un flux interrompu ou illisible', async () => {
-    stubFetch({ 'POST /api/advisor': () => jsonResponse({ error: 'Ollama injoignable sur http://127.0.0.1:11434' }, 503) });
-    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toMatchObject({
+  it('passes on a refusal before the stream, an interrupted stream or an unreadable one', async () => {
+    stubFetch({ 'POST /api/advisor': () => jsonResponse({ error: 'Ollama unreachable at http://127.0.0.1:11434' }, 503) });
+    await expect(api.askAdvisor(REQUEST, 'en', () => {})).rejects.toMatchObject({
       status: 503,
-      message: 'Ollama injoignable sur http://127.0.0.1:11434',
+      message: 'Ollama unreachable at http://127.0.0.1:11434',
     });
     stubFetch({ 'POST /api/advisor': () => body(EVENTS.slice(0, 2)) });
-    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toThrow('Réponse du conseiller interrompue');
-    stubFetch({ 'POST /api/advisor': () => new Response('pas du json\n') });
-    await expect(api.askAdvisor(REQUEST, () => {})).rejects.toThrow('Réponse du conseiller illisible');
+    await expect(api.askAdvisor(REQUEST, 'en', () => {})).rejects.toThrow('Answer from the advisor interrupted');
+    stubFetch({ 'POST /api/advisor': () => new Response('not json\n') });
+    await expect(api.askAdvisor(REQUEST, 'en', () => {})).rejects.toThrow('Unreadable answer from the advisor');
   });
 
-  it('transmet le signal d’abandon', async () => {
+  it('passes on the abort signal', async () => {
     const controller = new AbortController();
     const mock = stubFetch({ 'POST /api/advisor': () => body(EVENTS) });
-    await api.askAdvisor(REQUEST, () => {}, controller.signal);
+    await api.askAdvisor(REQUEST, 'en', () => {}, controller.signal);
     expect(mock.mock.calls[0][1]?.signal).toBe(controller.signal);
   });
 });
@@ -174,12 +174,12 @@ describe('api.askAdvisor', () => {
 describe('api.syncWiki', () => {
   const encoder = new TextEncoder();
   const EVENTS: WikiSyncEvent[] = [
-    { step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' },
-    { step: 'pages', done: 1, total: 12, message: 'Lot 1 sur 12' },
-    { step: 'done', done: 1, total: 1, message: 'Synchro terminée' },
+    { step: 'core', done: 0, total: 1, message: 'Downloading the achievement list' },
+    { step: 'pages', done: 1, total: 12, message: 'Batch 1 of 12' },
+    { step: 'done', done: 1, total: 1, message: 'Sync complete' },
   ];
 
-  /** Flux NDJSON découpé en morceaux arbitraires, comme sur le réseau. */
+  /** NDJSON stream cut into arbitrary chunks, as it comes over the network. */
   function ndjson(chunks: string[]): Response {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -190,9 +190,9 @@ describe('api.syncWiki', () => {
     return new Response(body, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' } });
   }
 
-  it('envoie l’en-tête dédié et transmet chaque événement, même coupé entre deux morceaux', async () => {
+  it('sends the dedicated header and passes on every event, even one cut between two chunks', async () => {
     const text = EVENTS.map((e) => JSON.stringify(e)).join('\n');
-    const cut = text.indexOf('Lot 1') + 2;
+    const cut = text.indexOf('Batch 1') + 2;
     stubFetch({
       'POST /api/wiki/sync': (_url, init) => {
         expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('wiki-sync');
@@ -200,30 +200,30 @@ describe('api.syncWiki', () => {
       },
     });
     const seen: WikiSyncEvent[] = [];
-    const last = await api.syncWiki((event) => seen.push(event));
+    const last = await api.syncWiki('en', (event: WikiSyncEvent) => seen.push(event));
     expect(seen).toEqual(EVENTS);
     expect(last).toEqual(EVENTS[2]);
   });
 
-  it('lit la dernière ligne sans saut de ligne final', async () => {
+  it('reads the last line with no trailing newline', async () => {
     stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\n${JSON.stringify(EVENTS[2])}`]) });
-    expect(await api.syncWiki(() => {})).toEqual(EVENTS[2]);
+    expect(await api.syncWiki('en', () => {})).toEqual(EVENTS[2]);
   });
 
-  it('remonte un refus du serveur et un flux vide', async () => {
-    stubFetch({ 'POST /api/wiki/sync': () => jsonResponse({ error: 'Une synchro du wiki est déjà en cours' }, 409) });
-    await expect(api.syncWiki(() => {})).rejects.toMatchObject({ status: 409, message: 'Une synchro du wiki est déjà en cours' });
+  it('passes on a refusal from the server and an empty stream', async () => {
+    stubFetch({ 'POST /api/wiki/sync': () => jsonResponse({ error: 'A wiki sync is already running' }, 409) });
+    await expect(api.syncWiki('en', () => {})).rejects.toMatchObject({ status: 409, message: 'A wiki sync is already running' });
     stubFetch({ 'POST /api/wiki/sync': () => ndjson([]) });
-    await expect(api.syncWiki(() => {})).rejects.toThrow('Synchro interrompue sans résultat');
+    await expect(api.syncWiki('en', () => {})).rejects.toThrow('Sync interrupted with no result');
   });
 
-  it('signale un flux terminé sans événement final', async () => {
+  it('reports a stream that ends with no final event', async () => {
     stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\n${JSON.stringify(EVENTS[1])}\n`]) });
-    await expect(api.syncWiki(() => {})).rejects.toThrow('Synchro interrompue sans résultat');
+    await expect(api.syncWiki('en', () => {})).rejects.toThrow('Sync interrupted with no result');
   });
 
-  it('signale une ligne du flux illisible', async () => {
-    stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\npas du json\n`]) });
-    await expect(api.syncWiki(() => {})).rejects.toThrow('Réponse de synchro illisible');
+  it('reports an unreadable line in the stream', async () => {
+    stubFetch({ 'POST /api/wiki/sync': () => ndjson([`${JSON.stringify(EVENTS[0])}\nnot json\n`]) });
+    await expect(api.syncWiki('en', () => {})).rejects.toThrow('Unreadable sync answer');
   });
 });

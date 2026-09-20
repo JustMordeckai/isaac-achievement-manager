@@ -115,7 +115,7 @@ describe('Routes : runs conseillées', () => {
     const [magdalene] = within(screen.getByRole('region', { name: 'Runs conseillées' })).getAllByRole('article');
     await user.click(within(magdalene).getByRole('button', { name: 'Demander au conseiller' }));
     expect(props.onAsk).toHaveBeenCalledWith(
-      expect.stringMatching(/^Comment réussir cette run avec Magdalene en mode difficile/),
+      expect.stringMatching(/^How do I clear this run with Magdalene in hard mode/),
     );
   });
 });

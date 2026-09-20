@@ -142,7 +142,7 @@ describe('AchievementCardPanel', () => {
     expect(within(section).getByText('Aucun prérequis connu et aucune run planifiée pour ce succès.')).toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Voir les routes' })).not.toBeInTheDocument();
     await user.click(within(section).getByRole('button', { name: 'Demander au conseiller' }));
-    expect(onAsk).toHaveBeenCalledWith('Comment obtenir The Nail (#9) ?');
+    expect(onAsk).toHaveBeenCalledWith('How do I get The Nail (#9)?');
   });
 
   it('transmet le profil et le slot, et relit la fiche après une actualisation', async () => {

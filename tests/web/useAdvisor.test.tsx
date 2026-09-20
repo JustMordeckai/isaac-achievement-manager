@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { LOCALES, t } from '../../shared/i18n/index.ts';
 import type { AdvisorEvent, AdvisorStatus } from '../../shared/types.ts';
 import type { ProfileQuery } from '../../web/src/api.ts';
 import { HISTORY_EXCHANGES, useAdvisorChat, useAdvisorStatus } from '../../web/src/useAdvisor.ts';
@@ -12,12 +13,12 @@ const ndjson = (events: AdvisorEvent[]) => new Response(events.map((e) => `${JSO
 
 const ANSWER: AdvisorEvent[] = [
   { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
-  { kind: 'delta', text: 'Commence par ' },
+  { kind: 'delta', text: 'Start with ' },
   { kind: 'delta', text: 'Magdalene.' },
   { kind: 'done' },
 ];
 
-/** Flux contrôlé par le test : chaque appel à `push` envoie une ligne. */
+/** Stream driven by the test: every call to `push` sends one line. */
 function controlledStream() {
   const encoder = new TextEncoder();
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
@@ -34,7 +35,7 @@ function controlledStream() {
 }
 
 describe('useAdvisorStatus', () => {
-  it('lit l’état, le relit sur demande et à chaque changement de clé', async () => {
+  it('reads the state, reads it again on request and on every key change', async () => {
     let status = ADVISOR_OFFLINE;
     const mock = stubFetch({ 'GET /api/advisor/status': () => status });
     const { result, rerender } = renderHook(({ key }) => useAdvisorStatus(key), { initialProps: { key: 0 } });
@@ -49,7 +50,7 @@ describe('useAdvisorStatus', () => {
     await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(3));
   });
 
-  it('garde les réglages connus quand la lecture échoue, et accepte un nouvel état', async () => {
+  it('keeps the known settings when the read fails, and accepts a new state', async () => {
     let fail = false;
     stubFetch({ 'GET /api/advisor/status': () => (fail ? jsonResponse({ error: 'boom' }, 500) : ADVISOR_OK) });
     const { result } = renderHook(() => useAdvisorStatus(0));
@@ -60,14 +61,14 @@ describe('useAdvisorStatus', () => {
       expect(result.current.status).toEqual({
         ...ADVISOR_OK,
         state: 'error',
-        message: 'État du conseiller indisponible : boom',
+        message: 'Advisor state unavailable: boom',
       }),
     );
     act(() => result.current.replace(ADVISOR_OFFLINE));
     expect(result.current.status).toEqual(ADVISOR_OFFLINE);
   });
 
-  it('ignore le résultat d’une vérification abandonnée', async () => {
+  it('ignores the result of a check that was given up on', async () => {
     let late: (status: AdvisorStatus) => void = () => {};
     let calls = 0;
     stubFetch({
@@ -79,7 +80,7 @@ describe('useAdvisorStatus', () => {
     const { result } = renderHook(() => useAdvisorStatus(0));
     act(() => result.current.recheck());
     await vi.waitFor(() => expect(result.current.status).toEqual(ADVISOR_OK));
-    // La première vérification, abandonnée, ne doit pas écraser la plus récente.
+    // The first check, given up on, must not overwrite the most recent one.
     await act(async () => {
       late(ADVISOR_OFFLINE);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -89,7 +90,7 @@ describe('useAdvisorStatus', () => {
 });
 
 describe('useAdvisorChat', () => {
-  it('diffuse la réponse puis renvoie l’échange comme historique', async () => {
+  it('streams the answer then sends the exchange back as history', async () => {
     const bodies: unknown[] = [];
     stubFetch({
       'POST /api/advisor': (_url, init) => {
@@ -98,25 +99,25 @@ describe('useAdvisorChat', () => {
       },
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('  Quelle run faire ?  ', ME));
+    act(() => result.current.ask('  Which run should I do?  ', ME));
     expect(result.current.busy).toBe(true);
-    expect(result.current.exchanges[0]).toMatchObject({ question: 'Quelle run faire ?', answer: '', state: 'waiting' });
+    expect(result.current.exchanges[0]).toMatchObject({ question: 'Which run should I do?', answer: '', state: 'waiting' });
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
     expect(result.current.exchanges[0]).toMatchObject({
-      answer: 'Commence par Magdalene.',
+      answer: 'Start with Magdalene.',
       sources: [{ id: 45, name: 'Guardian Angel' }],
       error: null,
     });
     expect(result.current.busy).toBe(false);
-    act(() => result.current.ask('Et ensuite ?', ME));
+    act(() => result.current.ask('And then?', ME));
     await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
     expect(bodies).toEqual([
-      { question: 'Quelle run faire ?', history: [], profile: 'me', slot: 1 },
+      { question: 'Which run should I do?', history: [], profile: 'me', slot: 1 },
       {
-        question: 'Et ensuite ?',
+        question: 'And then?',
         history: [
-          { role: 'user', content: 'Quelle run faire ?' },
-          { role: 'assistant', content: 'Commence par Magdalene.' },
+          { role: 'user', content: 'Which run should I do?' },
+          { role: 'assistant', content: 'Start with Magdalene.' },
         ],
         profile: 'me',
         slot: 1,
@@ -124,20 +125,20 @@ describe('useAdvisorChat', () => {
     ]);
   });
 
-  it('ignore une question vide ou posée pendant une réponse', async () => {
+  it('ignores an empty question or one asked during an answer', async () => {
     const stream = controlledStream();
     const mock = stubFetch({ 'POST /api/advisor': () => stream.response });
     const { result } = renderHook(() => useAdvisorChat());
     act(() => result.current.ask('   ', ME));
     expect(result.current.exchanges).toEqual([]);
-    act(() => result.current.ask('Première', ME));
-    act(() => result.current.ask('Seconde', ME));
+    act(() => result.current.ask('First', ME));
+    act(() => result.current.ask('Second', ME));
     expect(result.current.exchanges).toHaveLength(1);
     await act(async () => {
-      stream.push({ kind: 'delta', text: 'Réponse' });
+      stream.push({ kind: 'delta', text: 'Answer' });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(result.current.exchanges[0]).toMatchObject({ answer: 'Réponse', state: 'streaming' });
+    expect(result.current.exchanges[0]).toMatchObject({ answer: 'Answer', state: 'streaming' });
     await act(async () => {
       stream.push({ kind: 'done' });
       stream.close();
@@ -146,7 +147,7 @@ describe('useAdvisorChat', () => {
     expect(mock).toHaveBeenCalledTimes(1);
   });
 
-  it('arrête une réponse en cours et la garde dans l’historique', async () => {
+  it('stops an answer under way and keeps it in the history', async () => {
     const stream = controlledStream();
     let calls = 0;
     const bodies: unknown[] = [];
@@ -160,23 +161,23 @@ describe('useAdvisorChat', () => {
       },
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('Longue question', ME));
+    act(() => result.current.ask('Long question', ME));
     await act(async () => {
-      stream.push({ kind: 'delta', text: 'Début de réponse' });
+      stream.push({ kind: 'delta', text: 'Start of the answer' });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     act(() => result.current.stop());
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('stopped'));
-    expect(result.current.exchanges[0].answer).toBe('Début de réponse');
-    act(() => result.current.ask('Suite', ME));
+    expect(result.current.exchanges[0].answer).toBe('Start of the answer');
+    act(() => result.current.ask('More', ME));
     await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
     expect((bodies[1] as { history: unknown[] }).history).toEqual([
-      { role: 'user', content: 'Longue question' },
-      { role: 'assistant', content: 'Début de réponse' },
+      { role: 'user', content: 'Long question' },
+      { role: 'assistant', content: 'Start of the answer' },
     ]);
   });
 
-  it('efface la conversation pendant une réponse et libère l’envoi', async () => {
+  it('clears the conversation during an answer and frees the send button', async () => {
     const stream = controlledStream();
     let calls = 0;
     stubFetch({
@@ -188,79 +189,74 @@ describe('useAdvisorChat', () => {
       },
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('Longue question', ME));
+    act(() => result.current.ask('Long question', ME));
     expect(result.current.busy).toBe(true);
     act(() => result.current.clear());
     expect(result.current.exchanges).toEqual([]);
     expect(result.current.busy).toBe(false);
-    act(() => result.current.ask('Autre question', ME));
+    act(() => result.current.ask('Another question', ME));
     await vi.waitFor(() => expect(result.current.exchanges[0]?.state).toBe('done'));
     expect(result.current.exchanges).toHaveLength(1);
   });
 
-  it('retire la note de réponse coupée de l’historique', async () => {
+  it.each(LOCALES)('strips the truncation notice written in %s from the history', async (code) => {
+    const notice = `\n\n${t(code, 'advisor.truncated')}`;
     const bodies: Array<{ history: Array<{ content: string }> }> = [];
     stubFetch({
       'POST /api/advisor': (_url, init) => {
         bodies.push(JSON.parse(String(init?.body)));
-        return ndjson([
-          { kind: 'delta', text: 'Commence par Magdalene.' },
-          { kind: 'delta', text: '\n\n(Réponse coupée : limite de longueur atteinte.)' },
-          { kind: 'done' },
-        ]);
+        return ndjson([{ kind: 'delta', text: 'Start with Magdalene.' }, { kind: 'delta', text: notice }, { kind: 'done' }]);
       },
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('Quelle run faire ?', ME));
+    act(() => result.current.ask('Which run should I do?', ME));
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
-    // La note reste affichée, mais le modèle ne doit pas la relire comme s'il l'avait écrite.
-    expect(result.current.exchanges[0].answer).toBe(
-      'Commence par Magdalene.\n\n(Réponse coupée : limite de longueur atteinte.)',
-    );
-    act(() => result.current.ask('Et ensuite ?', ME));
+    // The notice stays on screen, but the model must not read it back as something it wrote.
+    expect(result.current.exchanges[0].answer).toBe(`Start with Magdalene.${notice}`);
+    act(() => result.current.ask('And then?', ME));
     await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
     expect(bodies[1].history).toEqual([
-      { role: 'user', content: 'Quelle run faire ?' },
-      { role: 'assistant', content: 'Commence par Magdalene.' },
+      { role: 'user', content: 'Which run should I do?' },
+      { role: 'assistant', content: 'Start with Magdalene.' },
     ]);
   });
 
-  it('remplace l’échange repris à sa place dans la conversation', async () => {
+  it('puts the exchange asked again back in its own place in the conversation', async () => {
     let fail = true;
     stubFetch({
       'POST /api/advisor': () =>
-        fail ? jsonResponse({ error: 'Ollama injoignable sur http://127.0.0.1:11434' }, 503) : ndjson(ANSWER),
+        fail ? jsonResponse({ error: 'Ollama unreachable at http://127.0.0.1:11434' }, 503) : ndjson(ANSWER),
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('Première', ME));
+    act(() => result.current.ask('First', ME));
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('failed'));
     fail = false;
-    act(() => result.current.ask('Seconde', ME));
+    act(() => result.current.ask('Second', ME));
     await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
     act(() => result.current.retry(result.current.exchanges[0].id, ME));
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
-    expect(result.current.exchanges.map((e) => e.question)).toEqual(['Première', 'Seconde']);
+    expect(result.current.exchanges.map((e) => e.question)).toEqual(['First', 'Second']);
   });
 
-  it('signale un échec et repose la question', async () => {
+  it('reports a failure and asks the question again', async () => {
     let fail = true;
     stubFetch({
       'POST /api/advisor': () =>
-        fail ? jsonResponse({ error: 'Ollama injoignable sur http://127.0.0.1:11434' }, 503) : ndjson(ANSWER),
+        fail ? jsonResponse({ error: 'Ollama unreachable at http://127.0.0.1:11434' }, 503) : ndjson(ANSWER),
     });
     const { result } = renderHook(() => useAdvisorChat());
-    act(() => result.current.ask('Quelle run faire ?', ME));
+    act(() => result.current.ask('Which run should I do?', ME));
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('failed'));
-    expect(result.current.exchanges[0].error).toBe('Ollama injoignable sur http://127.0.0.1:11434');
+    expect(result.current.exchanges[0].error).toBe('Ollama unreachable at http://127.0.0.1:11434');
     fail = false;
     const failedId = result.current.exchanges[0].id;
     act(() => result.current.retry(failedId, ME));
     expect(result.current.exchanges).toHaveLength(1);
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('done'));
-    expect(result.current.exchanges[0]).toMatchObject({ question: 'Quelle run faire ?', answer: 'Commence par Magdalene.' });
+    expect(result.current.exchanges[0]).toMatchObject({ question: 'Which run should I do?', answer: 'Start with Magdalene.' });
   });
 
-  it('marque en échec une erreur envoyée dans le flux, sans la reprendre dans l’historique', async () => {
+  it('marks an error sent in the stream as a failure, and keeps it out of the history', async () => {
     const bodies: Array<{ history: unknown[] }> = [];
     let calls = 0;
     stubFetch({
@@ -268,20 +264,20 @@ describe('useAdvisorChat', () => {
         calls += 1;
         bodies.push(JSON.parse(String(init?.body)));
         return calls === 1
-          ? ndjson([{ kind: 'delta', text: 'Déb' }, { kind: 'error', message: "Erreur d'Ollama : out of memory" }])
+          ? ndjson([{ kind: 'delta', text: 'Sta' }, { kind: 'error', message: 'Ollama error: out of memory' }])
           : ndjson(ANSWER);
       },
     });
     const { result } = renderHook(() => useAdvisorChat());
     act(() => result.current.ask('Question', ME));
     await vi.waitFor(() => expect(result.current.exchanges[0].state).toBe('failed'));
-    expect(result.current.exchanges[0]).toMatchObject({ answer: 'Déb', error: "Erreur d'Ollama : out of memory" });
-    act(() => result.current.ask('Autre', ME));
+    expect(result.current.exchanges[0]).toMatchObject({ answer: 'Sta', error: 'Ollama error: out of memory' });
+    act(() => result.current.ask('Other', ME));
     await vi.waitFor(() => expect(result.current.exchanges[1]?.state).toBe('done'));
     expect(bodies[1].history).toEqual([]);
   });
 
-  it('limite l’historique aux derniers échanges et efface la conversation', async () => {
+  it('limits the history to the last exchanges and clears the conversation', async () => {
     const bodies: Array<{ history: unknown[] }> = [];
     stubFetch({
       'POST /api/advisor': (_url, init) => {

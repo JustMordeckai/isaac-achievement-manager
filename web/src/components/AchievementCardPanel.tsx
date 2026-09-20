@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AchievementCard, AchievementWiki, CardPlan, KbStatus } from '../../../shared/types.ts';
 import { achievementQuestion } from '../advisor-question.ts';
 import { api, type ProfileQuery } from '../api.ts';
+import { useLocale } from '../i18n.tsx';
 import {
   characterName,
   DLC_LABELS,
@@ -195,6 +196,7 @@ export function AchievementCardPanel({
   onOpenRoutes,
   onAsk,
 }: AchievementCardPanelProps) {
+  const locale = useLocale();
   const [state, setState] = useState<CardState>({ status: 'loading' });
   const heading = useRef<HTMLHeadingElement>(null);
   const { profile, slot } = query;
@@ -274,7 +276,7 @@ export function AchievementCardPanel({
               syncedAt={state.card.kb.syncedAt}
               plan={achievement.unlocked ? null : state.card.plan}
               onOpenRoutes={onOpenRoutes}
-              onAsk={() => onAsk(achievementQuestion(achievement))}
+              onAsk={() => onAsk(achievementQuestion(locale, achievement))}
             />
           ) : (
             <MissingWiki kb={state.card.kb} onOpenSettings={onOpenSettings} />

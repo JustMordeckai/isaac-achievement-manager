@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KbStatus, SettingsInfo, WikiSyncEvent, WikiSyncReport } from '../../shared/types.ts';
 import { api } from './api.ts';
+import { useLocale } from './i18n.tsx';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -49,6 +50,7 @@ export type WikiSyncState =
  * à un changement d'onglet ; `onFinished` est appelé après un succès comme après un échec.
  */
 export function useWikiSync(onFinished: () => void): [WikiSyncState, () => void] {
+  const locale = useLocale();
   const [state, setState] = useState<WikiSyncState>({ kind: 'idle' });
   const running = useRef(false);
   const finished = useRef(onFinished);
@@ -61,7 +63,7 @@ export function useWikiSync(onFinished: () => void): [WikiSyncState, () => void]
     running.current = true;
     setState({ kind: 'running', event: null });
     api
-      .syncWiki((event) => setState({ kind: 'running', event }))
+      .syncWiki(locale, (event) => setState({ kind: 'running', event }))
       .then(
         (last) =>
           setState(

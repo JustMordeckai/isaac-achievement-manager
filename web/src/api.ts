@@ -1,4 +1,4 @@
-import type { Locale } from '../../shared/i18n/index.ts';
+import { t, type Locale } from '../../shared/i18n/index.ts';
 import { ndjsonLines } from '../../shared/ndjson.ts';
 import type {
   AchievementCard,
@@ -26,7 +26,7 @@ export class ApiRequestError extends Error {
 }
 
 export interface ProfileQuery {
-  /** "me" ou un SteamID64. */
+  /** "me" or a SteamID64. */
   profile: string;
   slot: number | null;
 }
@@ -36,7 +36,7 @@ async function errorOf(res: Response): Promise<ApiRequestError> {
   const message =
     typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string'
       ? (body as { error: string }).error
-      : `Erreur HTTP ${res.status}`;
+      : `HTTP ${res.status}`;
   return new ApiRequestError(res.status, message);
 }
 
@@ -52,7 +52,7 @@ function profileParams({ profile, slot }: ProfileQuery): string {
   return params.toString();
 }
 
-/** Transmet chaque ligne d'un flux NDJSON et renvoie la dernière (null si le flux est vide). */
+/** Passes on every line of an NDJSON stream and returns the last one (null when the stream is empty). */
 async function readEvents<T>(
   res: Response,
   body: ReadableStream<Uint8Array>,
@@ -72,26 +72,27 @@ async function readEvents<T>(
 }
 
 /**
- * Lance la synchro du wiki et transmet chaque ligne du flux NDJSON.
- * Renvoie le dernier événement (`done` ou `error`) ; un refus du serveur (403, 409) lève une ApiRequestError.
+ * Starts the wiki sync and passes on every line of the NDJSON stream.
+ * Returns the last event (`done` or `error`); a refusal from the server (403, 409) throws an ApiRequestError.
  */
-async function syncWiki(onEvent: (event: WikiSyncEvent) => void): Promise<WikiSyncEvent> {
+async function syncWiki(locale: Locale, onEvent: (event: WikiSyncEvent) => void): Promise<WikiSyncEvent> {
   const res = await fetch('/api/wiki/sync', { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
   if (!res.ok) throw await errorOf(res);
-  if (!res.body) throw new ApiRequestError(res.status, 'Réponse de synchro vide');
-  const last = await readEvents(res, res.body, onEvent, 'Réponse de synchro illisible');
+  if (!res.body) throw new ApiRequestError(res.status, t(locale, 'wiki.syncEmptyReply'));
+  const last = await readEvents(res, res.body, onEvent, t(locale, 'wiki.syncUnreadableReply'));
   if (!last || (last.step !== 'done' && last.step !== 'error')) {
-    throw new ApiRequestError(res.status, 'Synchro interrompue sans résultat');
+    throw new ApiRequestError(res.status, t(locale, 'wiki.syncNoResult'));
   }
   return last;
 }
 
 /**
- * Pose une question au conseiller et transmet chaque ligne du flux NDJSON. Renvoie le dernier événement
- * (`done` ou `error`) ; un refus avant le flux (Ollama injoignable, modèle absent) lève une ApiRequestError.
+ * Asks the advisor a question and passes on every line of the NDJSON stream. Returns the last event
+ * (`done` or `error`); a refusal before the stream (Ollama unreachable, model missing) throws an ApiRequestError.
  */
 async function askAdvisor(
   request: AdvisorRequest,
+  locale: Locale,
   onEvent: (event: AdvisorEvent) => void,
   signal?: AbortSignal,
 ): Promise<AdvisorEvent> {
@@ -102,10 +103,10 @@ async function askAdvisor(
     signal,
   });
   if (!res.ok) throw await errorOf(res);
-  if (!res.body) throw new ApiRequestError(res.status, 'Réponse du conseiller vide');
-  const last = await readEvents(res, res.body, onEvent, 'Réponse du conseiller illisible');
+  if (!res.body) throw new ApiRequestError(res.status, t(locale, 'advisor.emptyReply'));
+  const last = await readEvents(res, res.body, onEvent, t(locale, 'advisor.unreadableReply'));
   if (!last || (last.kind !== 'done' && last.kind !== 'error')) {
-    throw new ApiRequestError(res.status, 'Réponse du conseiller interrompue');
+    throw new ApiRequestError(res.status, t(locale, 'advisor.interruptedReply'));
   }
   return last;
 }

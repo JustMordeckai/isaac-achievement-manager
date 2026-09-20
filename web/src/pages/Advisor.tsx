@@ -1,6 +1,8 @@
 import { type FormEvent, type KeyboardEvent, useEffect, useRef } from 'react';
+import type { MessageKey } from '../../../shared/i18n/index.ts';
 import type { AdvisorStatus, KbStatus } from '../../../shared/types.ts';
 import type { ProfileQuery } from '../api.ts';
+import { useT } from '../i18n.tsx';
 import type { AdvisorChat, Exchange } from '../useAdvisor.ts';
 
 export interface AdvisorProps {
@@ -18,32 +20,29 @@ export interface AdvisorProps {
 
 export const QUESTION_MAX_CHARS = 2000;
 
-const SUGGESTIONS = [
-  'Quelle run faire en premier ?',
-  'Quels personnages débloquer ensuite, et comment ?',
-  'Quelles marques me manquent le plus ?',
+const SUGGESTIONS: MessageKey[] = [
+  'advisor.suggestionFirstRun',
+  'advisor.suggestionCharacters',
+  'advisor.suggestionMarks',
 ];
 
 type ServerStateProps = Pick<AdvisorProps, 'status' | 'checking' | 'onRecheck' | 'onOpenSettings'>;
 
 function ServerState({ status, checking, onRecheck, onOpenSettings }: ServerStateProps) {
-  if (!status) return <p className="placeholder">Vérification du serveur Ollama…</p>;
+  const t = useT();
+  if (!status) return <p className="placeholder">{t('advisor.checkingServer')}</p>;
   if (status.state === 'ok') {
-    return (
-      <p className="muted">
-        Modèle {status.model} sur {status.url}.
-      </p>
-    );
+    return <p className="muted">{t('advisor.modelOn', { model: status.model, url: status.url })}</p>;
   }
   return (
     <div className="banner banner--error advisor__server">
-      <p>{status.message ?? 'Serveur Ollama indisponible.'}</p>
+      <p>{status.message ?? t('advisor.serverUnavailable')}</p>
       <div className="error-panel__actions">
         <button type="button" className="btn" onClick={onRecheck} disabled={checking}>
-          {checking ? 'Vérification…' : 'Vérifier à nouveau'}
+          {checking ? t('advisor.checking') : t('advisor.recheck')}
         </button>
         <button type="button" className="btn" onClick={onOpenSettings}>
-          Ouvrir les paramètres
+          {t('advisor.openSettings')}
         </button>
       </div>
     </div>
@@ -57,36 +56,32 @@ interface ExchangeViewProps {
 }
 
 function ExchangeView({ exchange, onRetry, onOpenAchievement }: ExchangeViewProps) {
+  const t = useT();
   const { state, answer, sources } = exchange;
   return (
     <li className="chat__exchange">
       <div className="chat__message chat__message--user">
-        <p className="chat__author">Toi</p>
+        <p className="chat__author">{t('advisor.you')}</p>
         <p className="chat__text">{exchange.question}</p>
       </div>
       <div className="chat__message chat__message--advisor">
-        <p className="chat__author">Conseiller</p>
-        {state === 'waiting' && (
-          <p className="placeholder">
-            Préparation de la réponse… Le premier message peut prendre une dizaine de secondes, le temps de charger le
-            modèle.
-          </p>
-        )}
+        <p className="chat__author">{t('advisor.author')}</p>
+        {state === 'waiting' && <p className="placeholder">{t('advisor.preparing')}</p>}
         {answer !== '' && <p className="chat__text">{answer}</p>}
-        {state === 'done' && answer === '' && <p className="hint">Le conseiller n'a rien répondu.</p>}
-        {state === 'stopped' && <p className="hint">Réponse interrompue.</p>}
+        {state === 'done' && answer === '' && <p className="hint">{t('advisor.noAnswer')}</p>}
+        {state === 'stopped' && <p className="hint">{t('advisor.stopped')}</p>}
         {state === 'failed' && (
           <div className="banner banner--error" role="alert">
             <p>{exchange.error}</p>
             <button type="button" className="btn" onClick={onRetry}>
-              Réessayer
+              {t('advisor.retry')}
             </button>
           </div>
         )}
         {sources.length > 0 && state !== 'waiting' && (
           <div className="chat__sources">
-            <p className="hint">Fiches transmises au modèle :</p>
-            <ul className="chips" aria-label="Fiches transmises au modèle">
+            <p className="hint">{t('advisor.cardsSent')}</p>
+            <ul className="chips" aria-label={t('advisor.cardsSentLabel')}>
               {sources.map((source) => (
                 <li key={source.id}>
                   <button type="button" className="chip chip--link" onClick={() => onOpenAchievement(source.id)}>
@@ -102,7 +97,7 @@ function ExchangeView({ exchange, onRetry, onOpenAchievement }: ExchangeViewProp
   );
 }
 
-/** Écran Conseiller : questions libres au modèle Ollama, réponses en streaming. */
+/** Advisor screen: free questions to the Ollama model, answers streamed back. */
 export function Advisor({
   chat,
   query,
@@ -115,10 +110,11 @@ export function Advisor({
   onOpenSettings,
   onOpenAchievement,
 }: AdvisorProps) {
+  const t = useT();
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Arrivée sur l'onglet (ou depuis « Demander au conseiller ») : curseur en fin de question.
+    // Arriving on the tab (or from "Ask the advisor"): cursor at the end of the question.
     const element = field.current;
     if (!element) return;
     element.focus();
@@ -144,40 +140,37 @@ export function Advisor({
   return (
     <div className="advisor">
       <section className="card" aria-labelledby="advisor-title">
-        <h2 id="advisor-title">Conseiller</h2>
-        <p>
-          Pose une question sur ta progression : le conseiller répond à partir de tes succès, des routes conseillées et
-          de la base wiki. Il peut se tromper, vérifie dans les fiches.
-        </p>
+        <h2 id="advisor-title">{t('advisor.title')}</h2>
+        <p>{t('advisor.intro')}</p>
         <ServerState status={status} checking={checking} onRecheck={onRecheck} onOpenSettings={onOpenSettings} />
         {kb && kb.state !== 'ok' && (
           <div className="banner banner--info">
-            <p>Base wiki absente ou inutilisable : le conseiller ne connaît que ta progression.</p>
+            <p>{t('advisor.kbMissing')}</p>
             <button type="button" className="btn" onClick={onOpenSettings}>
-              Ouvrir les paramètres
+              {t('advisor.openSettings')}
             </button>
           </div>
         )}
       </section>
 
       <section className="card" aria-labelledby="chat-title">
-        <h2 id="chat-title">Conversation</h2>
+        <h2 id="chat-title">{t('advisor.conversation')}</h2>
         {chat.exchanges.length === 0 && (
           <div className="chat__empty">
-            <p className="muted">Exemples de questions :</p>
+            <p className="muted">{t('advisor.examples')}</p>
             <ul className="chat__suggestions">
-              {SUGGESTIONS.map((suggestion) => (
-                <li key={suggestion}>
-                  <button type="button" className="link-button" onClick={() => suggest(suggestion)}>
-                    {suggestion}
+              {SUGGESTIONS.map((key) => (
+                <li key={key}>
+                  <button type="button" className="link-button" onClick={() => suggest(t(key))}>
+                    {t(key)}
                   </button>
                 </li>
               ))}
             </ul>
           </div>
         )}
-        {/* Toujours dans le DOM : une région live née avec son contenu n'annonce pas la première réponse. */}
-        <ol className="chat" aria-label="Échanges" aria-busy={chat.busy} aria-live="polite">
+        {/* Always in the DOM: a live region born with its content does not announce the first answer. */}
+        <ol className="chat" aria-label={t('advisor.exchangesLabel')} aria-busy={chat.busy} aria-live="polite">
           {chat.exchanges.map((exchange) => (
             <ExchangeView
               key={exchange.id}
@@ -189,7 +182,7 @@ export function Advisor({
         </ol>
         <form className="chat__form" onSubmit={send}>
           <label className="chat__label" htmlFor="advisor-question">
-            Ta question
+            {t('advisor.questionLabel')}
           </label>
           <textarea
             id="advisor-question"
@@ -202,22 +195,22 @@ export function Advisor({
             aria-describedby="advisor-question-hint"
           />
           <p id="advisor-question-hint" className="hint">
-            Entrée pour envoyer, Maj+Entrée pour aller à la ligne. La conversation s'efface au rechargement de la page.
+            {t('advisor.questionHint')}
           </p>
           <div className="chat__actions">
             {chat.busy ? (
               <button type="button" className="btn" onClick={chat.stop}>
-                Arrêter la réponse
+                {t('advisor.stop')}
               </button>
             ) : (
               <button type="submit" className="btn btn--primary" disabled={draft.trim() === ''}>
-                Envoyer
+                {t('advisor.send')}
               </button>
             )}
-            {/* Pendant une réponse aussi : effacer la conversation coupe la réponse en cours. */}
+            {/* During an answer too: clearing the conversation cuts the answer in flight. */}
             {chat.exchanges.length > 0 && (
               <button type="button" className="btn btn--ghost" onClick={chat.clear}>
-                Effacer la conversation
+                {t('advisor.clear')}
               </button>
             )}
           </div>

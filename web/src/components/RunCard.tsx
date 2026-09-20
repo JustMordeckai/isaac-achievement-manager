@@ -1,5 +1,6 @@
 import type { PlannedRun } from '../../../shared/types.ts';
 import { runQuestion } from '../advisor-question.ts';
+import { useLocale } from '../i18n.tsx';
 import { characterName, endingList, formatMinutes, RUN_MODE_LABELS } from '../labels.ts';
 import { RequirementNames } from './RequirementNames.tsx';
 
@@ -37,6 +38,7 @@ function AchievementChips({ label, list, onOpen }: AchievementChipsProps) {
 
 /** Une run planifiée : personnage, fins, succès obtenus, prérequis et chemin dépliable. */
 export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
+  const locale = useLocale();
   const titleId = `run-${run.id}`;
   const count = run.achievements.length;
   const preparation = count === 0 && run.prepares.length > 0;
@@ -87,7 +89,7 @@ export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
         type="button"
         className="btn btn--ghost run__ask"
         aria-describedby={titleId}
-        onClick={() => onAsk(runQuestion(run))}
+        onClick={() => onAsk(runQuestion(locale, run))}
       >
         Demander au conseiller
       </button>

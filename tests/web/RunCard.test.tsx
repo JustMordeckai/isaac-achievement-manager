@@ -99,7 +99,7 @@ describe('RunCard', () => {
     expect(ask).toHaveAccessibleDescription('Magdalene');
     await user.click(ask);
     expect(onAsk).toHaveBeenCalledWith(
-      "Comment réussir cette run avec Magdalene en mode difficile (battre Boss Rush, Mom's Heart, Satan, The Lamb) ? Elle doit donner Guardian Angel (#45) et Maggy's Faith (#71).",
+      "How do I clear this run with Magdalene in hard mode (beating Boss Rush, Mom's Heart, Satan, The Lamb)? It should give Guardian Angel (#45) and Maggy's Faith (#71).",
     );
   });
 
@@ -115,7 +115,7 @@ describe('RunCard', () => {
     const { onAsk } = renderCard(run);
     await user.click(screen.getByRole('button', { name: 'Demander au conseiller' }));
     expect(onAsk).toHaveBeenCalledWith(
-      "Comment réussir cette run avec Isaac en mode Greedier (battre Ultra Greedier) ? C'est une run de préparation pour Buddy Baby (#253).",
+      "How do I clear this run with Isaac in Greedier mode (beating Ultra Greedier)? It is a prep run for Buddy Baby (#253).",
     );
   });
 });

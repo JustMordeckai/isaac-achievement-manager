@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { LOCALES, t } from '../../shared/i18n/index.ts';
 import type { AdvisorStatus, ChatMessage } from '../../shared/types.ts';
 import { api, type ProfileQuery } from './api.ts';
+import { useLocale } from './i18n.tsx';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 export interface AdvisorStatusState {
-  /** null pendant la première lecture. */
+  /** null during the first read. */
   status: AdvisorStatus | null;
-  /** Une nouvelle vérification est en cours. */
+  /** A new check is running. */
   checking: boolean;
   recheck(): void;
-  /** Remplace l'état après un enregistrement des réglages. */
+  /** Replaces the state after the settings have been saved. */
   replace(status: AdvisorStatus): void;
 }
 
-/** État du serveur Ollama, relu à chaque changement de `reloadKey` ou sur demande. */
+/** State of the Ollama server, read again on every change of `reloadKey` or on request. */
 export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
+  const locale = useLocale();
   const [status, setStatus] = useState<AdvisorStatus | null>(null);
   const [checks, setChecks] = useState(0);
   const [checking, setChecking] = useState(true);
@@ -26,38 +29,38 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
     setChecking(true);
     api.advisorStatus(controller.signal).then(
       (next) => {
-        // Vérification abandonnée : une réponse en retard ne doit pas écraser la plus récente.
+        // Check given up on: a late answer must not overwrite the most recent one.
         if (controller.signal.aborted) return;
         setStatus(next);
         setChecking(false);
       },
       (error: unknown) => {
         if (controller.signal.aborted) return;
-        // Les réglages déjà connus restent affichés : seul l'état change.
+        // The settings already known stay on screen: only the state changes.
         setStatus((prev) => ({
           state: 'error',
           url: prev?.url ?? '',
           model: prev?.model ?? '',
           models: prev?.models ?? [],
-          message: `État du conseiller indisponible : ${messageOf(error)}`,
+          message: t(locale, 'advisor.statusUnavailable', { message: messageOf(error) }),
         }));
         setChecking(false);
       },
     );
     return () => controller.abort();
-  }, [reloadKey, checks]);
+  }, [reloadKey, checks, locale]);
   const recheck = useCallback(() => setChecks((n) => n + 1), []);
   return { status, checking, recheck, replace: setStatus };
 }
 
 export type ExchangeState = 'waiting' | 'streaming' | 'done' | 'stopped' | 'failed';
 
-/** Une question et sa réponse. */
+/** One question and its answer. */
 export interface Exchange {
   id: number;
   question: string;
   answer: string;
-  /** Fiches de succès transmises au modèle. */
+  /** Achievement cards sent to the model. */
   sources: Array<{ id: number; name: string }>;
   state: ExchangeState;
   error: string | null;
@@ -65,24 +68,29 @@ export interface Exchange {
 
 export interface AdvisorChat {
   exchanges: Exchange[];
-  /** Une réponse est en attente ou en cours. */
+  /** An answer is pending or under way. */
   busy: boolean;
   ask(question: string, query: ProfileQuery): void;
-  /** Repose la question d'un échange en échec, qui est remplacé. */
+  /** Asks the question of a failed exchange again; that exchange is replaced. */
   retry(id: number, query: ProfileQuery): void;
   stop(): void;
   clear(): void;
 }
 
-/** Échanges repris comme historique (le serveur en accepte 10 messages). */
+/** Exchanges carried over as history (the server accepts 10 messages of it). */
 export const HISTORY_EXCHANGES = 5;
 const MAX_MESSAGE_CHARS = 4000;
-/** Note ajoutée par le serveur à une réponse coupée (TRUNCATED_NOTICE de server/advisor/ollama.ts). */
-const TRUNCATED_SUFFIX = '\n\n(Réponse coupée : limite de longueur atteinte.)';
+/**
+ * Notice the server appends to an answer it cut short (`truncatedNotice` of server/advisor/ollama.ts).
+ * Both languages are stripped: the server writes it in the locale of the settings, which the reader
+ * can change between two questions.
+ */
+const TRUNCATED_SUFFIXES = LOCALES.map((code) => `\n\n${t(code, 'advisor.truncated')}`);
 
-/** Réponse telle que le modèle l'a écrite : l'affichage garde la note de troncature, pas l'historique. */
+/** The answer as the model wrote it: the screen keeps the truncation notice, the history does not. */
 function historyAnswer(answer: string): string {
-  const text = answer.endsWith(TRUNCATED_SUFFIX) ? answer.slice(0, -TRUNCATED_SUFFIX.length) : answer;
+  const suffix = TRUNCATED_SUFFIXES.find((notice) => answer.endsWith(notice));
+  const text = suffix ? answer.slice(0, -suffix.length) : answer;
   return text.slice(0, MAX_MESSAGE_CHARS);
 }
 
@@ -99,10 +107,11 @@ function historyOf(exchanges: Exchange[]): ChatMessage[] {
 }
 
 /**
- * Conversation avec le conseiller. Elle vit au niveau de l'application pour survivre à un changement
- * d'onglet ; elle n'est pas enregistrée (un rechargement de la page l'efface).
+ * Conversation with the advisor. It lives at the application level so it survives a tab change;
+ * it is never saved (reloading the page clears it).
  */
 export function useAdvisorChat(): AdvisorChat {
+  const locale = useLocale();
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const current = useRef(exchanges);
   const controller = useRef<AbortController | null>(null);
@@ -114,7 +123,7 @@ export function useAdvisorChat(): AdvisorChat {
 
   useEffect(() => () => controller.current?.abort(), []);
 
-  /** Nouvel échange : ajouté à la fin, ou mis à la place de l'échange `replaced` quand on repose sa question. */
+  /** New exchange: appended, or put in place of the `replaced` exchange when its question is asked again. */
   const start = useCallback((question: string, query: ProfileQuery, replaced: number | null) => {
     const id = nextId.current++;
     const abort = new AbortController();
@@ -129,6 +138,7 @@ export function useAdvisorChat(): AdvisorChat {
     api
       .askAdvisor(
         { question, history: historyOf(previous), profile: query.profile, slot: query.slot },
+        locale,
         (event) => {
           if (event.kind === 'context') update(() => ({ sources: event.sources }));
           if (event.kind === 'delta') update((e) => ({ answer: e.answer + event.text, state: 'streaming' }));
@@ -143,7 +153,7 @@ export function useAdvisorChat(): AdvisorChat {
       .finally(() => {
         if (controller.current === abort) controller.current = null;
       });
-  }, []);
+  }, [locale]);
 
   const busy = exchanges.some((e) => e.state === 'waiting' || e.state === 'streaming');
 

@@ -1,32 +1,39 @@
+import { t, type Locale, type MessageKey } from '../../shared/i18n/index.ts';
 import type { PlannedRun, RunMode } from '../../shared/types.ts';
 import { characterName, endingList } from './labels.ts';
 
-const MODES: Record<RunMode, string> = {
-  normal: 'en mode normal',
-  hard: 'en mode difficile',
-  greed: 'en mode Greed',
-  greedier: 'en mode Greedier',
+const MODES: Record<RunMode, MessageKey> = {
+  normal: 'advisor.question.modeNormal',
+  hard: 'advisor.question.modeHard',
+  greed: 'advisor.question.modeGreed',
+  greedier: 'advisor.question.modeGreedier',
 };
 
 function cite(achievement: { id: number; name: string }): string {
   return `${achievement.name} (#${achievement.id})`;
 }
 
-/** « a, b et c ». */
-function joinWithAnd(items: string[]): string {
-  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`;
+/** "a, b and c". */
+function joinWithAnd(locale: Locale, items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} ${t(locale, 'advisor.question.and')} ${items[items.length - 1]}`;
 }
 
-/** Question pré-remplie par le bouton « Demander au conseiller » d'une run. */
-export function runQuestion(run: PlannedRun): string {
+/** Question prefilled by the "Ask the advisor" button of a run. */
+export function runQuestion(locale: Locale, run: PlannedRun): string {
   const goal =
     run.achievements.length > 0
-      ? `Elle doit donner ${joinWithAnd(run.achievements.map(cite))}.`
-      : `C'est une run de préparation pour ${joinWithAnd(run.prepares.map(cite))}.`;
-  return `Comment réussir cette run avec ${characterName(run.character)} ${MODES[run.mode]} (battre ${endingList(run.endings)}) ? ${goal}`;
+      ? t(locale, 'advisor.question.goalAchievements', { list: joinWithAnd(locale, run.achievements.map(cite)) })
+      : t(locale, 'advisor.question.goalPrepares', { list: joinWithAnd(locale, run.prepares.map(cite)) });
+  return t(locale, 'advisor.question.run', {
+    character: characterName(run.character),
+    mode: t(locale, MODES[run.mode]),
+    endings: endingList(run.endings),
+    goal,
+  });
 }
 
-/** Question pré-remplie depuis la fiche d'un succès manquant. */
-export function achievementQuestion(achievement: { id: number; name: string }): string {
-  return `Comment obtenir ${cite(achievement)} ?`;
+/** Question prefilled from the card of a missing achievement. */
+export function achievementQuestion(locale: Locale, achievement: { id: number; name: string }): string {
+  return t(locale, 'advisor.question.achievement', { achievement: cite(achievement) });
 }
