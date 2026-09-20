@@ -85,9 +85,17 @@ run(process.execPath, ['--experimental-sea-config', 'build/sea-config.json']);
 
 console.log('5/5 executable');
 mkdirSync(DIST, { recursive: true });
-rmSync(EXE, { force: true });
-copyFileSync(process.execPath, EXE);
-run('npx', ['postject', EXE, 'NODE_SEA_BLOB', 'build/sea-prep.blob', '--sentinel-fuse', FUSE]);
+// Windows locks a running executable: rather than failing, the build lands next to it and says so.
+let target = EXE;
+try {
+  rmSync(EXE, { force: true });
+} catch (error) {
+  if (error.code !== 'EPERM' && error.code !== 'EBUSY') throw error;
+  target = path.join(DIST, 'Isaac Achievement Manager.new.exe');
+  rmSync(target, { force: true });
+}
+copyFileSync(process.execPath, target);
+run('npx', ['postject', target, 'NODE_SEA_BLOB', 'build/sea-prep.blob', '--sentinel-fuse', FUSE]);
 
 // The executable reads and writes data/ next to itself: a fresh folder is enough to run it.
 mkdirSync(path.join(DIST, 'data'), { recursive: true });
@@ -97,5 +105,8 @@ if (process.argv.includes('--with-kb')) {
   console.log('wiki base copied next to the executable');
 }
 
-const size = statSync(EXE).size / 1024 / 1024;
-console.log(`${path.relative(ROOT, EXE)} ready, ${size.toFixed(0)} MB`);
+const size = statSync(target).size / 1024 / 1024;
+console.log(`${path.relative(ROOT, target)} ready, ${size.toFixed(0)} MB`);
+if (target !== EXE) {
+  console.log(`${path.relative(ROOT, EXE)} is running: close it, then replace it with the file above.`);
+}

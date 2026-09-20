@@ -7,18 +7,19 @@ import express from 'express';
 import { createAdvisorService } from './advisor/service.ts';
 import { createAdvisorSetup } from './advisor/setup.ts';
 import { APP_NAME, createApp } from './app.ts';
+import { shouldOpenBrowser } from './cli.ts';
 import { chooseAccount, detectSteamEnv, loadSettings, saveSettings } from './config.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
-import { createSeaStatic, isStandalone, seaModule } from './sea.ts';
 import { createProgressService } from './progress-service.ts';
+import { createSeaStatic, isStandalone, seaModule } from './sea.ts';
 import { createProfileClient } from './sources/steam-profile.ts';
 import { createWikiKb } from './wiki/setup.ts';
 
 const args = new Set(process.argv.slice(2));
 const standalone = isStandalone();
 const dev = args.has('--dev');
-const shouldOpen = args.has('--open');
+const shouldOpen = shouldOpenBrowser(args, standalone);
 
 if (args.has('--log')) {
   // Writes every line to data/server.log through one appendFileSync per call: unlike a shell
