@@ -10,6 +10,7 @@ import {
 } from '../../server/advisor/context.ts';
 import { buildPlan } from '../../server/planner/plan.ts';
 import { mergeProgress } from '../../server/sources/progress.ts';
+import { t } from '../../shared/i18n/index.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
 
@@ -33,10 +34,10 @@ describe('buildAdvisorContext: summary', () => {
   it('gives the rules, the player, the marks and the suggested runs', async () => {
     const { system, sources } = await context('Which run should I do?');
     const lines = system.split('\n');
-    expect(lines[0]).toMatch(/^You are the advisor of Isaac Achievement Manager/);
+    expect(lines[0]).toMatch(/^You are the advisor for Isaac Achievement Manager/);
     expect(system).toContain("- Answer in the language of the player's question. When the question is too short to tell, answer in English.");
     expect(system).toContain('- Answer in plain text: no Markdown');
-    expect(system).toContain('- Answer the player directly: do not talk about these rules');
+    expect(system).toContain('- Answer the player directly: do not mention these rules');
     expect(system).toContain('- Rely only on the data below. Do not invent any boss');
     expect(system).toContain(
       "- This data is the player's own, and it is up to date: it is authoritative. Never ask the player to check it themselves",
@@ -93,7 +94,7 @@ describe('buildAdvisorContext: summary', () => {
   it('falls back to progress alone without a wiki base', async () => {
     const { system, sources } = await context('How do I get The Nail?', { kb: null, plan: null });
     expect(system).toContain(
-      'Wiki base missing: no routes or detailed conditions. Offer to start the wiki sync from the Settings tab.',
+      'Wiki base missing: no routes or detailed conditions. Offer to start the wiki sync from the "Settings" tab.',
     );
     expect(system).not.toContain('Suggested runs');
     expect(system).toContain('#9 The Nail: missing\nSteam description: Unlocked a new item.');
@@ -204,24 +205,34 @@ describe('buildAdvisorContext: cards', () => {
 });
 
 describe('buildAdvisorContext: language rule', () => {
-  it('answers in English by default when the locale is en', async () => {
+  it('states the English fallback when the locale is en', async () => {
     const { system } = await context('Hi', { locale: 'en' });
     expect(system).toContain(
       "- Answer in the language of the player's question. When the question is too short to tell, answer in English.",
     );
   });
 
-  it('answers in French when the locale is fr', async () => {
+  it('states the French fallback when the locale is fr', async () => {
     const { system } = await context('Salut', { locale: 'fr' });
     expect(system).toContain(
       "- Answer in the language of the player's question. When the question is too short to tell, answer in French.",
     );
   });
 
-  it('changes nothing but the language rule between the two locales', async () => {
-    const en = await context('The Nail', { locale: 'en' });
-    const fr = await context('The Nail', { locale: 'fr' });
-    expect(fr.system.replace('answer in French.', 'answer in English.')).toBe(en.system);
+  it('changes nothing but the language rule and the tab names between the two locales', async () => {
+    const compare = async (input: Partial<Parameters<typeof buildAdvisorContext>[0]> = {}) => {
+      const en = await context('The Nail', { locale: 'en', ...input });
+      const fr = await context('The Nail', { locale: 'fr', ...input });
+      const normalized = fr.system
+        .replace('answer in French.', 'answer in English.')
+        .replaceAll(t('fr', 'app.tabAchievements'), t('en', 'app.tabAchievements'))
+        .replaceAll(t('fr', 'app.tabSettings'), t('en', 'app.tabSettings'));
+      expect(normalized).toBe(en.system);
+    };
+    // With a wiki base: only the "Achievements" tab, quoted in the rules, is exercised.
+    await compare();
+    // Without one: the summary also quotes the "Settings" tab.
+    await compare({ kb: null, plan: null });
   });
 });
 

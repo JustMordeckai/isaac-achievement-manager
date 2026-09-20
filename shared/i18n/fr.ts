@@ -4,6 +4,8 @@ import type { Catalog } from './index.ts';
 export const fr: Catalog = {
   'app.language': 'Langue',
   'app.loadFailed': 'Chargement impossible : {message}',
+  'app.tabAchievements': 'Succès',
+  'app.tabSettings': 'Paramètres',
   'routes.moreRuns.one': 'Afficher 1 run de plus',
   'routes.moreRuns.other': 'Afficher {count} runs de plus',
   'errors.localeInvalid': 'Langue inconnue : {locale}',

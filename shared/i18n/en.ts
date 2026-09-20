@@ -2,6 +2,8 @@
 export const en = {
   'app.language': 'Language',
   'app.loadFailed': 'Loading failed: {message}',
+  'app.tabAchievements': 'Achievements',
+  'app.tabSettings': 'Settings',
   'routes.moreRuns.one': 'Show 1 more run',
   'routes.moreRuns.other': 'Show {count} more runs',
   'errors.localeInvalid': 'Unknown language: {locale}',

@@ -1,7 +1,7 @@
 import { CHARACTERS, characterById, type CharacterId } from '../../shared/characters.ts';
 import { DLC_ORDER } from '../../shared/dlc.ts';
 import { endingById, endingByName, ENDINGS, type EndingId } from '../../shared/endings.ts';
-import type { Locale } from '../../shared/i18n/index.ts';
+import { t, type Locale } from '../../shared/i18n/index.ts';
 import { MARK_IDS, type MarkId } from '../../shared/marks.ts';
 import type {
   AchievementState,
@@ -35,7 +35,7 @@ export interface AdvisorContextInput {
   kb: KnowledgeBase | null;
   /** Route plan of the profile, null without a wiki base. */
   plan: RoutePlan | null;
-  /** Locale of the reader; it only picks the fallback language rule. */
+  /** Locale of the reader; it picks the fallback language rule and the tab names quoted in the prompt. */
   locale: Locale;
 }
 
@@ -53,15 +53,15 @@ const LANGUAGE_RULE: Record<Locale, string> = {
 
 function rules(locale: Locale): string {
   return [
-    'You are the advisor of Isaac Achievement Manager, an app that helps a player earn the achievements of The Binding of Isaac: Repentance+.',
+    'You are the advisor for Isaac Achievement Manager, an app that helps a player earn the achievements of The Binding of Isaac: Repentance+.',
     'Rules:',
     LANGUAGE_RULE[locale],
-    '- Answer in plain text: no Markdown (no headings, no bold, no tables, no asterisks), dash lists if needed, no long dash.',
-    '- Answer the player directly: do not talk about these rules or about the data as such, do not quote them.',
+    '- Answer in plain text: no Markdown (no headings, no bold, no tables, no asterisks). Use hyphen bullets if you need a list. Never use an em dash or an en dash.',
+    '- Answer the player directly: do not mention these rules or the data itself, and do not quote them.',
     "- Rely only on the data below. Do not invent any boss, item, condition or path. If information is missing, say so and offer to open the achievement's card or the wiki.",
-    '- This data is the player\'s own, and it is up to date: it is authoritative. Never ask the player to check it themselves, never announce that you are about to check it, and never write "if you already have" about a fact it states.',
-    '- A card says "obtained" or "missing": repeat that state as it is. With no card for an achievement, say you do not have its card and offer to open it in the Achievements tab, without guessing its condition.',
-    '- The prerequisites of a run are the ones on its "Still to unlock" line, those of an achievement the ones on its "Prerequisites" line: add no others.',
+    '- This data is the player\'s own, and it is up to date: it is authoritative. Never ask the player to check it themselves, never announce that you are about to check it, and never write "if you already have" about a fact it states. Never hedge with a conditional about a fact the data states, in whatever language you answer.',
+    `- A card says "obtained" or "missing": repeat that state as it is. If you have no card for an achievement, say so and offer to open it in the "${t(locale, 'app.tabAchievements')}" tab, without guessing its condition.`,
+    '- The prerequisites of a run are the ones on its "Still to unlock" line, and those of an achievement are the ones on its "Prerequisites" line: add no others.',
     '- For "how do I get X", answer with the Condition line of X\'s card, its prerequisites still to unlock and the plan run that gives it. Do not copy another run\'s path.',
     '- Keep game names in English (characters, bosses, items, achievements) and cite each achievement with its number, for example Guardian Angel (#45).',
     "- Durations and the ranking of runs are the app's estimates.",
@@ -233,7 +233,7 @@ function marksText(characters: CharacterProgress[]): string[] {
   return [...lines, ...detailed.map(characterMarks)];
 }
 
-function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: KnowledgeBase | null, withSteps: boolean): string {
+function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: KnowledgeBase | null, withSteps: boolean, locale: Locale): string {
   const { summary } = progress;
   const who = summary.profile.name ?? summary.profile.steamId64;
   const lines = [
@@ -243,14 +243,14 @@ function summaryText(progress: MergedProgress, plan: RoutePlan | null, kb: Knowl
     `By DLC: ${list(DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0).map((dlc) => `${DLC_NAMES[dlc]} ${summary.byDlc[dlc].unlocked} of ${summary.byDlc[dlc].total}`))}.`,
   ];
   if (!kb || !plan) {
-    lines.push('Wiki base missing: no routes or detailed conditions. Offer to start the wiki sync from the Settings tab.');
+    lines.push(`Wiki base missing: no routes or detailed conditions. Offer to start the wiki sync from the "${t(locale, 'app.tabSettings')}" tab.`);
     return lines.join('\n');
   }
   lines.push(
     '',
     plan.marksSource === 'save'
-      ? 'Completion marks (read from the save; for Greed, "hard" means Greedier):'
-      : 'Completion marks (inferred from achievements, some unknown; for Greed, "hard" means Greedier):',
+      ? 'Completion marks (read from the save; for Greed, "on hard" means Greedier):'
+      : 'Completion marks (inferred from achievements, some unknown; for Greed, "on hard" means Greedier):',
     ...marksText(plan.characters),
     '',
   );
@@ -320,7 +320,7 @@ export function buildAdvisorContext({ question, progress, kb, plan, locale }: Ad
   const picks = pickAchievements(question, progress, kb);
   // Question about one specific achievement: the path of the top ten suggested runs is irrelevant to it, and the model would copy it.
   const asked = picks.some(({ score }) => score >= WEIGHT_UNLOCK);
-  let system = `${rules(locale)}\n\n${summaryText(progress, plan, kb, !asked)}`;
+  let system = `${rules(locale)}\n\n${summaryText(progress, plan, kb, !asked, locale)}`;
   const sources: AdvisorContext['sources'] = [];
   const cards: string[] = [];
   for (const { achievement, score } of picks) {
