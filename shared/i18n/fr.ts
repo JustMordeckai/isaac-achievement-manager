@@ -7,4 +7,5 @@ export const fr: Catalog = {
   'routes.moreRuns.one': 'Afficher 1 run de plus',
   'routes.moreRuns.other': 'Afficher {count} runs de plus',
   'errors.localeInvalid': 'Langue inconnue : {locale}',
+  'errors.bodyExpected': 'Corps JSON attendu',
 };

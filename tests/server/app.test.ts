@@ -298,6 +298,15 @@ describe('API', () => {
       removeDir(dir);
     }
   });
+
+  it('refuses a settings body that is not a JSON object', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const base = await start();
+    const res = await fetch(`${base}/api/settings`, { method: 'POST', headers: { 'X-IAM-Action': 'settings' } });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'A JSON body is required' });
+    expect(logged).not.toHaveBeenCalled();
+  });
 });
 
 describe('API wiki', () => {

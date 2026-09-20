@@ -101,7 +101,11 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   api.post('/settings', requireAction('settings'), jsonBody, async (req, res) => {
-    const body = req.body as Record<string, unknown>;
+    const raw: unknown = req.body;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new HttpError(400, t(deps.settings.locale, 'errors.bodyExpected'));
+    }
+    const body = raw as Record<string, unknown>;
     const locale = toLocale(body.locale);
     if (!locale) throw new HttpError(400, t(deps.settings.locale, 'errors.localeInvalid', { locale: String(body.locale) }));
     await saveSettings(deps.settings.dataDir, { locale });

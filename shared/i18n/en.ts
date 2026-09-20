@@ -5,4 +5,5 @@ export const en = {
   'routes.moreRuns.one': 'Show 1 more run',
   'routes.moreRuns.other': 'Show {count} more runs',
   'errors.localeInvalid': 'Unknown language: {locale}',
+  'errors.bodyExpected': 'A JSON body is required',
 } as const;
