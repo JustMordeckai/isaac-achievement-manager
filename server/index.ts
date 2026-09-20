@@ -55,7 +55,7 @@ const app = createApp({
   profiles,
   icons: createIconCache(path.join(DATA_DIR, 'icons')),
   kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
-  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveSettings(DATA_DIR, { ollama }) }),
+  advisor: createAdvisorService({ settings: settings.ollama, save: (ollama) => saveSettings(DATA_DIR, { ollama }, settings.locale) }),
   settings: {
     port: settings.port,
     dataDir: DATA_DIR,

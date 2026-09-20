@@ -1,13 +1,14 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { DEFAULT_LOCALE, t, type Locale } from '../../shared/i18n/index.ts';
 
 export const SAVE_MAGIC = 'ISAACNGSAVE09R';
 const FIRST_CHUNK_OFFSET = 20;
 const CHUNK_HEADER_SIZE = 12;
 /**
- * Taille d'un élément par type de bloc lu : 1 secrets (octets), 2 compteurs (int32),
- * 3 compteurs de niveau (int32), 4 objets vus (octets). Le second champ de l'en-tête
- * n'est pas une longueur fiable (bloc 4 : 2932 annoncés pour 733 octets de données).
+ * Size of one element per chunk type read: 1 secrets (bytes), 2 counters (int32),
+ * 3 level counters (int32), 4 seen objects (bytes). The header's second field is
+ * not a reliable length (chunk 4: 2932 declared for 733 bytes of data).
  */
 const ELEMENT_SIZE: Record<number, number> = { 1: 1, 2: 4, 3: 4, 4: 1 };
 const KNOWN_CHUNKS = 4;
@@ -22,52 +23,52 @@ export class SaveFormatError extends Error {
 
 export interface SaveChunk {
   type: number;
-  /** Début des données du bloc (après son en-tête de 12 octets). */
+  /** Start of the chunk's data (after its 12 byte header). */
   offset: number;
-  /** Nombre d'éléments. */
+  /** Number of elements. */
   count: number;
-  /** Longueur réelle des données : count x taille d'élément du type. */
+  /** Actual data length: count x the type's element size. */
   byteLength: number;
-  /** Second champ brut de l'en-tête (non fiable comme longueur). */
+  /** Header's raw second field (not reliable as a length). */
   declaredSize: number;
 }
 
 export interface SaveFileData {
   chunks: SaveChunk[];
-  /** Début de la zone non décodée qui suit les 4 blocs connus. */
+  /** Start of the undecoded area that follows the 4 known chunks. */
   tailOffset: number;
   secrets: Set<number>;
   counters: number[];
 }
 
-export function parseSaveFile(buf: Uint8Array): SaveFileData {
+export function parseSaveFile(buf: Uint8Array, locale: Locale = DEFAULT_LOCALE): SaveFileData {
   const magic = String.fromCharCode(...buf.subarray(0, SAVE_MAGIC.length));
   if (buf.length < FIRST_CHUNK_OFFSET || magic !== SAVE_MAGIC) {
-    throw new SaveFormatError(`En-tête de sauvegarde inconnu (« ${magic.replace(/[^\x20-\x7e]/g, '?')} »)`);
+    throw new SaveFormatError(t(locale, 'errors.saveHeaderUnknown', { magic: magic.replace(/[^\x20-\x7e]/g, '?') }));
   }
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const chunks: SaveChunk[] = [];
   let pos = FIRST_CHUNK_OFFSET;
   for (let expected = 1; expected <= KNOWN_CHUNKS; expected++) {
     if (pos + CHUNK_HEADER_SIZE > buf.length) {
-      throw new SaveFormatError(`Bloc ${expected} absent (fin de fichier à l'offset ${pos})`);
+      throw new SaveFormatError(t(locale, 'errors.saveChunkMissing', { expected, pos }));
     }
     const type = view.getUint32(pos, true);
     if (type !== expected) {
-      throw new SaveFormatError(`Bloc ${expected} attendu à l'offset ${pos}, type ${type} trouvé`);
+      throw new SaveFormatError(t(locale, 'errors.saveChunkTypeMismatch', { expected, pos, type }));
     }
     const declaredSize = view.getUint32(pos + 4, true);
     const count = view.getUint32(pos + 8, true);
-    // Contrôles avant d'avancer : un nombre corrompu décalerait la lecture des blocs suivants.
+    // Checks before advancing: a corrupted number would shift the reading of the following chunks.
     if (type === 1 && declaredSize !== count) {
-      throw new SaveFormatError('Bloc des secrets incohérent (nombre différent de la taille annoncée)');
+      throw new SaveFormatError(t(locale, 'errors.saveSecretsChunkInconsistent'));
     }
     if (type === 2 && declaredSize !== count * 4) {
-      throw new SaveFormatError('Bloc des compteurs incohérent (taille annoncée différente de nombre x 4)');
+      throw new SaveFormatError(t(locale, 'errors.saveCountersChunkInconsistent'));
     }
     const byteLength = count * ELEMENT_SIZE[type];
     if (pos + CHUNK_HEADER_SIZE + byteLength > buf.length) {
-      throw new SaveFormatError(`Bloc ${expected} tronqué à l'offset ${pos}`);
+      throw new SaveFormatError(t(locale, 'errors.saveChunkTruncated', { expected, pos }));
     }
     chunks.push({ type, offset: pos + CHUNK_HEADER_SIZE, count, byteLength, declaredSize });
     pos += CHUNK_HEADER_SIZE + byteLength;
@@ -83,7 +84,7 @@ export function parseSaveFile(buf: Uint8Array): SaveFileData {
   for (let i = 0; i < countersChunk.count; i++) {
     counters.push(view.getInt32(countersChunk.offset + i * 4, true));
   }
-  // La suite du fichier (bloc 5 et suivants, marques de complétion probables) n'est pas encore décodée : on l'ignore.
+  // The rest of the file (chunk 5 and beyond, likely completion marks) is not decoded yet: we ignore it.
   return { chunks, tailOffset: pos, secrets, counters };
 }
 

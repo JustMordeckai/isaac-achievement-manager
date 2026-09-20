@@ -1,5 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { t, toLocale } from '../shared/i18n/index.ts';
+import { t, toLocale, type Locale } from '../shared/i18n/index.ts';
 import type {
   AchievementCard,
   AdvisorEvent,
@@ -32,26 +32,30 @@ export interface AppDeps {
   kb: KbService;
   advisor: AdvisorService;
   settings: SettingsInfo;
-  /** Appelé une fois la réponse de POST /api/shutdown envoyée. */
+  /** Called once the response to POST /api/shutdown has been sent. */
   onShutdown?: () => void;
 }
 
-function readQuery(req: Request): { profile: string; slot: number | null } {
+function readQuery(req: Request, locale: Locale): { profile: string; slot: number | null } {
   const { profile, slot } = req.query;
   const selected = typeof profile === 'string' && profile !== '' ? profile : 'me';
   if (slot === undefined || slot === '') return { profile: selected, slot: null };
   const value = typeof slot === 'string' && /^\d+$/.test(slot) ? Number(slot) : Number.NaN;
-  if (!(value >= 1 && value <= 3)) throw new HttpError(400, 'Paramètre slot invalide (1 à 3)');
+  if (!(value >= 1 && value <= 3)) throw new HttpError(400, t(locale, 'errors.slotInvalid'));
   return { profile: selected, slot: value };
 }
 
 /**
- * Exige l'en-tête d'action d'une requête POST, avant toute lecture du corps : un site tiers ne peut pas
- * l'envoyer sans requête CORS préalable, jamais autorisée ici ; le contrôle d'hôte bloque le rebinding DNS.
+ * Requires the action header of a POST request, before any body is read: a third-party site
+ * cannot send it without a prior CORS request, never allowed here; the host check blocks DNS rebinding.
  */
-function requireAction(action: string) {
+function requireAction(action: string, settings: Pick<SettingsInfo, 'locale'>) {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    next(req.get('X-IAM-Action') === action ? undefined : new HttpError(403, `En-tête X-IAM-Action: ${action} requis`));
+    next(
+      req.get('X-IAM-Action') === action
+        ? undefined
+        : new HttpError(403, t(settings.locale, 'errors.actionHeaderRequired', { action })),
+    );
   };
 }
 
@@ -59,25 +63,27 @@ const GATEWAY_STATUS: Partial<Record<OllamaErrorKind, number>> = { unreachable: 
 
 const parseJson = express.json({ limit: '256kb' });
 
-/** Corps JSON, avec des erreurs en français (400 illisible, 413 trop gros). */
-function jsonBody(req: Request, res: Response, next: NextFunction): void {
-  parseJson(req, res, (error?: unknown) => {
-    if (!error) return next();
-    const tooLarge = (error as { status?: unknown }).status === 413;
-    next(new HttpError(tooLarge ? 413 : 400, tooLarge ? 'Requête trop volumineuse' : 'Corps JSON illisible'));
-  });
+/** JSON body parsing, with a localized error for a body that is unreadable (400) or too large (413). */
+function jsonBody(settings: Pick<SettingsInfo, 'locale'>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    parseJson(req, res, (error?: unknown) => {
+      if (!error) return next();
+      const tooLarge = (error as { status?: unknown }).status === 413;
+      next(new HttpError(tooLarge ? 413 : 400, tooLarge ? t(settings.locale, 'errors.bodyTooLarge') : t(settings.locale, 'errors.bodyUnreadable')));
+    });
+  };
 }
 
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
 
-  // Contrôle du DNS rebinding : après un rebinding, une page tierce devient same-origin avec
-  // 127.0.0.1 et pourrait lire /api/progress ou appeler /api/shutdown. Placé avant toute route,
-  // ce middleware couvre aussi les middlewares statiques et Vite ajoutés ensuite par server/index.ts.
+  // DNS rebinding check: after a rebinding, a third-party page becomes same-origin with
+  // 127.0.0.1 and could read /api/progress or call /api/shutdown. Placed before any route,
+  // this middleware also covers the static and Vite middlewares added afterwards by server/index.ts.
   app.use((req, res, next) => {
     if (req.hostname === '127.0.0.1' || req.hostname === 'localhost') return next();
-    res.status(403).json({ error: 'Hôte non autorisé' } satisfies ApiError);
+    res.status(403).json({ error: t(deps.settings.locale, 'errors.hostNotAllowed') } satisfies ApiError);
   });
 
   const api = express.Router();
@@ -89,18 +95,18 @@ export function createApp(deps: AppDeps): express.Express {
   api.get('/status', async (_req, res) => {
     let sources: StatusResponse['sources'] = null;
     try {
-      sources = (await deps.progress.get('me', null)).summary.sources;
+      sources = (await deps.progress.get('me', null, deps.settings.locale)).summary.sources;
     } catch {
       sources = null;
     }
-    res.json({ app: APP_NAME, sources, wiki: await deps.kb.status() } satisfies StatusResponse);
+    res.json({ app: APP_NAME, sources, wiki: await deps.kb.status(deps.settings.locale) } satisfies StatusResponse);
   });
 
   api.get('/settings', (_req, res) => {
     res.json(deps.settings);
   });
 
-  api.post('/settings', requireAction('settings'), jsonBody, async (req, res) => {
+  api.post('/settings', requireAction('settings', deps.settings), jsonBody(deps.settings), async (req, res) => {
     const raw: unknown = req.body;
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
       throw new HttpError(400, t(deps.settings.locale, 'errors.bodyExpected'));
@@ -108,71 +114,79 @@ export function createApp(deps: AppDeps): express.Express {
     const body = raw as Record<string, unknown>;
     const locale = toLocale(body.locale);
     if (!locale) throw new HttpError(400, t(deps.settings.locale, 'errors.localeInvalid', { locale: String(body.locale) }));
-    await saveSettings(deps.settings.dataDir, { locale });
+    await saveSettings(deps.settings.dataDir, { locale }, deps.settings.locale);
     deps.settings.locale = locale;
     res.json(deps.settings);
   });
 
   api.get('/progress', async (req, res) => {
-    const { profile, slot } = readQuery(req);
-    res.json((await deps.progress.get(profile, slot)).summary);
+    const { profile, slot } = readQuery(req, deps.settings.locale);
+    res.json((await deps.progress.get(profile, slot, deps.settings.locale)).summary);
   });
 
   api.get('/achievements', async (req, res) => {
-    const { profile, slot } = readQuery(req);
-    const [progress, kb] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get()]);
+    const { profile, slot } = readQuery(req, deps.settings.locale);
+    const [progress, kb] = await Promise.all([deps.progress.get(profile, slot, deps.settings.locale), deps.kb.get()]);
     res.json(enrichAchievements(progress.achievements, kb));
   });
 
   api.get('/achievement/:id', async (req, res) => {
     const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : 0;
-    if (id <= 0) throw new HttpError(400, 'Identifiant de succès invalide');
-    const { profile, slot } = readQuery(req);
-    const [progress, kb, status] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get(), deps.kb.status()]);
+    if (id <= 0) throw new HttpError(400, t(deps.settings.locale, 'errors.achievementIdInvalid'));
+    const { profile, slot } = readQuery(req, deps.settings.locale);
+    const [progress, kb, status] = await Promise.all([
+      deps.progress.get(profile, slot, deps.settings.locale),
+      deps.kb.get(),
+      deps.kb.status(deps.settings.locale),
+    ]);
     const achievement = progress.achievements.find((a) => a.id === id);
-    if (!achievement) throw new HttpError(404, `Succès #${id} inconnu`);
+    if (!achievement) throw new HttpError(404, t(deps.settings.locale, 'errors.achievementNotFound', { id }));
     const [entry] = enrichAchievements([achievement], kb);
     const plan = kb ? cardPlan(kb, buildPlan({ kb, ...progress }), progress.achievements, id) : null;
     res.json({ achievement: entry, wiki: kb ? buildAchievementWiki(kb, id) : null, kb: status, plan } satisfies AchievementCard);
   });
 
   api.get('/routes', async (req, res) => {
-    const { profile, slot } = readQuery(req);
-    const [progress, kb, status] = await Promise.all([deps.progress.get(profile, slot), deps.kb.get(), deps.kb.status()]);
+    const { profile, slot } = readQuery(req, deps.settings.locale);
+    const [progress, kb, status] = await Promise.all([
+      deps.progress.get(profile, slot, deps.settings.locale),
+      deps.kb.get(),
+      deps.kb.status(deps.settings.locale),
+    ]);
     res.json({ kb: status, plan: kb ? buildPlan({ kb, ...progress }) : null } satisfies RoutesResponse);
   });
 
   api.get('/profile/resolve', async (req, res) => {
     const input = typeof req.query.input === 'string' ? req.query.input : '';
     try {
-      res.json(await deps.profiles.resolve(input));
+      res.json(await deps.profiles.resolve(input, deps.settings.locale));
     } catch (error) {
       throw error instanceof ProfileError ? profileErrorToHttp(error) : error;
     }
   });
 
   api.get('/icons/:file', async (req, res) => {
-    const bytes = await deps.icons.get(req.params.file);
+    const bytes = await deps.icons.get(req.params.file, deps.settings.locale);
     res.set('Cache-Control', 'public, max-age=604800, immutable').type('image/jpeg').send(Buffer.from(bytes));
   });
 
   api.get('/wiki/status', async (_req, res) => {
-    res.json(await deps.kb.status());
+    res.json(await deps.kb.status(deps.settings.locale));
   });
 
-  api.post('/wiki/sync', requireAction('wiki-sync'), async (_req, res) => {
-    if (deps.kb.isRunning()) throw new HttpError(409, 'Une synchro du wiki est déjà en cours');
+  api.post('/wiki/sync', requireAction('wiki-sync', deps.settings), async (_req, res) => {
+    if (deps.kb.isRunning()) throw new HttpError(409, t(deps.settings.locale, 'wiki.syncBusy'));
     res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.flushHeaders();
-    // La synchro continue si le navigateur se déconnecte : on cesse seulement d'écrire.
+    // The sync keeps running if the browser disconnects: we only stop writing.
     res.on('error', () => {});
     const send = (event: WikiSyncEvent) => {
       if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
     };
     try {
-      await deps.kb.sync(send);
+      await deps.kb.sync(send, deps.settings.locale);
     } catch {
-      // L'événement « error » a déjà été envoyé dans le flux.
+      // The "error" event has already been sent in the stream.
     }
     if (!res.destroyed) res.end();
   });
@@ -181,18 +195,21 @@ export function createApp(deps: AppDeps): express.Express {
     res.json(await deps.advisor.status());
   });
 
-  api.post('/advisor/settings', requireAction('advisor-settings'), jsonBody, async (req, res) => {
+  api.post('/advisor/settings', requireAction('advisor-settings', deps.settings), jsonBody(deps.settings), async (req, res) => {
     res.json(await deps.advisor.configure(parseOllamaSettings(req.body)));
   });
 
-  api.post('/advisor', requireAction('advisor'), jsonBody, async (req, res) => {
+  api.post('/advisor', requireAction('advisor', deps.settings), jsonBody(deps.settings), async (req, res) => {
     const controller = new AbortController();
-    // Navigateur parti (bouton Arrêter, onglet fermé) : on coupe aussi la génération sur Ollama.
+    // Browser gone (Stop button, tab closed): we also cut the generation on Ollama.
     res.on('close', () => {
       if (!res.writableFinished) controller.abort();
     });
     const request = parseAdvisorRequest(req.body);
-    const [progress, kb] = await Promise.all([deps.progress.get(request.profile, request.slot), deps.kb.get()]);
+    const [progress, kb] = await Promise.all([
+      deps.progress.get(request.profile, request.slot, deps.settings.locale),
+      deps.kb.get(),
+    ]);
     const plan = kb ? buildPlan({ kb, ...progress }) : null;
     const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
     const messages: OllamaMessage[] = [
@@ -205,7 +222,7 @@ export function createApp(deps: AppDeps): express.Express {
       reply = await deps.advisor.chat(messages, controller.signal);
     } catch (error) {
       if (controller.signal.aborted) return;
-      // Avant tout texte, un vrai statut HTTP : 503 serveur injoignable, 504 aucune réponse, 502 sinon (modèle absent...).
+      // Before any text, a real HTTP status: 503 server unreachable, 504 no response, 502 otherwise (missing model...).
       if (error instanceof OllamaError) throw new HttpError(GATEWAY_STATUS[error.kind] ?? 502, error.message);
       throw error;
     }
@@ -225,15 +242,15 @@ export function createApp(deps: AppDeps): express.Express {
     if (!res.destroyed) res.end();
   });
 
-  api.post('/shutdown', requireAction('shutdown'), (_req, res) => {
+  api.post('/shutdown', requireAction('shutdown', deps.settings), (_req, res) => {
     const { onShutdown } = deps;
-    if (!onShutdown) throw new HttpError(404, 'Arrêt indisponible');
+    if (!onShutdown) throw new HttpError(404, t(deps.settings.locale, 'errors.shutdownUnavailable'));
     res.on('finish', onShutdown);
     res.json({ ok: true });
   });
 
   api.use((_req: Request, res: Response) => {
-    res.status(404).json({ error: 'Route API inconnue' } satisfies ApiError);
+    res.status(404).json({ error: t(deps.settings.locale, 'errors.routeNotFound') } satisfies ApiError);
   });
 
   api.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

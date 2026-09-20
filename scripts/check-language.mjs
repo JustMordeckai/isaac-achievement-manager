@@ -15,7 +15,23 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 
 /** Files converted to English so far; every extraction task appends the files it converts. */
-const CLEAN = ['shared/i18n/en.ts', 'shared/i18n/index.ts', 'web/src/i18n.tsx', 'scripts/check-language.mjs'];
+const CLEAN = [
+  'shared/i18n/en.ts',
+  'shared/i18n/index.ts',
+  'web/src/i18n.tsx',
+  'scripts/check-language.mjs',
+  'server/app.ts',
+  'server/config.ts',
+  'server/progress-service.ts',
+  'server/kb-service.ts',
+  'server/icons.ts',
+  'server/http-error.ts',
+  'server/sources/steam-profile.ts',
+  'server/sources/save-file.ts',
+  'server/wiki/client.ts',
+  'server/wiki/sync.ts',
+  'server/wiki/setup.ts',
+];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;
 

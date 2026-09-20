@@ -36,7 +36,7 @@ function fakeKb(kb: KnowledgeBase | null = null, overrides: Partial<KbService> =
     status: vi.fn(async () => (kb ? { state: 'ok', syncedAt: kb.syncedAt, running: false } : ABSENT) satisfies KbStatus),
     isRunning: vi.fn(() => false),
     sync: vi.fn(async () => {
-      throw new Error('non simulé');
+      throw new Error('not simulated');
     }),
     ...overrides,
   };
@@ -49,7 +49,7 @@ function fakeAdvisor(overrides: Partial<AdvisorService> = {}): AdvisorService {
     status: vi.fn(async () => ADVISOR_OK),
     configure: vi.fn(async () => ADVISOR_OK),
     chat: vi.fn(async () => {
-      throw new Error('non simulé');
+      throw new Error('not simulated');
     }),
     ...overrides,
   };
@@ -102,63 +102,67 @@ function requestWithHost(port: number, hostHeader: string): Promise<{ status: nu
 }
 
 describe('API', () => {
-  it('bloque un hôte non autorisé et laisse passer 127.0.0.1 et localhost', async () => {
+  it('blocks a disallowed host and lets 127.0.0.1 and localhost through', async () => {
     const base = await start();
     const { port } = new URL(base);
     const evil = await requestWithHost(Number(port), 'evil.example:5250');
     expect(evil.status).toBe(403);
-    expect(evil.body).toEqual({ error: 'Hôte non autorisé' });
+    expect(evil.body).toEqual({ error: 'Host not allowed' });
     const local = await requestWithHost(Number(port), `localhost:${port}`);
     expect(local.status).toBe(200);
   });
 
-  it('répond à /api/ping sans dépendre des sources de progression', async () => {
+  it('answers /api/ping without depending on the progress sources', async () => {
     const base = await start({ progress: { get: vi.fn(() => new Promise<never>(() => {})) } });
     const res = await fetch(`${base}/api/ping`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ app: 'isaac-achievement-manager' });
   });
 
-  it('sert la progression du profil par défaut', async () => {
+  it('serves the default profile\'s progress', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get } });
     const res = await fetch(`${base}/api/progress`);
     expect(res.status).toBe(200);
     expect((await res.json()).unlocked).toBe(125);
-    expect(get).toHaveBeenCalledWith('me', null);
+    expect(get).toHaveBeenCalledWith('me', null, 'en');
   });
 
-  it('transmet le profil et le slot demandés', async () => {
+  it('passes through the requested profile and slot', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get } });
     const res = await fetch(`${base}/api/achievements?profile=${OTHER_ID64}&slot=2`);
     expect(await res.json()).toHaveLength(641);
-    expect(get).toHaveBeenCalledWith(OTHER_ID64, 2);
+    expect(get).toHaveBeenCalledWith(OTHER_ID64, 2, 'en');
   });
 
-  it('refuse un slot invalide', async () => {
+  it('refuses an invalid slot, in the reader\'s language', async () => {
     const base = await start();
     for (const slot of ['9', '0', 'abc', '1.5']) {
       const res = await fetch(`${base}/api/progress?slot=${slot}`);
       expect(res.status).toBe(400);
-      expect(await res.json()).toEqual({ error: 'Paramètre slot invalide (1 à 3)' });
+      expect(await res.json()).toEqual({ error: 'Invalid slot parameter (1 to 3)' });
     }
+    const frBase = await start({ settings: { ...SETTINGS, locale: 'fr' } });
+    const frRes = await fetch(`${frBase}/api/progress?slot=9`);
+    expect(frRes.status).toBe(400);
+    expect(await frRes.json()).toEqual({ error: 'Paramètre slot invalide (1 à 3)' });
   });
 
-  it('renvoie le statut des HttpError', async () => {
+  it('returns the status of HttpError', async () => {
     const base = await start({
       progress: {
         get: vi.fn(async () => {
-          throw new HttpError(404, 'Aucun compte');
+          throw new HttpError(404, 'No account');
         }),
       },
     });
     const res = await fetch(`${base}/api/progress`);
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: 'Aucun compte' });
+    expect(await res.json()).toEqual({ error: 'No account' });
   });
 
-  it('renvoie 500 pour une erreur imprévue', async () => {
+  it('returns 500 for an unexpected error', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const base = await start({
       progress: {
@@ -173,7 +177,7 @@ describe('API', () => {
     expect(logged).toHaveBeenCalled();
   });
 
-  it('expose le statut des sources', async () => {
+  it('exposes the sources status', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/status`)).json()).toEqual({
       app: 'isaac-achievement-manager',
@@ -182,11 +186,11 @@ describe('API', () => {
     });
   });
 
-  it('expose un statut sans sources si la progression échoue', async () => {
+  it('exposes a status without sources when the progress fails', async () => {
     const base = await start({
       progress: {
         get: vi.fn(async () => {
-          throw new HttpError(404, 'Aucun compte');
+          throw new HttpError(404, 'No account');
         }),
       },
     });
@@ -195,35 +199,35 @@ describe('API', () => {
     expect(await res.json()).toEqual({ app: 'isaac-achievement-manager', sources: null, wiki: ABSENT });
   });
 
-  it('résout un profil', async () => {
+  it('resolves a profile', async () => {
     const resolve = vi.fn(async () => ({ steamId64: ME_ID64, name: 'Player' }));
     const base = await start({ profiles: { getStats: vi.fn(), resolve } });
     const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('https://steamcommunity.com/id/JustMordeckai/')}`);
     expect(await res.json()).toEqual({ steamId64: ME_ID64, name: 'Player' });
-    expect(resolve).toHaveBeenCalledWith('https://steamcommunity.com/id/JustMordeckai/');
+    expect(resolve).toHaveBeenCalledWith('https://steamcommunity.com/id/JustMordeckai/', 'en');
   });
 
-  it('traduit les erreurs de profil', async () => {
+  it('translates profile errors', async () => {
     const resolve = vi.fn(async () => {
-      throw new ProfileError('notFound', 'Profil Steam introuvable');
+      throw new ProfileError('notFound', 'Steam profile not found');
     });
     const base = await start({ profiles: { getStats: vi.fn(), resolve } });
-    const res = await fetch(`${base}/api/profile/resolve?input=inconnu`);
+    const res = await fetch(`${base}/api/profile/resolve?input=unknown`);
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: 'Profil Steam introuvable' });
+    expect(await res.json()).toEqual({ error: 'Steam profile not found' });
   });
 
-  it('répond 400 à une saisie de profil non reconnue', async () => {
+  it('answers 400 to an unrecognized profile input', async () => {
     const resolve = vi.fn(async () => {
-      throw new ProfileError('input', 'Entrée non reconnue');
+      throw new ProfileError('input', 'Unrecognized input');
     });
     const base = await start({ profiles: { getStats: vi.fn(), resolve } });
-    const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('pas un profil !')}`);
+    const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('not a profile !')}`);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'Entrée non reconnue' });
+    expect(await res.json()).toEqual({ error: 'Unrecognized input' });
   });
 
-  it('sert les icônes', async () => {
+  it('serves the icons', async () => {
     const get = vi.fn(async () => new Uint8Array([0xff, 0xd8]));
     const base = await start({ icons: { get } });
     const file = 'a36d7e92df7e991758907a75dfa55d36b52548c4.jpg';
@@ -232,14 +236,14 @@ describe('API', () => {
     expect(res.headers.get('content-type')).toBe('image/jpeg');
     expect(res.headers.get('cache-control')).toContain('max-age=604800');
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([0xff, 0xd8]));
-    expect(get).toHaveBeenCalledWith(file);
+    expect(get).toHaveBeenCalledWith(file, 'en');
   });
 
-  it('relaie le refus d’un nom d’icône', async () => {
+  it('relays the refusal of an icon name', async () => {
     const base = await start({
       icons: {
         get: vi.fn(async () => {
-          throw new HttpError(400, "Nom d'icône invalide");
+          throw new HttpError(400, 'Invalid icon name');
         }),
       },
     });
@@ -247,7 +251,7 @@ describe('API', () => {
     expect(res.status).toBe(400);
   });
 
-  it('arrête le serveur seulement avec l’en-tête dédié', async () => {
+  it('stops the server only with the dedicated header', async () => {
     const onShutdown = vi.fn();
     const base = await start({ onShutdown });
     const refused = await fetch(`${base}/api/shutdown`, { method: 'POST' });
@@ -258,16 +262,16 @@ describe('API', () => {
     await vi.waitFor(() => expect(onShutdown).toHaveBeenCalledTimes(1));
   });
 
-  it('répond 404 à un arrêt non configuré et aux routes inconnues', async () => {
+  it('answers 404 to an unconfigured shutdown and to unknown routes', async () => {
     const base = await start();
     const shutdown = await fetch(`${base}/api/shutdown`, { method: 'POST', headers: { 'X-IAM-Action': 'shutdown' } });
     expect(shutdown.status).toBe(404);
     const unknown = await fetch(`${base}/api/nope`);
     expect(unknown.status).toBe(404);
-    expect(await unknown.json()).toEqual({ error: 'Route API inconnue' });
+    expect(await unknown.json()).toEqual({ error: 'Unknown API route' });
   });
 
-  it('expose les réglages détectés', async () => {
+  it('exposes the detected settings', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/settings`)).json()).toEqual(SETTINGS);
   });
@@ -310,31 +314,31 @@ describe('API', () => {
 });
 
 describe('API wiki', () => {
-  it('expose l’état de la base wiki', async () => {
+  it('exposes the wiki database state', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/wiki/status`)).json()).toEqual(ABSENT);
   });
 
-  it('enrichit la liste des succès avec la base wiki', async () => {
+  it('enriches the achievement list with the wiki database', async () => {
     const base = await start({ kb: fakeKb(await testKnowledgeBase()) });
     const list = await (await fetch(`${base}/api/achievements`)).json();
     expect(list[8]).toMatchObject({ id: 9, name: 'The Nail', how: 'mark', character: 'azazel' });
   });
 
-  it('laisse la liste sans enrichissement quand la base est absente', async () => {
+  it('leaves the list unenriched when the database is absent', async () => {
     const base = await start();
     const list = await (await fetch(`${base}/api/achievements`)).json();
     expect(list[8]).toMatchObject({ id: 9, how: null, character: null });
   });
 
-  it('sert la fiche d’un succès avec son état pour le profil demandé', async () => {
+  it('serves an achievement card with its state for the requested profile', async () => {
     const kb = await testKnowledgeBase();
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get }, kb: fakeKb(kb) });
     const res = await fetch(`${base}/api/achievement/70?profile=${OTHER_ID64}&slot=1`);
     expect(res.status).toBe(200);
     const card = await res.json();
-    expect(get).toHaveBeenCalledWith(OTHER_ID64, 1);
+    expect(get).toHaveBeenCalledWith(OTHER_ID64, 1, 'en');
     expect(card.achievement).toMatchObject({ id: 70, how: 'mark', character: 'isaac' });
     expect(card.wiki).toMatchObject({ name: "Isaac's Head", unlocks: { kind: 'trinket', name: "Isaac's Head" } });
     expect(card.kb).toEqual({ state: 'ok', syncedAt: kb.syncedAt, running: false });
@@ -352,10 +356,10 @@ describe('API wiki', () => {
     ]);
   });
 
-  it('donne les prérequis d’un succès de personnage dans la fiche', async () => {
+  it('gives the requirements of a character achievement in the card', async () => {
     const base = await start({ kb: fakeKb(await testKnowledgeBase()) });
     const card = await (await fetch(`${base}/api/achievement/491`)).json();
-    // #491 : The Beast avec Tainted Isaac.
+    // #491: The Beast with Tainted Isaac.
     expect(card.plan.requirements).toEqual([
       { anyOf: [{ id: 474, name: 'The Broken' }], met: false },
       { anyOf: [{ id: 635, name: 'A Strange Door' }], met: false },
@@ -374,19 +378,19 @@ describe('API wiki', () => {
     ]);
   });
 
-  it('sert une fiche sans partie wiki quand la base est absente', async () => {
+  it('serves a card without a wiki part when the database is absent', async () => {
     const base = await start();
     const card = await (await fetch(`${base}/api/achievement/9`)).json();
     expect(card).toMatchObject({ achievement: { id: 9, how: null }, wiki: null, kb: ABSENT, plan: null });
   });
 
-  it('sert le plan de routes du profil demandé', async () => {
+  it('serves the route plan of the requested profile', async () => {
     const get = vi.fn(async () => merged);
     const base = await start({ progress: { get }, kb: fakeKb(await testKnowledgeBase()) });
     const res = await fetch(`${base}/api/routes?profile=me&slot=1`);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(get).toHaveBeenCalledWith('me', 1);
+    expect(get).toHaveBeenCalledWith('me', 1, 'en');
     expect(body.kb.state).toBe('ok');
     expect(body.plan.marksSource).toBe('save');
     expect(body.plan.characters).toHaveLength(34);
@@ -394,23 +398,23 @@ describe('API wiki', () => {
     expect(body.plan.offRoute.redKey).toBe(false);
   });
 
-  it('sert un plan vide quand la base est absente', async () => {
+  it('serves an empty plan when the database is absent', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/routes`)).json()).toEqual({ kb: ABSENT, plan: null });
     expect((await fetch(`${base}/api/routes?slot=9`)).status).toBe(400);
   });
 
-  it('refuse un identifiant invalide ou inconnu', async () => {
+  it('refuses an invalid or unknown id', async () => {
     const base = await start();
     const invalid = await fetch(`${base}/api/achievement/abc`);
     expect(invalid.status).toBe(400);
-    expect(await invalid.json()).toEqual({ error: 'Identifiant de succès invalide' });
+    expect(await invalid.json()).toEqual({ error: 'Invalid achievement id' });
     const unknown = await fetch(`${base}/api/achievement/9999`);
     expect(unknown.status).toBe(404);
-    expect(await unknown.json()).toEqual({ error: 'Succès #9999 inconnu' });
+    expect(await unknown.json()).toEqual({ error: 'Achievement #9999 unknown' });
   });
 
-  it('diffuse la synchro en NDJSON, avec l’en-tête dédié', async () => {
+  it('streams the sync as NDJSON, with the dedicated header', async () => {
     const report = {
       achievements: 641,
       pages: 1,
@@ -421,8 +425,8 @@ describe('API wiki', () => {
       cachedPages: 0,
     };
     const sync = vi.fn(async (onEvent: (event: WikiSyncEvent) => void) => {
-      onEvent({ step: 'core', done: 0, total: 1, message: 'début' });
-      onEvent({ step: 'done', done: 1, total: 1, message: 'Synchro terminée', report });
+      onEvent({ step: 'core', done: 0, total: 1, message: 'start' });
+      onEvent({ step: 'done', done: 1, total: 1, message: 'Sync complete', report });
       return report;
     });
     const base = await start({ kb: fakeKb(null, { sync }) });
@@ -436,30 +440,30 @@ describe('API wiki', () => {
     expect(res.headers.get('content-type')).toBe('application/x-ndjson; charset=utf-8');
     const lines = (await res.text()).trim().split('\n').map((line) => JSON.parse(line));
     expect(lines).toEqual([
-      { step: 'core', done: 0, total: 1, message: 'début' },
-      { step: 'done', done: 1, total: 1, message: 'Synchro terminée', report },
+      { step: 'core', done: 0, total: 1, message: 'start' },
+      { step: 'done', done: 1, total: 1, message: 'Sync complete', report },
     ]);
   });
 
-  it('termine le flux après une synchro en échec', async () => {
+  it('ends the stream after a failed sync', async () => {
     const sync = vi.fn(async (onEvent: (event: WikiSyncEvent) => void) => {
-      onEvent({ step: 'error', done: 0, total: 1, message: 'wiki injoignable' });
-      throw new Error('wiki injoignable');
+      onEvent({ step: 'error', done: 0, total: 1, message: 'wiki unreachable' });
+      throw new Error('wiki unreachable');
     });
     const base = await start({ kb: fakeKb(null, { sync }) });
     const res = await fetch(`${base}/api/wiki/sync`, { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
-    expect((await res.text()).trim()).toBe(JSON.stringify({ step: 'error', done: 0, total: 1, message: 'wiki injoignable' }));
+    expect((await res.text()).trim()).toBe(JSON.stringify({ step: 'error', done: 0, total: 1, message: 'wiki unreachable' }));
   });
 
-  it('répond 409 si une synchro tourne déjà', async () => {
+  it('answers 409 when a sync is already running', async () => {
     const base = await start({ kb: fakeKb(null, { isRunning: vi.fn(() => true) }) });
     const res = await fetch(`${base}/api/wiki/sync`, { method: 'POST', headers: { 'X-IAM-Action': 'wiki-sync' } });
     expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: 'Une synchro du wiki est déjà en cours' });
+    expect(await res.json()).toEqual({ error: 'A wiki sync is already running' });
   });
 });
 
-describe('API conseiller', () => {
+describe('API advisor', () => {
   let ollama: FakeOllama | null = null;
 
   afterEach(async () => {
@@ -486,14 +490,14 @@ describe('API conseiller', () => {
       .split('\n')
       .map((line) => JSON.parse(line));
 
-  const QUESTION = { question: 'Comment obtenir The Nail (#9) ?', history: [], profile: 'me', slot: null };
+  const QUESTION = { question: 'How do I get The Nail (#9)?', history: [], profile: 'me', slot: null };
 
-  it('expose l’état du conseiller', async () => {
+  it('exposes the advisor status', async () => {
     const base = await start();
     expect(await (await fetch(`${base}/api/advisor/status`)).json()).toEqual(ADVISOR_OK);
   });
 
-  it('enregistre les réglages Ollama avec l’en-tête dédié', async () => {
+  it('saves the Ollama settings with the dedicated header', async () => {
     const configure = vi.fn(async () => ADVISOR_OK);
     const base = await start({ advisor: fakeAdvisor({ configure }) });
     const post = (body: unknown, headers: Record<string, string> = { 'X-IAM-Action': 'advisor-settings' }) =>
@@ -504,7 +508,7 @@ describe('API conseiller', () => {
       });
     const refused = await post({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' }, {});
     expect(refused.status).toBe(403);
-    expect(await refused.json()).toEqual({ error: 'En-tête X-IAM-Action: advisor-settings requis' });
+    expect(await refused.json()).toEqual({ error: 'X-IAM-Action header required: advisor-settings' });
     const invalid = await post({ url: 'nas', model: 'qwen3.5:4b' });
     expect(invalid.status).toBe(400);
     expect(configure).not.toHaveBeenCalled();
@@ -513,26 +517,26 @@ describe('API conseiller', () => {
     expect(configure).toHaveBeenCalledWith({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' });
   });
 
-  it('refuse une question sans en-tête, illisible, invalide ou trop grosse', async () => {
+  it('refuses a question with no header, unreadable, invalid or too large', async () => {
     const base = await start();
     const refused = await ask(base, QUESTION, {});
     expect(refused.status).toBe(403);
-    expect(await refused.json()).toEqual({ error: 'En-tête X-IAM-Action: advisor requis' });
+    expect(await refused.json()).toEqual({ error: 'X-IAM-Action header required: advisor' });
     const unreadable = await ask(base, '{"question":');
     expect(unreadable.status).toBe(400);
-    expect(await unreadable.json()).toEqual({ error: 'Corps JSON illisible' });
+    expect(await unreadable.json()).toEqual({ error: 'Unreadable JSON body' });
     const empty = await ask(base, { ...QUESTION, question: ' ' });
     expect(empty.status).toBe(400);
     expect(await empty.json()).toEqual({ error: 'Question vide' });
     const hugeBody = { ...QUESTION, history: [{ role: 'user', content: 'x'.repeat(300_000) }] };
     const huge = await ask(base, hugeBody);
     expect(huge.status).toBe(413);
-    expect(await huge.json()).toEqual({ error: 'Requête trop volumineuse' });
-    // L'en-tête est contrôlé avant la lecture du corps.
+    expect(await huge.json()).toEqual({ error: 'Request body too large' });
+    // The header is checked before the body is read.
     expect((await ask(base, hugeBody, {})).status).toBe(403);
   });
 
-  it('diffuse les fiches consultées puis la réponse d’Ollama', async () => {
+  it('streams the consulted cards then Ollama\'s reply', async () => {
     const get = vi.fn(async () => merged);
     const base = await startWithOllama({ progress: { get } });
     const history = [
@@ -548,14 +552,14 @@ describe('API conseiller', () => {
       { kind: 'delta', text: ' Player.' },
       { kind: 'done' },
     ]);
-    expect(get).toHaveBeenCalledWith(OTHER_ID64, 2);
+    expect(get).toHaveBeenCalledWith(OTHER_ID64, 2, 'en');
     const [chat] = ollama?.chats as Array<{ messages: Array<{ role: string; content: string }> }>;
     expect(chat.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(chat.messages[0].content).toContain('#9 The Nail : manquant');
-    expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Bonjour', 'Bonjour !', 'Comment obtenir The Nail (#9) ?']);
+    expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Bonjour', 'Bonjour !', 'How do I get The Nail (#9)?']);
   });
 
-  it('prévient le modèle quand la base wiki manque', async () => {
+  it('warns the model when the wiki database is missing', async () => {
     const base = await startWithOllama({ kb: fakeKb() });
     const [context] = await lines(await ask(base, QUESTION));
     expect(context).toEqual({ kind: 'context', sources: [{ id: 9, name: 'The Nail' }] });
@@ -563,7 +567,7 @@ describe('API conseiller', () => {
     expect(chat.messages[0].content).toContain('Base wiki absente');
   });
 
-  it('répond 503 quand Ollama est injoignable', async () => {
+  it('answers 503 when Ollama is unreachable', async () => {
     const url = await closedUrl();
     const base = await start({ advisor: createAdvisorService({ settings: { url, model: 'qwen3.5:9b' }, save: vi.fn() }) });
     const res = await ask(base, QUESTION);
@@ -571,7 +575,7 @@ describe('API conseiller', () => {
     expect(await res.json()).toEqual({ error: `Ollama injoignable sur ${url} (ECONNREFUSED)` });
   });
 
-  it('répond 502 quand le modèle manque', async () => {
+  it('answers 502 when the model is missing', async () => {
     const base = await startWithOllama({}, 'mistral:7b');
     const res = await ask(base, QUESTION);
     expect(res.status).toBe(502);
@@ -580,10 +584,10 @@ describe('API conseiller', () => {
     });
   });
 
-  it('répond 504 quand Ollama ne répond pas', async () => {
+  it('answers 504 when Ollama does not respond', async () => {
     ollama = await startFakeOllama({
       'POST /api/chat': () => {
-        // Aucune réponse : le serveur est occupé.
+        // No response: the server is busy.
       },
     });
     const advisor = createAdvisorService({ settings: { url: ollama.url, model: 'qwen3.5:9b' }, save: vi.fn(), idleTimeoutMs: 100 });
@@ -593,7 +597,7 @@ describe('API conseiller', () => {
     expect((await res.json()).error).toMatch(/^Ollama ne répond plus \(rien reçu depuis 1 s\)/);
   });
 
-  it('termine le flux par l’erreur envoyée par Ollama en cours de route', async () => {
+  it('ends the stream with the error sent by Ollama mid-flight', async () => {
     ollama = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
         res.write(`${chatLines(['Début'])[0]}\n`);
@@ -607,7 +611,7 @@ describe('API conseiller', () => {
     ]);
   });
 
-  it('coupe la génération quand le navigateur abandonne', async () => {
+  it('cuts the generation when the browser gives up', async () => {
     ollama = await startFakeOllama({
       'POST /api/chat': (_req, res) => {
         res.write(`${chatLines(['Début'])[0]}\n`);
@@ -626,7 +630,7 @@ describe('API conseiller', () => {
     await expect.poll(() => ollama?.aborted()).toBe(1);
   });
 
-  it('n’ouvre pas de génération quand le client abandonne pendant la lecture de la progression', async () => {
+  it('does not open a generation when the client gives up while the progress is loading', async () => {
     let resolveProgress!: () => void;
     const progressDone = new Promise<void>((resolve) => {
       resolveProgress = resolve;

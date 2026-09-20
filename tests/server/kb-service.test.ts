@@ -31,84 +31,84 @@ function smallKb(syncedAt = '2026-09-17T08:00:00.000Z'): KnowledgeBase {
 }
 
 describe('createKbService', () => {
-  it('signale une base absente', async () => {
+  it('reports an absent database', async () => {
     const service = createKbService({ file, build: async () => smallKb() });
     expect(await service.get()).toBeNull();
-    expect(await service.status()).toEqual({ state: 'absent', syncedAt: null, running: false });
+    expect(await service.status('en')).toEqual({ state: 'absent', syncedAt: null, running: false });
   });
 
-  it('synchronise, écrit la base sans fichier temporaire restant et la relit', async () => {
+  it('syncs, writes the database with no leftover temp file, and rereads it', async () => {
     const events: WikiSyncEvent[] = [];
     const service = createKbService({
       file,
       build: async (onEvent) => {
-        onEvent({ step: 'core', done: 0, total: 1, message: 'début' });
+        onEvent({ step: 'core', done: 0, total: 1, message: 'start' });
         return smallKb();
       },
     });
 
-    await expect(service.sync((e) => events.push(e))).resolves.toEqual(report);
+    await expect(service.sync((e) => events.push(e), 'en')).resolves.toEqual(report);
 
     expect(events.map((e) => e.step)).toEqual(['core', 'write', 'done']);
-    expect(events[2]).toEqual({ step: 'done', done: 1, total: 1, message: 'Synchro terminée', report });
+    expect(events[2]).toEqual({ step: 'done', done: 1, total: 1, message: 'Sync complete', report });
     expect(await readdir(dir)).toEqual(['kb.json']);
     expect(JSON.parse(await readFile(file, 'utf8')).syncedAt).toBe('2026-09-17T08:00:00.000Z');
-    expect(await service.status()).toEqual({ state: 'ok', syncedAt: '2026-09-17T08:00:00.000Z', running: false });
+    expect(await service.status('en')).toEqual({ state: 'ok', syncedAt: '2026-09-17T08:00:00.000Z', running: false });
     expect((await service.get())?.report).toEqual(report);
   });
 
-  it('refuse une deuxième synchro simultanée et indique la synchro en cours', async () => {
+  it('refuses a second simultaneous sync and reports the sync in progress', async () => {
     let release: (kb: KnowledgeBase) => void = () => {};
     const service = createKbService({ file, build: () => new Promise((resolve) => (release = resolve)) });
-    const first = service.sync(() => {});
+    const first = service.sync(() => {}, 'en');
     expect(service.isRunning()).toBe(true);
-    expect((await service.status()).running).toBe(true);
-    await expect(service.sync(() => {})).rejects.toBeInstanceOf(SyncBusyError);
+    expect((await service.status('en')).running).toBe(true);
+    await expect(service.sync(() => {}, 'en')).rejects.toBeInstanceOf(SyncBusyError);
     release(smallKb());
     await first;
     expect(service.isRunning()).toBe(false);
   });
 
-  it('émet une erreur, garde l’ancienne base et le signale dans l’état', async () => {
+  it('emits an error, keeps the old database and reports it in the state', async () => {
     await writeFile(file, JSON.stringify(smallKb('2026-09-01T00:00:00.000Z')));
     const events: WikiSyncEvent[] = [];
     const service = createKbService({
       file,
       build: async () => {
-        throw new Error('wiki injoignable');
+        throw new Error('wiki unreachable');
       },
     });
-    await expect(service.sync((e) => events.push(e))).rejects.toThrow('wiki injoignable');
-    expect(events).toEqual([{ step: 'error', done: 0, total: 1, message: 'wiki injoignable' }]);
-    expect(await service.status()).toEqual({
+    await expect(service.sync((e) => events.push(e), 'en')).rejects.toThrow('wiki unreachable');
+    expect(events).toEqual([{ step: 'error', done: 0, total: 1, message: 'wiki unreachable' }]);
+    expect(await service.status('en')).toEqual({
       state: 'ok',
       syncedAt: '2026-09-01T00:00:00.000Z',
       running: false,
-      message: 'Dernière synchro échouée : wiki injoignable',
+      message: 'Last sync failed: wiki unreachable',
     });
   });
 
-  it('signale une base illisible ou d’un autre format', async () => {
+  it('reports an unreadable database or one in another format', async () => {
     const service = createKbService({ file, build: async () => smallKb() });
-    await writeFile(file, '{ pas du json');
-    expect(await service.status()).toMatchObject({ state: 'error', message: expect.stringMatching(/^Base wiki illisible/) });
+    await writeFile(file, '{ not json');
+    expect(await service.status('en')).toMatchObject({ state: 'error', message: expect.stringMatching(/^Wiki database unreadable/) });
     await writeFile(file, JSON.stringify({ ...smallKb(), version: 99 }));
-    expect(await service.status()).toMatchObject({
+    expect(await service.status('en')).toMatchObject({
       state: 'error',
-      message: "Base wiki d'un autre format (version 99) : relance la synchro",
+      message: 'Wiki database in another format (version 99): restart the sync',
     });
     expect(await service.get()).toBeNull();
 
     const failing = createKbService({
       file,
       build: async () => {
-        throw new Error('wiki injoignable');
+        throw new Error('wiki unreachable');
       },
     });
-    await expect(failing.sync(() => {})).rejects.toThrow('wiki injoignable');
-    expect(await failing.status()).toMatchObject({
+    await expect(failing.sync(() => {}, 'en')).rejects.toThrow('wiki unreachable');
+    expect(await failing.status('en')).toMatchObject({
       state: 'error',
-      message: "Base wiki d'un autre format (version 99) : relance la synchro ; dernière synchro échouée : wiki injoignable",
+      message: 'Wiki database in another format (version 99): restart the sync; last sync failed: wiki unreachable',
     });
   });
 });

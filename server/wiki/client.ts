@@ -4,7 +4,7 @@ import path from 'node:path';
 import { writeFileAtomic } from '../fs-atomic.ts';
 
 export const WIKI_API = 'https://bindingofisaacrebirth.fandom.com/api.php';
-export const WIKI_USER_AGENT = 'IsaacAchievementManager/0.2 (outil personnel local)';
+export const WIKI_USER_AGENT = 'IsaacAchievementManager/0.2 (local personal tool)';
 
 export interface ResolvedTitle {
   title: string;
@@ -12,13 +12,13 @@ export interface ResolvedTitle {
 }
 
 export interface FetchPagesResult {
-  /** Titre demandé vers page réelle (après normalisation et redirection). */
+  /** Requested title to actual page (after normalization and redirection). */
   resolved: Map<string, ResolvedTitle>;
-  /** Page réelle vers wikitext, null si la page n'existe pas. */
+  /** Actual page to wikitext, null when the page does not exist. */
   pages: Map<string, string | null>;
-  /** Titres demandés servis depuis le cache disque après un échec réseau. */
+  /** Requested titles served from the disk cache after a network failure. */
   fromCache: string[];
-  /** Titres demandés ni téléchargés ni présents dans le cache. */
+  /** Requested titles neither downloaded nor present in the cache. */
   failed: string[];
 }
 
@@ -64,7 +64,7 @@ export function createWikiClient(options: WikiClientOptions): WikiClient {
   const pagesDir = path.join(options.cacheDir, 'pages');
   const redirectsFile = path.join(options.cacheDir, 'redirects.json');
 
-  // Condensé du titre comme nom de fichier : certains titres ne diffèrent que par la casse (Pong, PONG).
+  // Title digest as a file name: some titles differ only by case (Pong, PONG).
   const pageFile = (title: string) => path.join(pagesDir, `${createHash('sha1').update(title).digest('hex')}.json`);
 
   async function readCachedPage(title: string): Promise<CachedPage | null> {
@@ -99,10 +99,10 @@ export function createWikiClient(options: WikiClientOptions): WikiClient {
       headers: { 'User-Agent': WIKI_USER_AGENT },
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) throw new Error(`Le wiki a répondu ${response.status}`);
+    if (!response.ok) throw new Error(`The wiki responded with ${response.status}`);
     const body = (await response.json()) as { error?: { info?: string }; query?: ApiQuery };
-    if (body.error) throw new Error(`Erreur du wiki : ${body.error.info ?? 'inconnue'}`);
-    if (!body.query) throw new Error('Réponse du wiki sans bloc query');
+    if (body.error) throw new Error(`Wiki error: ${body.error.info ?? 'unknown'}`);
+    if (!body.query) throw new Error('Wiki response without a query block');
     return body.query;
   }
 
@@ -112,7 +112,7 @@ export function createWikiClient(options: WikiClientOptions): WikiClient {
       try {
         return await request(titles);
       } catch {
-        // Nouvelle tentative, puis repli sur le cache.
+        // Retry once more, then fall back to the cache.
       }
     }
     return null;
@@ -153,14 +153,14 @@ export function createWikiClient(options: WikiClientOptions): WikiClient {
         for (const page of query.pages ?? []) {
           const content = page.revisions?.[0]?.slots?.main?.content;
           if (!page.missing && content === undefined) {
-            // Contenu absent sans que la page manque (réponse tronquée) : on se rabat sur le cache.
+            // Content missing without the page itself missing (truncated response): fall back to the cache.
             incomplete.add(page.title);
             continue;
           }
           const value = page.missing ? null : (content ?? null);
           result.pages.set(page.title, value);
           const entry: CachedPage = { title: page.title, content: value, fetchedAt: new Date().toISOString() };
-          // Le cache disque n'est qu'un secours : une écriture qui échoue ne doit pas faire échouer la synchro.
+          // The disk cache is only a fallback: a failed write must not fail the sync.
           await writeFileAtomic(pageFile(page.title), JSON.stringify(entry)).catch(() => {});
         }
         for (const requested of batch) {

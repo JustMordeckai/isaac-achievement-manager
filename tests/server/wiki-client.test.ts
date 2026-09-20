@@ -19,16 +19,16 @@ afterEach(async () => {
 
 const json = (body: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
 
-/** Réponse synthétique : chaque titre demandé existe et contient « texte de <titre> ». */
+/** Synthetic response: every requested title exists and holds "text of <title>". */
 function echo(url: string): Response {
   const titles = new URL(url).searchParams.get('titles')?.split('|') ?? [];
-  const pages = titles.map((title) => ({ title, revisions: [{ slots: { main: { content: `texte de ${title}` } } }] }));
+  const pages = titles.map((title) => ({ title, revisions: [{ slots: { main: { content: `text of ${title}` } } }] }));
   return json(JSON.stringify({ batchcomplete: true, query: { pages } }));
 }
 
 describe('createWikiClient', () => {
-  // 120 fichiers écrits dans le cache : quand toute la suite tourne en parallèle, cela peut dépasser 5 s.
-  it('interroge l’API par lots de 50 avec une pause d’une seconde et l’agent utilisateur de l’outil', { timeout: 20_000 }, async () => {
+  // 120 files written to the cache: when the whole suite runs in parallel, this can exceed 5s.
+  it('queries the API in batches of 50 with a one second pause and the tool\'s user agent', { timeout: 20_000 }, async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => echo(String(input)));
     const sleep = vi.fn(async () => {});
     const progress: string[] = [];
@@ -47,12 +47,12 @@ describe('createWikiClient', () => {
     expect(params.get('redirects')).toBe('1');
     expect(params.get('titles')?.split('|')).toHaveLength(50);
     expect(init.headers).toEqual({ 'User-Agent': WIKI_USER_AGENT });
-    expect(result.pages.get('Page 119')).toBe('texte de Page 119');
+    expect(result.pages.get('Page 119')).toBe('text of Page 119');
     expect(result.fromCache).toEqual([]);
     expect(result.failed).toEqual([]);
   });
 
-  it('résout titres normalisés, redirections avec ancre et pages absentes', async () => {
+  it('resolves normalized titles, redirects with an anchor, and missing pages', async () => {
     const client = createWikiClient({ cacheDir: dir, fetch: async () => json(BATCH), sleep: async () => {} });
     const result = await client.fetchPages(BATCH_TITLES);
 
@@ -65,14 +65,14 @@ describe('createWikiClient', () => {
     expect(result.pages.get('Pills')?.length).toBeGreaterThan(1000);
   });
 
-  it('réessaie une fois puis se rabat sur le cache disque, redirections comprises', async () => {
+  it('retries once then falls back to the disk cache, redirects included', async () => {
     await createWikiClient({ cacheDir: dir, fetch: async () => json(BATCH), sleep: async () => {} }).fetchPages(BATCH_TITLES);
 
     const failing = vi.fn(async () => {
-      throw new Error('réseau coupé');
+      throw new Error('network down');
     });
     const sleep = vi.fn(async () => {});
-    const result = await createWikiClient({ cacheDir: dir, fetch: failing, sleep }).fetchPages([...BATCH_TITLES, 'Inconnue']);
+    const result = await createWikiClient({ cacheDir: dir, fetch: failing, sleep }).fetchPages([...BATCH_TITLES, 'Unknown']);
 
     expect(failing).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenCalledWith(1000);
@@ -80,21 +80,21 @@ describe('createWikiClient', () => {
     expect(result.pages.get('The Nail')).toMatch(/^\{\{infobox activated collectible/);
     expect(result.pages.get('Basement Boy')).toBeNull();
     expect(result.fromCache).toEqual(BATCH_TITLES);
-    expect(result.failed).toEqual(['Inconnue']);
+    expect(result.failed).toEqual(['Unknown']);
   });
 
-  it('réussit à la deuxième tentative', async () => {
+  it('succeeds on the second attempt', async () => {
     const fetchMock = vi
       .fn<(input: RequestInfo | URL) => Promise<Response>>()
       .mockRejectedValueOnce(new Error('timeout'))
       .mockImplementation(async (input) => echo(String(input)));
     const result = await createWikiClient({ cacheDir: dir, fetch: fetchMock, sleep: async () => {} }).fetchPages(['A']);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.pages.get('A')).toBe('texte de A');
+    expect(result.pages.get('A')).toBe('text of A');
     expect(result.fromCache).toEqual([]);
   });
 
-  it('traite une erreur HTTP ou une erreur de l’API comme un échec', async () => {
+  it('treats an HTTP error or an API error as a failure', async () => {
     const http = await createWikiClient({ cacheDir: dir, fetch: async () => json('{}', 503), sleep: async () => {} }).fetchPages(['A']);
     expect(http.failed).toEqual(['A']);
     const api = await createWikiClient({
@@ -105,23 +105,23 @@ describe('createWikiClient', () => {
     expect(api.failed).toEqual(['B']);
   });
 
-  it('se rabat sur le cache pour une page présente sans contenu', async () => {
+  it('falls back to the cache for a page present without content', async () => {
     const truncated = JSON.stringify({ query: { pages: [{ title: 'A' }] } });
     const result = await createWikiClient({ cacheDir: dir, fetch: async () => json(truncated), sleep: async () => {} }).fetchPages(['A']);
     expect(result.failed).toEqual(['A']);
     expect(result.pages.has('A')).toBe(false);
   });
 
-  it('ignore un échec d’écriture du cache disque sans faire échouer la synchro', async () => {
+  it('ignores a disk cache write failure without failing the sync', async () => {
     const hash = createHash('sha1').update('A').digest('hex');
-    await mkdir(path.join(dir, 'pages', `${hash}.json`), { recursive: true }); // bloque le renommage du cache
+    await mkdir(path.join(dir, 'pages', `${hash}.json`), { recursive: true }); // blocks the cache rename
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => echo(String(input)));
     const result = await createWikiClient({ cacheDir: dir, fetch: fetchMock, sleep: async () => {} }).fetchPages(['A']);
-    expect(result.pages.get('A')).toBe('texte de A');
+    expect(result.pages.get('A')).toBe('text of A');
     expect(result.failed).toEqual([]);
   });
 
-  it('distingue dans le cache deux titres qui ne diffèrent que par la casse', async () => {
+  it('distinguishes in the cache two titles that differ only by case', async () => {
     await createWikiClient({ cacheDir: dir, fetch: async (input) => echo(String(input)), sleep: async () => {} }).fetchPages([
       'Pong',
       'PONG',
@@ -130,10 +130,10 @@ describe('createWikiClient', () => {
     const offline = await createWikiClient({
       cacheDir: dir,
       fetch: async () => {
-        throw new Error('hors ligne');
+        throw new Error('offline');
       },
       sleep: async () => {},
     }).fetchPages(['PONG']);
-    expect(offline.pages.get('PONG')).toBe('texte de PONG');
+    expect(offline.pages.get('PONG')).toBe('text of PONG');
   });
 });

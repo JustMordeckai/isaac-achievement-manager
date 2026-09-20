@@ -12,7 +12,7 @@ const STATS = parseProfileStatsXml(fixtureText('profile-stats-me.xml'));
 function fakeProfiles(overrides: Partial<ProfileClient> = {}): ProfileClient {
   return {
     getStats: vi.fn(async () => STATS),
-    resolve: vi.fn(async (input: string) => ({ steamId64: input, name: 'Ami' })),
+    resolve: vi.fn(async (input: string) => ({ steamId64: input, name: 'Friend' })),
     ...overrides,
   };
 }
@@ -32,9 +32,9 @@ describe('createProgressService', () => {
     });
   const slotFile = (slot: number) => path.join(steam, 'userdata', String(ME_ACCOUNT), '250900', 'remote', `rep+persistentgamedata${slot}.dat`);
 
-  it('assemble la progression locale de Player', async () => {
+  it('assembles Player\'s local progress', async () => {
     const profiles = fakeProfiles();
-    const { summary } = await service(profiles).get('me', null);
+    const { summary } = await service(profiles).get('me', null, 'en');
     expect(summary.profile).toEqual({ steamId64: ME_ID64, name: 'Player', isLocal: true });
     expect(summary.unlocked).toBe(125);
     expect(summary.sources.steamCache.state).toBe('ok');
@@ -43,135 +43,135 @@ describe('createProgressService', () => {
     expect(summary.save).toEqual({ slot: 1, slots: [1, 2] });
     expect(summary.desyncs).toEqual([{ id: 638, name: 'Play Online', kind: 'saveOnly' }]);
     expect(summary.accounts).toEqual([{ accountId: ME_ACCOUNT, steamId64: ME_ID64, personaName: 'Player' }]);
-    expect(profiles.getStats).toHaveBeenCalledWith(ME_ID64);
+    expect(profiles.getStats).toHaveBeenCalledWith(ME_ID64, 'en');
   });
 
-  it('accepte le SteamID64 d\'un compte local', async () => {
-    const { summary } = await service().get(ME_ID64, null);
+  it('accepts the SteamID64 of a local account', async () => {
+    const { summary } = await service().get(ME_ID64, null, 'en');
     expect(summary.profile.isLocal).toBe(true);
     expect(summary.sources.saveFile.state).toBe('ok');
   });
 
-  it('lit le slot demandé', async () => {
-    const { summary } = await service().get('me', 2);
+  it('reads the requested slot', async () => {
+    const { summary } = await service().get('me', 2, 'en');
     expect(summary.save).toEqual({ slot: 2, slots: [1, 2] });
     expect(summary.desyncs).toHaveLength(125);
     expect(summary.desyncs.every((d) => d.kind === 'steamOnly')).toBe(true);
   });
 
-  it('refuse un slot introuvable', async () => {
-    await expect(service().get('me', 3)).rejects.toMatchObject({ status: 400, message: 'Slot 3 introuvable' });
+  it('refuses a slot that does not exist', async () => {
+    await expect(service().get('me', 3, 'en')).rejects.toMatchObject({ status: 400, message: 'Slot 3 not found' });
   });
 
-  it('continue sans profil en ligne', async () => {
+  it('continues without an online profile', async () => {
     const profiles = fakeProfiles({
       getStats: vi.fn(async () => {
-        throw new ProfileError('network', 'Steam injoignable : boom');
+        throw new ProfileError('network', 'Steam unreachable: boom');
       }),
     });
-    const { summary } = await service(profiles).get('me', null);
-    expect(summary.sources.profile).toEqual({ state: 'error', message: 'Steam injoignable : boom' });
+    const { summary } = await service(profiles).get('me', null, 'en');
+    expect(summary.sources.profile).toEqual({ state: 'error', message: 'Steam unreachable: boom' });
     expect(summary.unlocked).toBe(125);
   });
 
-  it('signale une sauvegarde illisible sans bloquer le reste', async () => {
+  it('reports an unreadable save without blocking the rest', async () => {
     writeFileSync(slotFile(1), 'garbage');
-    const { summary } = await service().get('me', 1);
+    const { summary } = await service().get('me', 1, 'en');
     expect(summary.sources.saveFile.state).toBe('error');
-    expect(summary.sources.saveFile.message).toMatch(/En-tête/);
+    expect(summary.sources.saveFile.message).toMatch(/header/i);
     expect(summary.save).toEqual({ slot: 1, slots: [1, 2] });
     expect(summary.desyncs).toEqual([]);
     expect(summary.unlocked).toBe(125);
   });
 
-  it('bascule sur le profil en ligne sans stats locales', async () => {
+  it('falls back to the online profile without local stats', async () => {
     rmSync(path.join(steam, 'appcache', 'stats', `UserGameStats_${ME_ACCOUNT}_250900.bin`));
-    const { summary } = await service().get('me', null);
-    expect(summary.sources.steamCache).toEqual({ state: 'absent', message: 'Aucune statistique Steam locale pour ce compte' });
+    const { summary } = await service().get('me', null, 'en');
+    expect(summary.sources.steamCache).toEqual({ state: 'absent', message: 'No local Steam stats for this account' });
     expect(summary.unlocked).toBe(125);
   });
 
-  it('signale un schéma absent', async () => {
+  it('reports an absent schema', async () => {
     rmSync(path.join(steam, 'appcache', 'stats', 'UserGameStatsSchema_250900.bin'));
-    const { summary, achievements } = await service().get('me', null);
+    const { summary, achievements } = await service().get('me', null, 'en');
     expect(summary.sources.steamCache.state).toBe('absent');
-    expect(summary.sources.steamCache.message).toMatch(/Schéma/);
+    expect(summary.sources.steamCache.message).toMatch(/schema/i);
     expect(achievements).toHaveLength(641);
     expect(achievements.every((a) => a.hidden === false)).toBe(true);
   });
 
-  it('affiche un joueur distant', async () => {
+  it('displays a remote player', async () => {
     const profiles = fakeProfiles();
-    const { summary, achievements } = await service(profiles).get(OTHER_ID64, null);
-    expect(summary.profile).toEqual({ steamId64: OTHER_ID64, name: 'Ami', isLocal: false });
-    expect(summary.sources.steamCache).toEqual({ state: 'absent', message: 'Joueur distant : pas de fichiers locaux' });
+    const { summary, achievements } = await service(profiles).get(OTHER_ID64, null, 'en');
+    expect(summary.profile).toEqual({ steamId64: OTHER_ID64, name: 'Friend', isLocal: false });
+    expect(summary.sources.steamCache).toEqual({ state: 'absent', message: 'Remote player: no local files' });
     expect(summary.sources.saveFile.state).toBe('absent');
     expect(summary.save).toBeNull();
     expect(achievements[0].inSave).toBeNull();
     expect(achievements.filter((a) => a.hidden)).toHaveLength(319);
-    expect(profiles.getStats).toHaveBeenCalledWith(OTHER_ID64);
+    expect(profiles.getStats).toHaveBeenCalledWith(OTHER_ID64, 'en');
   });
 
-  it('garde un nom vide si la résolution du joueur distant échoue', async () => {
+  it('keeps an empty name when resolving the remote player fails', async () => {
     const profiles = fakeProfiles({
       resolve: vi.fn(async () => {
         throw new ProfileError('network', 'x');
       }),
     });
-    const { summary } = await service(profiles).get(OTHER_ID64, null);
+    const { summary } = await service(profiles).get(OTHER_ID64, null, 'en');
     expect(summary.profile.name).toBeNull();
   });
 
-  it('transforme les erreurs du profil distant en erreurs HTTP', async () => {
+  it('turns remote profile errors into HTTP errors', async () => {
     const privateProfiles = fakeProfiles({
       getStats: vi.fn(async () => {
-        throw new ProfileError('private', 'Les détails de jeu de ce profil ne sont pas publics');
+        throw new ProfileError('private', "This profile's game details are not public");
       }),
     });
-    await expect(service(privateProfiles).get(OTHER_ID64, null)).rejects.toMatchObject({ status: 403 });
+    await expect(service(privateProfiles).get(OTHER_ID64, null, 'en')).rejects.toMatchObject({ status: 403 });
     const missing = fakeProfiles({
       getStats: vi.fn(async () => {
-        throw new ProfileError('notFound', 'Profil Steam introuvable');
+        throw new ProfileError('notFound', 'Steam profile not found');
       }),
     });
-    await expect(service(missing).get(OTHER_ID64, null)).rejects.toMatchObject({ status: 404 });
+    await expect(service(missing).get(OTHER_ID64, null, 'en')).rejects.toMatchObject({ status: 404 });
   });
 
-  it('refuse un slot pour un joueur distant et un profil invalide', async () => {
-    await expect(service().get(OTHER_ID64, 1)).rejects.toMatchObject({ status: 400 });
-    await expect(service().get('abc', null)).rejects.toMatchObject({ status: 400 });
+  it('refuses a slot for a remote player and an invalid profile', async () => {
+    await expect(service().get(OTHER_ID64, 1, 'en')).rejects.toMatchObject({ status: 400 });
+    await expect(service().get('abc', null, 'en')).rejects.toMatchObject({ status: 400 });
   });
 
-  it('utilise le compte forcé', async () => {
-    const { summary } = await service(fakeProfiles(), 234567890).get('me', null);
+  it('uses the forced account', async () => {
+    const { summary } = await service(fakeProfiles(), 234567890).get('me', null, 'en');
     expect(summary.profile).toEqual({ steamId64: '76561198194833618', name: 'Second Player', isLocal: true });
     expect(summary.sources.saveFile.state).toBe('absent');
     expect(summary.sources.steamCache.state).toBe('absent');
   });
 
-  it('partage un chargement en cours entre deux appels identiques', async () => {
+  it('shares an ongoing load between two identical calls', async () => {
     const profiles = fakeProfiles();
     const progress = service(profiles);
-    const first = progress.get('me', null);
-    const second = progress.get('me', null);
+    const first = progress.get('me', null, 'en');
+    const second = progress.get('me', null, 'en');
     expect(second).toBe(first);
-    expect(progress.get('me', 2)).not.toBe(first);
+    expect(progress.get('me', 2, 'en')).not.toBe(first);
     await Promise.all([first, second]);
     expect(profiles.getStats).toHaveBeenCalledTimes(2);
-    await progress.get('me', null);
+    await progress.get('me', null, 'en');
     expect(profiles.getStats).toHaveBeenCalledTimes(3);
   });
 
-  it('libère un chargement en échec pour le prochain appel', async () => {
+  it('frees a failed load for the next call', async () => {
     const getStats = vi.fn(async () => STATS);
-    getStats.mockRejectedValueOnce(new ProfileError('network', 'Steam injoignable : boom'));
+    getStats.mockRejectedValueOnce(new ProfileError('network', 'Steam unreachable: boom'));
     const progress = service(fakeProfiles({ getStats }));
-    await expect(progress.get(OTHER_ID64, null)).rejects.toMatchObject({ status: 502 });
-    const { summary } = await progress.get(OTHER_ID64, null);
+    await expect(progress.get(OTHER_ID64, null, 'en')).rejects.toMatchObject({ status: 502 });
+    const { summary } = await progress.get(OTHER_ID64, null, 'en');
     expect(summary.unlocked).toBe(125);
   });
 
-  it('expose les définitions du schéma local', async () => {
+  it('exposes the local schema definitions', async () => {
     const defs = await service().definitions();
     expect(defs).toHaveLength(641);
     expect(defs?.[0]).toMatchObject({ id: 1, name: 'Magdalene' });
@@ -179,14 +179,14 @@ describe('createProgressService', () => {
     expect(await service().definitions()).toBeNull();
   });
 
-  it('répond 404 pour "me" sans Steam, mais sert un joueur distant', async () => {
+  it('answers 404 for "me" without Steam, but serves a remote player', async () => {
     const noSteam = createProgressService({
       env: { steamPath: null, activeAccountId: null, accounts: [] },
       forcedAccountId: null,
       profiles: fakeProfiles(),
     });
-    await expect(noSteam.get('me', null)).rejects.toMatchObject({ status: 404 });
-    const { summary } = await noSteam.get(OTHER_ID64, null);
+    await expect(noSteam.get('me', null, 'en')).rejects.toMatchObject({ status: 404 });
+    const { summary } = await noSteam.get(OTHER_ID64, null, 'en');
     expect(summary.unlocked).toBe(125);
     expect(summary.accounts).toEqual([]);
     expect(await noSteam.definitions()).toBeNull();

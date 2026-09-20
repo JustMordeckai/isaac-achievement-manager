@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { DEFAULT_LOCALE, type Locale, toLocale } from '../shared/i18n/index.ts';
+import { DEFAULT_LOCALE, t, type Locale, toLocale } from '../shared/i18n/index.ts';
 import type { LocalAccount, OllamaSettings } from '../shared/types.ts';
 import { writeFileAtomic } from './fs-atomic.ts';
 import { HttpError } from './http-error.ts';
@@ -11,14 +11,14 @@ import { readRegistry, type RegistryReader } from './win-registry.ts';
 
 export interface SteamAccount extends LocalAccount {
   hasIsaacData: boolean;
-  /** Champ Timestamp de loginusers.vdf (secondes), 0 si inconnu. */
+  /** Timestamp field of loginusers.vdf (seconds), 0 when unknown. */
   lastLogin: number;
 }
 
 export interface SteamEnv {
   steamPath: string | null;
   activeAccountId: number | null;
-  /** Triés par dernière connexion, la plus récente en premier. */
+  /** Sorted by last login, most recent first. */
   accounts: SteamAccount[];
 }
 
@@ -42,7 +42,7 @@ export const DEFAULT_STEAM_PATHS = ['C:\\Program Files (x86)\\Steam', 'C:\\Progr
 export interface DetectOptions {
   readRegistry?: RegistryReader;
   fallbackSteamPaths?: string[];
-  /** Comptes à inclure même s'ils ne figurent pas dans loginusers.vdf (compte forcé). */
+  /** Accounts to include even when absent from loginusers.vdf (forced account). */
   extraAccountIds?: number[];
 }
 
@@ -99,7 +99,7 @@ export function chooseAccount(env: SteamEnv, forcedAccountId: number | null): St
 
 export interface Settings {
   port: number;
-  /** Compte Steam imposé (id de compte), sinon choix automatique. */
+  /** Forced Steam account (account id), otherwise chosen automatically. */
   accountId: number | null;
   ollama: OllamaSettings;
   locale: Locale;
@@ -111,7 +111,7 @@ export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null, ollama:
 
 const MODEL_NAME = /^[\w.:/-]{1,200}$/;
 
-/** Adresse http(s) d'un serveur Ollama, sans barre finale ; null si la valeur ne convient pas. */
+/** http(s) address of an Ollama server, without a trailing slash; null when the value does not fit. */
 export function ollamaUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 200) return null;
   let url: URL;
@@ -125,7 +125,7 @@ export function ollamaUrl(value: unknown): string | null {
   return url.toString().replace(/\/+$/, '');
 }
 
-/** Nom de modèle Ollama (ex. qwen3.5:9b) ; null si la valeur ne convient pas. */
+/** Ollama model name (e.g. qwen3.5:9b); null when the value does not fit. */
 export function ollamaModel(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const model = value.trim();
@@ -144,7 +144,7 @@ export function loadSettings(dataDir: string): Settings {
   const server = typeof ollama === 'object' && ollama !== null ? (ollama as Record<string, unknown>) : {};
   return {
     port: Number.isInteger(port) && (port as number) > 0 && (port as number) < 65536 ? (port as number) : DEFAULT_SETTINGS.port,
-    // Un id de compte Steam tient sur 32 bits : au-delà, le SteamID64 calculé serait faux.
+    // A Steam account id fits in 32 bits: beyond that, the computed SteamID64 would be wrong.
     accountId:
       Number.isInteger(accountId) && (accountId as number) > 0 && (accountId as number) <= 0xffffffff
         ? (accountId as number)
@@ -158,7 +158,7 @@ export function loadSettings(dataDir: string): Settings {
 }
 
 /** Writes a patch into data/settings.json, keeping the other fields already in the file. */
-export async function saveSettings(dataDir: string, patch: Record<string, unknown>): Promise<void> {
+export async function saveSettings(dataDir: string, patch: Record<string, unknown>, locale: Locale): Promise<void> {
   const file = path.join(dataDir, 'settings.json');
   let current: Record<string, unknown> = {};
   let text: string | null = null;
@@ -172,10 +172,10 @@ export async function saveSettings(dataDir: string, patch: Record<string, unknow
     try {
       parsed = JSON.parse(text);
     } catch {
-      // Traité juste en dessous : on ne remplace pas un fichier que l'utilisateur est peut-être en train d'écrire.
+      // Handled just below: we do not overwrite a file the user might currently be editing.
     }
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new HttpError(409, "data/settings.json est illisible : corrige-le avant d'enregistrer depuis l'interface");
+      throw new HttpError(409, t(locale, 'errors.settingsFileUnreadable'));
     }
     current = parsed as Record<string, unknown>;
   }

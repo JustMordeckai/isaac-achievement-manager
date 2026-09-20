@@ -1,5 +1,6 @@
 import { CHARACTERS } from '../../shared/characters.ts';
 import { ENDINGS } from '../../shared/endings.ts';
+import { DEFAULT_LOCALE, plural, t, type Locale } from '../../shared/i18n/index.ts';
 import type { AchievementDef, WikiSyncEvent, WikiSyncReport } from '../../shared/types.ts';
 import { characterOf, classifyHow, classifyUnlock, isUsablePage, type LinkedPageInfo } from '../planner/classify.ts';
 import type { WikiClient } from './client.ts';
@@ -23,54 +24,61 @@ export const CORE_PAGES = {
   challenges: 'Template:Nav challenge',
 } as const;
 
-/** Pages consultées pour les astuces des marques de complétion et des placards de Home. */
+/** Pages consulted for the tips of completion marks and Home's closets. */
 export const EXTRA_PAGES = [...new Set([...ENDINGS.map((e) => e.page), ...CHARACTERS.map((c) => c.page), 'Home'])];
 
 export interface SyncDeps {
   client: WikiClient;
-  /** Schéma Steam local : sert pour les succès absents du wiki (#641). */
+  /** Local Steam schema: used for achievements missing from the wiki (#641). */
   steamDefs: AchievementDef[] | null;
   now?: () => Date;
   onEvent?: (event: WikiSyncEvent) => void;
+  locale?: Locale;
 }
 
-/** Message d'échec quand des pages restent injoignables (ni téléchargées ni en cache). */
-function unreachableError(titles: string[]): Error {
+/** Failure message when pages stay unreachable (neither downloaded nor cached). */
+function unreachableError(titles: string[], locale: Locale): Error {
   const sorted = [...titles].sort();
   const shown = sorted.slice(0, 5);
   const remaining = sorted.length - shown.length;
   let list = shown.join(', ');
-  if (remaining > 0) list += ` et ${remaining} autre${remaining > 1 ? 's' : ''}`;
-  const count = titles.length === 1 ? '1 page' : `${titles.length} pages`;
-  return new Error(`Wiki injoignable pour ${count} sans copie en cache : ${list}. Relance la synchro plus tard.`);
+  if (remaining > 0) list += ` ${plural(locale, 'wiki.unreachableMore', remaining)}`;
+  const count = plural(locale, 'wiki.unreachableCount', titles.length);
+  return new Error(t(locale, 'wiki.unreachable', { count, list }));
 }
 
 export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase> {
   const emit = deps.onEvent ?? (() => {});
+  const locale = deps.locale ?? DEFAULT_LOCALE;
   const unknown: TemplateCounter = new Map();
 
-  emit({ step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' });
+  emit({ step: 'core', done: 0, total: 1, message: t(locale, 'wiki.downloadingAchievementList') });
   const core = await deps.client.fetchPages(Object.values(CORE_PAGES));
-  if (core.failed.length > 0) throw unreachableError(core.failed);
+  if (core.failed.length > 0) throw unreachableError(core.failed, locale);
   const contentOf = (requested: string) => {
     const target = core.resolved.get(requested);
     return target ? (core.pages.get(target.title) ?? null) : null;
   };
   const achievementsText = contentOf(CORE_PAGES.achievements);
-  if (!achievementsText) throw new Error('Page « Achievements » indisponible : wiki injoignable et aucun cache');
+  if (!achievementsText) throw new Error(t(locale, 'wiki.achievementsPageUnavailable'));
   const rows = parseAchievementsPage(achievementsText, unknown);
-  if (rows.length === 0) throw new Error('Page « Achievements » sans fiche de succès : le format du wiki a changé');
+  if (rows.length === 0) throw new Error(t(locale, 'wiki.achievementsPageEmpty'));
   const refs = parseChallengeNav(contentOf(CORE_PAGES.challenges) ?? '');
-  emit({ step: 'core', done: 1, total: 1, message: `${rows.length} succès et ${refs.length} défis trouvés` });
+  emit({ step: 'core', done: 1, total: 1, message: t(locale, 'wiki.coreFound', { achievements: rows.length, challenges: refs.length }) });
 
   const titles = [...new Set([...refs.map((r) => r.title), ...rows.map((r) => r.link), ...EXTRA_PAGES])];
-  emit({ step: 'pages', done: 0, total: Math.ceil(titles.length / 50), message: `${titles.length} pages à télécharger` });
+  emit({
+    step: 'pages',
+    done: 0,
+    total: Math.ceil(titles.length / 50),
+    message: t(locale, 'wiki.pagesToDownload', { count: titles.length }),
+  });
   const fetched = await deps.client.fetchPages(titles, (done, total) =>
-    emit({ step: 'pages', done, total, message: `Lot ${done} sur ${total}` }),
+    emit({ step: 'pages', done, total, message: t(locale, 'wiki.batchProgress', { done, total }) }),
   );
-  if (fetched.failed.length > 0) throw unreachableError(fetched.failed);
+  if (fetched.failed.length > 0) throw unreachableError(fetched.failed, locale);
 
-  emit({ step: 'build', done: 0, total: 1, message: 'Analyse des pages' });
+  emit({ step: 'build', done: 0, total: 1, message: t(locale, 'wiki.analyzingPages') });
   const textOf = (requested: string): { title: string; fragment: string | null; text: string | null } | null => {
     const target = fetched.resolved.get(requested);
     if (!target) return null;
@@ -161,7 +169,7 @@ export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase>
     otherUnlockCount: achievements.filter((a) => a.inWiki && a.unlocks.kind === 'other').length,
     cachedPages: core.fromCache.length + fetched.fromCache.length,
   };
-  emit({ step: 'build', done: 1, total: 1, message: `${report.pages} pages analysées` });
+  emit({ step: 'build', done: 1, total: 1, message: t(locale, 'wiki.pagesAnalyzed', { count: report.pages }) });
 
   return {
     version: KB_VERSION,

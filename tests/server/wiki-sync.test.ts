@@ -9,7 +9,7 @@ const steamDefs = parseSchema(fixture('UserGameStatsSchema_250900.bin')).map((en
 const now = () => new Date('2026-09-17T08:00:00Z');
 
 describe('buildKnowledgeBase', () => {
-  it('construit la base complète à partir des pages du wiki et du schéma Steam', async () => {
+  it('builds the full database from the wiki pages and the Steam schema', async () => {
     const client = fakeWikiClient();
     const events: WikiSyncEvent[] = [];
     const kb = await buildKnowledgeBase({ client, steamDefs, now, onEvent: (e) => events.push(e) });
@@ -61,36 +61,36 @@ describe('buildKnowledgeBase', () => {
     expect(kb.report.missingPages).toContain('Basement Boy');
     expect(kb.report.pages).toBe(Object.keys(kb.pages).length);
 
-    expect(events[0]).toEqual({ step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' });
+    expect(events[0]).toEqual({ step: 'core', done: 0, total: 1, message: 'Downloading the achievement list' });
     expect(events.map((e) => e.step)).toEqual(['core', 'core', 'pages', 'pages', ...Array(11).fill('pages'), 'build', 'build']);
-    expect(events.at(-1)?.message).toBe(`${kb.report.pages} pages analysées`);
+    expect(events.at(-1)?.message).toBe(`${kb.report.pages} pages analyzed`);
   });
 
-  it('échoue sans la page Achievements ou sans fiche dedans', async () => {
+  it('fails without the Achievements page or without entries in it', async () => {
     await expect(buildKnowledgeBase({ client: fakeWikiClient({ achievements: null }), steamDefs, now })).rejects.toThrow(
-      'Page « Achievements » indisponible',
+      'page unavailable',
     );
     await expect(
-      buildKnowledgeBase({ client: fakeWikiClient({ achievements: 'Page vide.' }), steamDefs, now }),
-    ).rejects.toThrow('sans fiche de succès');
+      buildKnowledgeBase({ client: fakeWikiClient({ achievements: 'Empty page.' }), steamDefs, now }),
+    ).rejects.toThrow('no achievement entries');
   });
 
-  it('fonctionne sans schéma Steam (le #641 manque alors)', async () => {
+  it('works without a Steam schema (then #641 is missing)', async () => {
     const kb = await buildKnowledgeBase({ client: fakeWikiClient(), steamDefs: null, now });
     expect(kb.achievements).toHaveLength(640);
   });
 
-  it('échoue sans écrire la base si des pages liées sont injoignables et sans cache', async () => {
+  it('fails without writing the database when linked pages are unreachable and uncached', async () => {
     const client = fakeWikiClient({ failed: ['Boss Rush'] });
     await expect(buildKnowledgeBase({ client, steamDefs, now })).rejects.toThrow(
-      'Wiki injoignable pour 1 page sans copie en cache : Boss Rush. Relance la synchro plus tard.',
+      'Wiki unreachable for 1 page with no cached copy: Boss Rush. Restart the sync later.',
     );
   });
 
-  it('échoue aussi quand ce sont les pages de base qui sont injoignables', async () => {
+  it('also fails when it is the core pages that are unreachable', async () => {
     const client = fakeWikiClient({ failed: ['Achievement Tips', 'Template:Nav challenge'] });
     await expect(buildKnowledgeBase({ client, steamDefs, now })).rejects.toThrow(
-      'Wiki injoignable pour 2 pages sans copie en cache : Achievement Tips, Template:Nav challenge. Relance la synchro plus tard.',
+      'Wiki unreachable for 2 pages with no cached copy: Achievement Tips, Template:Nav challenge. Restart the sync later.',
     );
   });
 });

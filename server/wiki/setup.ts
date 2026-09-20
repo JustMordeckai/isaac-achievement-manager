@@ -6,15 +6,15 @@ import { buildKnowledgeBase } from './sync.ts';
 
 export interface WikiKbOptions {
   dataDir: string;
-  /** Lu à chaque synchro : le schéma Steam peut apparaître après le démarrage. */
+  /** Read at each sync: the Steam schema can appear after startup. */
   steamDefs: () => Promise<AchievementDef[] | null>;
 }
 
-/** Base wiki du dossier de données : data/kb.json et le cache data/wiki-cache/. */
+/** Wiki database of the data directory: data/kb.json and the data/wiki-cache/ cache. */
 export function createWikiKb({ dataDir, steamDefs }: WikiKbOptions): KbService {
   const client = createWikiClient({ cacheDir: path.join(dataDir, 'wiki-cache') });
   return createKbService({
     file: path.join(dataDir, 'kb.json'),
-    build: async (onEvent) => buildKnowledgeBase({ client, steamDefs: await steamDefs(), onEvent }),
+    build: async (onEvent, locale) => buildKnowledgeBase({ client, steamDefs: await steamDefs(), onEvent, locale }),
   });
 }

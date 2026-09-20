@@ -17,7 +17,7 @@ function errorOf(fn: () => unknown): unknown {
   } catch (error) {
     return error;
   }
-  throw new Error('aucune erreur levée');
+  throw new Error('no error thrown');
 }
 
 function fakeFetch(handler: (url: string) => Response) {
@@ -35,7 +35,7 @@ const xml = (body: string) => new Response(body, { status: 200, headers: { 'Cont
 describe('parseProfileStatsXml', () => {
   const stats = parseProfileStatsXml(STATS_XML);
 
-  it('lit les 641 succès du profil public', () => {
+  it('reads the 641 achievements of the public profile', () => {
     expect(stats.steamId64).toBe(ME_ID64);
     expect(stats.achievements).toHaveLength(641);
     expect(stats.achievements.filter((a) => a.unlocked)).toHaveLength(125);
@@ -51,7 +51,7 @@ describe('parseProfileStatsXml', () => {
     expect(stats.achievements.find((a) => a.id === 9)).toMatchObject({ name: 'The Nail', unlocked: false, unlockedAt: null });
   });
 
-  it('décode les entités hors CDATA', () => {
+  it('decodes entities outside CDATA', () => {
     const body = `<playerstats><privacyState>public</privacyState><player><steamID64>${ME_ID64}</steamID64></player>
       <achievements><achievement closed="0"><name>Tom &amp; Jerry &#233;</name><apiname>5</apiname>
       <description>A &lt;b&gt;</description></achievement></achievements></playerstats>`;
@@ -60,7 +60,7 @@ describe('parseProfileStatsXml', () => {
     ]);
   });
 
-  it('laisse telle quelle une entité numérique hors plage Unicode', () => {
+  it('leaves a numeric entity outside the Unicode range as is', () => {
     const body = `<playerstats><privacyState>public</privacyState><player><steamID64>${ME_ID64}</steamID64></player>
       <achievements><achievement closed="0"><name>&#x110000;</name><apiname>5</apiname>
       <description>Desc</description></achievement></achievements></playerstats>`;
@@ -69,18 +69,18 @@ describe('parseProfileStatsXml', () => {
     ]);
   });
 
-  it('signale un profil introuvable', () => {
-    expect(errorOf(() => parseProfileStatsXml(NOT_FOUND_XML))).toMatchObject({ kind: 'notFound', message: 'Profil Steam introuvable' });
+  it('reports a profile that was not found', () => {
+    expect(errorOf(() => parseProfileStatsXml(NOT_FOUND_XML))).toMatchObject({ kind: 'notFound', message: 'Steam profile not found' });
   });
 
-  it('signale un profil privé', () => {
+  it('reports a private profile', () => {
     const privateStats = '<playerstats><privacyState>private</privacyState></playerstats>';
     const privateError = '<response><error><![CDATA[This profile is private.]]></error></response>';
     expect(errorOf(() => parseProfileStatsXml(privateStats))).toMatchObject({ kind: 'private' });
     expect(errorOf(() => parseProfileStatsXml(privateError))).toMatchObject({ kind: 'private' });
   });
 
-  it('signale une réponse inexploitable', () => {
+  it('reports an unusable response', () => {
     const other = '<response><error>Something else</error></response>';
     const empty = `<playerstats><privacyState>public</privacyState><player><steamID64>${ME_ID64}</steamID64></player></playerstats>`;
     expect(errorOf(() => parseProfileStatsXml(other))).toMatchObject({ kind: 'invalid', message: expect.stringContaining('Something else') });
@@ -90,16 +90,16 @@ describe('parseProfileStatsXml', () => {
 });
 
 describe('parseProfileXml', () => {
-  it('lit le SteamID64 et le pseudo', () => {
+  it('reads the SteamID64 and the nickname', () => {
     expect(parseProfileXml(PROFILE_XML)).toEqual({ steamId64: ME_ID64, name: 'Player' });
   });
 
-  it('résout un profil privé (seules les stats sont bloquées)', () => {
+  it('resolves a private profile (only the stats are blocked)', () => {
     const body = `<profile><steamID64>${ME_ID64}</steamID64><steamID><![CDATA[X]]></steamID><privacyState>private</privacyState></profile>`;
     expect(parseProfileXml(body)).toEqual({ steamId64: ME_ID64, name: 'X' });
   });
 
-  it('signale un profil introuvable', () => {
+  it('reports a profile that was not found', () => {
     expect(errorOf(() => parseProfileXml(NOT_FOUND_XML))).toMatchObject({ kind: 'notFound' });
   });
 });
@@ -113,7 +113,7 @@ describe('parseProfileInput', () => {
     ['JustMordeckai', { kind: 'vanity', value: 'JustMordeckai' }],
     ['https://steamcommunity.com/profiles/123/', null],
     ['https://steamcommunity.com/id/%E0%A4%A/', null],
-    ['pas un profil !', null],
+    ['not a profile !', null],
     ['', null],
   ])('%s', (input, expected) => {
     expect(parseProfileInput(input)).toEqual(expected);
@@ -121,7 +121,7 @@ describe('parseProfileInput', () => {
 });
 
 describe('createProfileClient', () => {
-  it('met les stats en cache pendant la durée prévue', async () => {
+  it('caches the stats for the configured duration', async () => {
     let now = 0;
     const f = fakeFetch(() => xml(STATS_XML));
     const client = createProfileClient({ fetch: f.fn, now: () => now, ttlMs: 1000 });
@@ -133,42 +133,42 @@ describe('createProfileClient', () => {
     expect(f.calls).toHaveLength(2);
   });
 
-  it('ne garde pas les échecs en cache', async () => {
+  it('does not cache failures', async () => {
     let fail = true;
     const f = fakeFetch(() => (fail ? new Response('oops', { status: 503 }) : xml(STATS_XML)));
     const client = createProfileClient({ fetch: f.fn });
-    await expect(client.getStats(ME_ID64)).rejects.toMatchObject({ kind: 'network', message: 'Steam a répondu 503' });
+    await expect(client.getStats(ME_ID64)).rejects.toMatchObject({ kind: 'network', message: 'Steam responded with 503' });
     fail = false;
     await expect(client.getStats(ME_ID64)).resolves.toMatchObject({ steamId64: ME_ID64 });
   });
 
-  it('signale un réseau injoignable', async () => {
+  it('reports an unreachable network', async () => {
     const client = createProfileClient({
       fetch: (async () => {
         throw new TypeError('fetch failed');
       }) as typeof fetch,
     });
-    await expect(client.getStats(ME_ID64)).rejects.toMatchObject({ kind: 'network', message: 'Steam injoignable : fetch failed' });
+    await expect(client.getStats(ME_ID64)).rejects.toMatchObject({ kind: 'network', message: 'Steam unreachable: fetch failed' });
   });
 
-  it('résout un pseudo personnalisé', async () => {
+  it('resolves a custom nickname', async () => {
     const f = fakeFetch(() => xml(PROFILE_XML));
     const client = createProfileClient({ fetch: f.fn });
     await expect(client.resolve('https://steamcommunity.com/id/JustMordeckai/')).resolves.toEqual({ steamId64: ME_ID64, name: 'Player' });
     expect(f.calls).toEqual(['https://steamcommunity.com/id/JustMordeckai/?xml=1']);
   });
 
-  it('résout un SteamID64 via la page du profil', async () => {
+  it('resolves a SteamID64 through the profile page', async () => {
     const f = fakeFetch(() => xml(PROFILE_XML));
     const client = createProfileClient({ fetch: f.fn });
     await client.resolve(ME_ID64);
     expect(f.calls).toEqual([`https://steamcommunity.com/profiles/${ME_ID64}/?xml=1`]);
   });
 
-  it('refuse une entrée illisible sans appeler Steam', async () => {
+  it('refuses an unreadable input without calling Steam', async () => {
     const f = fakeFetch(() => xml(PROFILE_XML));
     const client = createProfileClient({ fetch: f.fn });
-    await expect(client.resolve('pas un profil !')).rejects.toMatchObject({ kind: 'input' });
+    await expect(client.resolve('not a profile !')).rejects.toMatchObject({ kind: 'input' });
     expect(f.calls).toHaveLength(0);
   });
 });

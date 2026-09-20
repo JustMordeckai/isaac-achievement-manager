@@ -1,7 +1,8 @@
+import { DEFAULT_LOCALE, t, type Locale } from '../../shared/i18n/index.ts';
 import type { ResolvedProfile } from '../../shared/types.ts';
 import { APP_ID, isSteamId64 } from '../steam.ts';
 
-/** `input` : saisie non reconnue ; `invalid` : réponse de Steam inattendue. */
+/** `input`: unrecognized input; `invalid`: unexpected response from Steam. */
 export type ProfileErrorKind = 'input' | 'notFound' | 'private' | 'invalid' | 'network';
 
 export class ProfileError extends Error {
@@ -21,7 +22,7 @@ export interface ProfileAchievement {
   icon: string;
   iconGray: string;
   unlocked: boolean;
-  /** Timestamp Unix en secondes. */
+  /** Unix timestamp in seconds. */
   unlockedAt: number | null;
 }
 
@@ -32,7 +33,6 @@ export interface ProfileStats {
 
 const STEAM_COMMUNITY = 'https://steamcommunity.com';
 const NAMED_ENTITIES: Record<string, string> = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' };
-const PRIVATE_MESSAGE = 'Les détails de jeu de ce profil ne sont pas publics';
 
 function decodeText(raw: string): string {
   const cdata = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/.exec(raw);
@@ -49,7 +49,7 @@ function decodeText(raw: string): string {
   });
 }
 
-/** Contenu décodé de la première balise <name>...</name>, ou null. */
+/** Decoded content of the first <name>...</name> tag, or null. */
 function readTag(xml: string, name: string): string | null {
   const match = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(xml);
   return match ? decodeText(match[1]) : null;
@@ -60,30 +60,30 @@ function fileName(url: string | null): string {
   return (url.split('/').pop() ?? '').split('?')[0];
 }
 
-function throwIfSteamError(xml: string, checkPrivacy: boolean): void {
+function throwIfSteamError(xml: string, checkPrivacy: boolean, locale: Locale): void {
   const error = readTag(xml, 'error');
   if (error !== null) {
-    if (/private/i.test(error)) throw new ProfileError('private', PRIVATE_MESSAGE);
-    if (/could not be found/i.test(error)) throw new ProfileError('notFound', 'Profil Steam introuvable');
-    throw new ProfileError('invalid', `Steam a renvoyé une erreur : ${error}`);
+    if (/private/i.test(error)) throw new ProfileError('private', t(locale, 'errors.profilePrivate'));
+    if (/could not be found/i.test(error)) throw new ProfileError('notFound', t(locale, 'errors.steamProfileNotFound'));
+    throw new ProfileError('invalid', t(locale, 'errors.steamApiError', { error }));
   }
   const privacy = readTag(xml, 'privacyState');
   if (checkPrivacy && privacy !== null && privacy !== 'public') {
-    throw new ProfileError('private', PRIVATE_MESSAGE);
+    throw new ProfileError('private', t(locale, 'errors.profilePrivate'));
   }
 }
 
-function readSteamId64(xml: string): string {
+function readSteamId64(xml: string, locale: Locale): string {
   const steamId64 = readTag(xml, 'steamID64');
   if (!steamId64 || !isSteamId64(steamId64)) {
-    throw new ProfileError('invalid', 'Réponse Steam sans SteamID64 valide');
+    throw new ProfileError('invalid', t(locale, 'errors.steamNoValidId'));
   }
   return steamId64;
 }
 
-export function parseProfileStatsXml(xml: string): ProfileStats {
-  throwIfSteamError(xml, true);
-  const steamId64 = readSteamId64(xml);
+export function parseProfileStatsXml(xml: string, locale: Locale = DEFAULT_LOCALE): ProfileStats {
+  throwIfSteamError(xml, true, locale);
+  const steamId64 = readSteamId64(xml, locale);
   const achievements: ProfileAchievement[] = [];
   for (const [, closed, body] of xml.matchAll(/<achievement closed="([01])">([\s\S]*?)<\/achievement>/g)) {
     const id = Number(readTag(body, 'apiname'));
@@ -101,14 +101,14 @@ export function parseProfileStatsXml(xml: string): ProfileStats {
     });
   }
   if (achievements.length === 0) {
-    throw new ProfileError('invalid', 'Aucun succès dans la réponse Steam (jeu non possédé ou profil incomplet)');
+    throw new ProfileError('invalid', t(locale, 'errors.steamNoAchievements'));
   }
   return { steamId64, achievements: achievements.sort((a, b) => a.id - b.id) };
 }
 
-export function parseProfileXml(xml: string): ResolvedProfile {
-  throwIfSteamError(xml, false);
-  return { steamId64: readSteamId64(xml), name: readTag(xml, 'steamID') };
+export function parseProfileXml(xml: string, locale: Locale = DEFAULT_LOCALE): ResolvedProfile {
+  throwIfSteamError(xml, false, locale);
+  return { steamId64: readSteamId64(xml, locale), name: readTag(xml, 'steamID') };
 }
 
 export type ProfileInput = { kind: 'id64'; value: string } | { kind: 'vanity'; value: string };
@@ -131,8 +131,8 @@ export function parseProfileInput(input: string): ProfileInput | null {
 }
 
 export interface ProfileClient {
-  getStats(steamId64: string): Promise<ProfileStats>;
-  resolve(input: string): Promise<ResolvedProfile>;
+  getStats(steamId64: string, locale?: Locale): Promise<ProfileStats>;
+  resolve(input: string, locale?: Locale): Promise<ResolvedProfile>;
 }
 
 export interface ProfileClientOptions {
@@ -149,7 +149,7 @@ export function createProfileClient(options: ProfileClientOptions = {}): Profile
   const timeoutMs = options.timeoutMs ?? 10_000;
   const cache = new Map<string, { at: number; value: Promise<unknown> }>();
 
-  async function getXml(url: string): Promise<string> {
+  async function getXml(url: string, locale: Locale): Promise<string> {
     let response: Response;
     try {
       response = await doFetch(url, {
@@ -157,9 +157,9 @@ export function createProfileClient(options: ProfileClientOptions = {}): Profile
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      throw new ProfileError('network', `Steam injoignable : ${error instanceof Error ? error.message : String(error)}`);
+      throw new ProfileError('network', t(locale, 'errors.steamUnreachable', { message: error instanceof Error ? error.message : String(error) }));
     }
-    if (!response.ok) throw new ProfileError('network', `Steam a répondu ${response.status}`);
+    if (!response.ok) throw new ProfileError('network', t(locale, 'errors.steamRespondedWith', { status: response.status }));
     return response.text();
   }
 
@@ -175,18 +175,18 @@ export function createProfileClient(options: ProfileClientOptions = {}): Profile
   }
 
   return {
-    getStats(steamId64) {
+    getStats(steamId64, locale = DEFAULT_LOCALE) {
       return cached(`stats:${steamId64}`, async () =>
-        parseProfileStatsXml(await getXml(`${STEAM_COMMUNITY}/profiles/${steamId64}/stats/${APP_ID}/?xml=1`)),
+        parseProfileStatsXml(await getXml(`${STEAM_COMMUNITY}/profiles/${steamId64}/stats/${APP_ID}/?xml=1`, locale), locale),
       );
     },
-    async resolve(input) {
+    async resolve(input, locale = DEFAULT_LOCALE) {
       const parsed = parseProfileInput(input);
       if (!parsed) {
-        throw new ProfileError('input', 'Entrée non reconnue : SteamID64, URL de profil ou pseudo personnalisé attendu');
+        throw new ProfileError('input', t(locale, 'errors.profileInputInvalid'));
       }
       const target = parsed.kind === 'id64' ? `profiles/${parsed.value}` : `id/${encodeURIComponent(parsed.value)}`;
-      return cached(`profile:${target}`, async () => parseProfileXml(await getXml(`${STEAM_COMMUNITY}/${target}/?xml=1`)));
+      return cached(`profile:${target}`, async () => parseProfileXml(await getXml(`${STEAM_COMMUNITY}/${target}/?xml=1`, locale), locale));
     },
   };
 }

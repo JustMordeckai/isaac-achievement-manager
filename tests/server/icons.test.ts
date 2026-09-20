@@ -15,48 +15,48 @@ describe('createIconCache', () => {
   });
   afterEach(() => removeDir(dir));
 
-  it('télécharge une icône une seule fois puis la sert depuis le disque', async () => {
+  it('downloads an icon only once then serves it from disk', async () => {
     const calls: string[] = [];
     const cache = createIconCache(path.join(dir, 'icons'), (async (url: string | URL | Request) => {
       calls.push(String(url));
       return jpeg([1, 2, 3]);
     }) as typeof fetch);
-    expect(await cache.get(FILE)).toEqual(new Uint8Array([1, 2, 3]));
-    expect(await cache.get(FILE)).toEqual(new Uint8Array([1, 2, 3]));
+    expect(await cache.get(FILE, 'en')).toEqual(new Uint8Array([1, 2, 3]));
+    expect(await cache.get(FILE, 'en')).toEqual(new Uint8Array([1, 2, 3]));
     expect(calls).toEqual([`https://shared.fastly.steamstatic.com/community_assets/images/apps/250900/${FILE}`]);
     expect(new Uint8Array(readFileSync(path.join(dir, 'icons', FILE)))).toEqual(new Uint8Array([1, 2, 3]));
     expect(readdirSync(path.join(dir, 'icons'))).toEqual([FILE]);
   });
 
-  it('refuse une réponse qui n’est pas une image sans rien écrire', async () => {
+  it('refuses a response that is not an image without writing anything', async () => {
     const cache = createIconCache(path.join(dir, 'icons'), (async () =>
       new Response('<html>maintenance</html>', { headers: { 'Content-Type': 'text/html' } })) as typeof fetch);
-    await expect(cache.get(FILE)).rejects.toMatchObject({
+    await expect(cache.get(FILE, 'en')).rejects.toMatchObject({
       status: 502,
-      message: 'Réponse inattendue de Steam : ce n’est pas une image',
+      message: 'Unexpected response from Steam: not an image',
     });
     expect(readdirSync(dir)).toEqual([]);
   });
 
   it.each(['../secret.jpg', 'A36D7E92DF7E991758907A75DFA55D36B52548C4.jpg', `${'a'.repeat(40)}.png`, `${'a'.repeat(39)}.jpg`])(
-    'refuse le nom %s sans rien télécharger',
+    'refuses the name %s without downloading anything',
     async (name) => {
       const cache = createIconCache(dir, (async () => {
-        throw new Error('ne doit pas être appelé');
+        throw new Error('must not be called');
       }) as typeof fetch);
-      await expect(cache.get(name)).rejects.toMatchObject({ status: 400 });
+      await expect(cache.get(name, 'en')).rejects.toMatchObject({ status: 400 });
     },
   );
 
-  it('signale une icône indisponible', async () => {
+  it('reports an unavailable icon', async () => {
     const cache = createIconCache(dir, (async () => new Response('nope', { status: 404 })) as typeof fetch);
-    await expect(cache.get(FILE)).rejects.toMatchObject({ status: 502, message: 'Icône indisponible chez Steam (HTTP 404)' });
+    await expect(cache.get(FILE, 'en')).rejects.toMatchObject({ status: 502, message: 'Icon unavailable from Steam (HTTP 404)' });
   });
 
-  it('signale un réseau injoignable', async () => {
+  it('reports an unreachable network', async () => {
     const cache = createIconCache(dir, (async () => {
       throw new TypeError('fetch failed');
     }) as typeof fetch);
-    await expect(cache.get(FILE)).rejects.toMatchObject({ status: 502, message: 'Steam injoignable : fetch failed' });
+    await expect(cache.get(FILE, 'en')).rejects.toMatchObject({ status: 502, message: 'Steam unreachable: fetch failed' });
   });
 });

@@ -13,7 +13,7 @@ const kb = createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitio
 try {
   const report = await kb.sync((event) => {
     if (event.step !== 'error') console.log(event.message);
-  });
+  }, settings.locale);
   console.log(`${report.achievements} succès, ${report.pages} pages, ${report.cachedPages} pages servies par le cache`);
   if (report.missingPages.length > 0) console.log(`Pages absentes du wiki : ${report.missingPages.join(', ')}`);
   const unknown = Object.entries(report.unknownTemplates);
