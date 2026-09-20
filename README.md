@@ -178,8 +178,9 @@ node scripts/check-language.mjs  # fails when French leaks outside shared/i18n/f
 The interface texts live in `shared/i18n/en.ts` and `shared/i18n/fr.ts`, one key per string, read by
 both the server and the front. A new string goes into both catalogues.
 
-The files under `tests/fixtures/` are real copies of a Steam account, including its SteamID: replace
-them before publishing a fork.
+The files under `tests/fixtures/` are real game files (achievement schema, Steam cache, save, wiki
+pages) with the Steam identity replaced by a fictional account: id `123456789`, SteamID64
+`76561198083722517`, nickname `Player`.
 
 ## Notes
 
