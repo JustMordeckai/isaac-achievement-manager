@@ -83,8 +83,7 @@ html {
 }
 
 .header__top,
-.header__bottom,
-.header .tabs {
+.header__bottom {
   max-width: 1100px;
   margin: 0 auto;
   display: flex;
@@ -93,10 +92,10 @@ html {
   gap: 12px;
 }
 
-/* The title shares its row with the actions; the tabs take the row below. */
-.header .tabs {
-  margin-top: 8px;
-  gap: 4px;
+/* Title, tabs and actions share one row: the two sides grow so the tabs stay centred. */
+.header__top > .brand,
+.header__top > .header__actions {
+  flex: 1 1 auto;
 }
 
 .header__bottom {
@@ -114,6 +113,7 @@ html {
 .tabs {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 4px;
 }
 
@@ -137,10 +137,10 @@ html {
 }
 
 .header__actions {
-  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -177,31 +177,54 @@ html {
   display: block;
 }
 
-/* Language: one flag per served language, the current one marked by aria-pressed. */
+/* Language: the flag of the current one, which opens the list of the others. */
 .lang {
-  display: flex;
-  gap: 4px;
+  position: relative;
+  display: inline-flex;
 }
 
-.lang__flag {
-  display: inline-flex;
+.lang__button {
+  gap: 2px;
+}
+
+.icon--chevron {
+  color: var(--text-muted);
+}
+
+.lang__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
   padding: 4px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elev);
+}
+
+.lang__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
   border-radius: 4px;
   background: none;
+  color: var(--text);
+  font-size: 0.95rem;
+  text-align: left;
   cursor: pointer;
 }
 
-.lang__flag:hover {
-  border-color: var(--border);
+.lang__item:hover {
+  background: var(--bg-sunk);
 }
 
-.lang__flag[aria-pressed='true'] {
-  border-color: var(--accent);
-}
-
-.lang__flag[aria-pressed='false'] .flag {
-  opacity: 0.55;
+.lang__item[aria-checked='true'] {
+  color: var(--accent);
 }
 
 .flag {

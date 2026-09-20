@@ -21,7 +21,7 @@ import { fakeRegistry, makeSteamDir, removeDir } from './helpers/steam-dir.ts';
 
 describe('parseRegQueryOutput', () => {
   const sz = '\r\nHKEY_CURRENT_USER\Software\Valve\Steam\r\n    SteamPath    REG_SZ    c:/program files (x86)/steam\r\n\r\n';
-  const dword = '\r\nHKEY_CURRENT_USER\Software\Valve\Steam\ActiveProcess\r\n    ActiveUser    REG_DWORD    0x12931529\r\n\r\n';
+  const dword = '\r\nHKEY_CURRENT_USER\Software\Valve\Steam\ActiveProcess\r\n    ActiveUser    REG_DWORD    0x075bcd15\r\n\r\n';
 
   it('reads a string and a DWORD', () => {
     expect(parseRegQueryOutput(sz, 'SteamPath')).toBe('c:/program files (x86)/steam');

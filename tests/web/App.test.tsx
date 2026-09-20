@@ -395,15 +395,15 @@ describe('App', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
     stubProgress();
     render(<App />);
-    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Langue: / })).toBeInTheDocument();
   });
 
   it('lets the server locale override the remembered one once settings answer', async () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
     stubProgress({ 'GET /api/settings': () => ({ ...SETTINGS, locale: 'en' }) });
     render(<App />);
-    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
-    expect(await screen.findByRole('group', { name: 'Language' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Langue: / })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^Language: / })).toBeInTheDocument();
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
   });
 
@@ -414,7 +414,8 @@ describe('App', () => {
     await screen.findByRole('heading', { name: 'Progress' });
     const before = { progress: progressCalls(mock), routes: callsTo(mock, '/api/routes') };
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
 
     // The plan and the source messages come from the server: they are asked again in the new language.
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(before.progress + 1));
@@ -433,8 +434,9 @@ describe('App', () => {
     });
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
-    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
+    expect(screen.getByRole('button', { name: /^Langue: / })).toBeInTheDocument();
 
     await act(async () => {
       resolveSettings({ ...SETTINGS, locale: 'en' });
@@ -442,7 +444,7 @@ describe('App', () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(screen.getByRole('group', { name: 'Langue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Langue: / })).toBeInTheDocument();
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('fr');
   });
 });

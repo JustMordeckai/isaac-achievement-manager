@@ -86,7 +86,22 @@ export function Header(props: HeaderProps) {
     <header className="header" ref={ref}>
       <div className="header__top">
         <h1 className="brand">{t('app.brand')}</h1>
+        <nav className="tabs" aria-label={t('app.sections')}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className="tab"
+              aria-current={props.tab === tab.id ? 'page' : undefined}
+              onClick={() => props.onTabChange(tab.id)}
+            >
+              {t(tab.key)}
+            </button>
+          ))}
+        </nav>
         <div className="header__actions">
+          <LanguagePicker />
+          <ThemeSwitch theme={props.theme} onToggle={props.onToggleTheme} />
           <button
             type="button"
             className="icon-btn"
@@ -97,8 +112,6 @@ export function Header(props: HeaderProps) {
           >
             <RefreshIcon />
           </button>
-          <LanguagePicker />
-          <ThemeSwitch theme={props.theme} onToggle={props.onToggleTheme} />
           <button
             type="button"
             className="icon-btn icon-btn--danger"
@@ -110,19 +123,6 @@ export function Header(props: HeaderProps) {
           </button>
         </div>
       </div>
-      <nav className="tabs" aria-label={t('app.sections')}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className="tab"
-            aria-current={props.tab === tab.id ? 'page' : undefined}
-            onClick={() => props.onTabChange(tab.id)}
-          >
-            {t(tab.key)}
-          </button>
-        ))}
-      </nav>
       <div className="header__bottom">
         <ProfilePicker
           profile={query.profile}

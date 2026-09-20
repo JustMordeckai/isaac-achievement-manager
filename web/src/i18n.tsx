@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   DEFAULT_LOCALE,
   LOCALE_NAMES,
@@ -9,7 +9,7 @@ import {
   type Locale,
   type MessageKey,
 } from '../../shared/i18n/index.ts';
-import { FLAGS } from './components/icons.tsx';
+import { ChevronIcon, FLAGS } from './components/icons.tsx';
 import { api } from './api.ts';
 
 interface LocaleContextValue {
@@ -98,22 +98,45 @@ export function storeLocale(locale: Locale): void {
 }
 
 export interface LanguagePickerProps {
-  /** Shows the explanatory hint below the flags; used in Settings, left out in the compact header. */
+  /** Shows the explanatory hint below the button; used in Settings, left out in the compact header. */
   hint?: boolean;
 }
 
 /**
- * The one language switcher in the interface: one flag per served language, the call that applies
- * the pick immediately, the save to the server, and the failure line if that save does not go
- * through. Each flag is drawn, never written: the accessible name of the button is the language in
- * its own language, so a screen reader announces "English" and "Francais" rather than a country.
- * Header.tsx and Settings.tsx both render this instead of duplicating the interaction.
+ * The one language switcher in the interface: a square button showing the flag of the current
+ * language, which opens the list of the served languages. Each entry is named in its own language,
+ * so a screen reader announces "English" and "Francais" rather than a country, and the flag is only
+ * ever decoration. Header.tsx and Settings.tsx both render this instead of duplicating it.
  */
 export function LanguagePicker({ hint }: LanguagePickerProps) {
   const { locale, onLocaleChange, onLocaleSaved } = useContext(LocaleContext);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // A click anywhere else, or Escape, closes the menu; Escape puts the focus back on the button.
+    const onPointerDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   function pick(next: Locale) {
+    setOpen(false);
+    button.current?.focus();
     setSaveFailed(false);
     if (next !== locale) onLocaleChange(next);
     void api.saveLocale(next).then(
@@ -122,26 +145,44 @@ export function LanguagePicker({ hint }: LanguagePickerProps) {
     );
   }
 
+  const Current = FLAGS[locale];
   return (
     <>
-      <div className="lang" role="group" aria-label={t(locale, 'app.language')}>
-        {LOCALES.map((code) => {
-          const Flag = FLAGS[code];
-          return (
-            <button
-              key={code}
-              type="button"
-              className="lang__flag"
-              lang={code}
-              aria-label={LOCALE_NAMES[code]}
-              title={LOCALE_NAMES[code]}
-              aria-pressed={code === locale}
-              onClick={() => pick(code)}
-            >
-              <Flag />
-            </button>
-          );
-        })}
+      <div className="lang" ref={root}>
+        <button
+          type="button"
+          ref={button}
+          className="icon-btn lang__button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`${t(locale, 'app.language')}: ${LOCALE_NAMES[locale]}`}
+          title={t(locale, 'app.language')}
+          onClick={() => setOpen((shown) => !shown)}
+        >
+          <Current />
+          <ChevronIcon />
+        </button>
+        {open && (
+          <div className="lang__menu" role="menu" aria-label={t(locale, 'app.language')}>
+            {LOCALES.map((code) => {
+              const Flag = FLAGS[code];
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={code === locale}
+                  className="lang__item"
+                  lang={code}
+                  onClick={() => pick(code)}
+                >
+                  <Flag size={16} />
+                  {LOCALE_NAMES[code]}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       {saveFailed && <p role="alert">{t(locale, 'settings.language.saveFailed')}</p>}
       {hint && <p className="hint">{t(locale, 'settings.language.hint')}</p>}

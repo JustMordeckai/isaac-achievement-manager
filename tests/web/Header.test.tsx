@@ -163,7 +163,7 @@ describe('Header', () => {
 
   it('offers the language picker without its explanatory hint', () => {
     renderHeader();
-    expect(screen.getByLabelText('Language')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Language: English' })).toBeInTheDocument();
     expect(screen.queryByText(/data\/settings\.json/)).not.toBeInTheDocument();
   });
 });

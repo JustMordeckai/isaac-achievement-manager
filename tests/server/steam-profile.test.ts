@@ -109,8 +109,8 @@ describe('parseProfileInput', () => {
     ['76561198083722517', { kind: 'id64', value: '76561198083722517' }],
     ['  https://steamcommunity.com/profiles/76561198083722517/  ', { kind: 'id64', value: '76561198083722517' }],
     ['steamcommunity.com/profiles/76561198083722517', { kind: 'id64', value: '76561198083722517' }],
-    ['https://steamcommunity.com/id/JustMordeckai/', { kind: 'vanity', value: 'JustMordeckai' }],
-    ['JustMordeckai', { kind: 'vanity', value: 'JustMordeckai' }],
+    ['https://steamcommunity.com/id/isaac-player/', { kind: 'vanity', value: 'isaac-player' }],
+    ['isaac-player', { kind: 'vanity', value: 'isaac-player' }],
     ['https://steamcommunity.com/profiles/123/', null],
     ['https://steamcommunity.com/id/%E0%A4%A/', null],
     ['not a profile !', null],
@@ -154,8 +154,8 @@ describe('createProfileClient', () => {
   it('resolves a custom nickname', async () => {
     const f = fakeFetch(() => xml(PROFILE_XML));
     const client = createProfileClient({ fetch: f.fn });
-    await expect(client.resolve('https://steamcommunity.com/id/JustMordeckai/')).resolves.toEqual({ steamId64: ME_ID64, name: 'Player' });
-    expect(f.calls).toEqual(['https://steamcommunity.com/id/JustMordeckai/?xml=1']);
+    await expect(client.resolve('https://steamcommunity.com/id/isaac-player/')).resolves.toEqual({ steamId64: ME_ID64, name: 'Player' });
+    expect(f.calls).toEqual(['https://steamcommunity.com/id/isaac-player/?xml=1']);
   });
 
   it('resolves a SteamID64 through the profile page', async () => {

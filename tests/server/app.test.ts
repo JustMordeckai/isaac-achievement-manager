@@ -203,9 +203,9 @@ describe('API', () => {
   it('resolves a profile', async () => {
     const resolve = vi.fn(async () => ({ steamId64: ME_ID64, name: 'Player' }));
     const base = await start({ profiles: { getStats: vi.fn(), resolve } });
-    const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('https://steamcommunity.com/id/JustMordeckai/')}`);
+    const res = await fetch(`${base}/api/profile/resolve?input=${encodeURIComponent('https://steamcommunity.com/id/isaac-player/')}`);
     expect(await res.json()).toEqual({ steamId64: ME_ID64, name: 'Player' });
-    expect(resolve).toHaveBeenCalledWith('https://steamcommunity.com/id/JustMordeckai/', 'en');
+    expect(resolve).toHaveBeenCalledWith('https://steamcommunity.com/id/isaac-player/', 'en');
   });
 
   it('translates profile errors', async () => {

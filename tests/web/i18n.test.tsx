@@ -80,12 +80,12 @@ describe('LanguagePicker', () => {
     const user = userEvent.setup();
     const mock = stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
     render(<LocaleHarness />);
-    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Language: English' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
 
-    expect(await screen.findByRole('group', { name: 'Langue' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('button', { name: 'Langue: Fran\u00e7ais' })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('fr');
     await vi.waitFor(() => expect(mock.mock.calls.some(([input]) => String(input) === '/api/settings')).toBe(true));
     const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/settings')!;
@@ -98,10 +98,10 @@ describe('LanguagePicker', () => {
     stubFetch({ 'POST /api/settings': () => jsonResponse({ error: 'data/settings.json is read-only' }, 500) });
     render(<LocaleHarness />);
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
 
-    expect(await screen.findByRole('group', { name: 'Langue' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('button', { name: 'Langue: Fran\u00e7ais' })).toBeInTheDocument();
     expect(await screen.findByRole('alert')).toHaveTextContent(
       t('fr', 'settings.language.saveFailed'),
     );
@@ -113,7 +113,8 @@ describe('LanguagePicker', () => {
     stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
     const view = render(<LocaleHarness onLocaleSaved={saved} />);
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
 
     await vi.waitFor(() => expect(saved).toHaveBeenCalledWith('fr'));
     view.unmount();
@@ -122,15 +123,23 @@ describe('LanguagePicker', () => {
     const failing = vi.fn();
     render(<LocaleHarness onLocaleSaved={failing} />);
 
-    await user.click(screen.getByRole('button', { name: 'Fran\u00e7ais' }));
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(failing).not.toHaveBeenCalled();
   });
 
-  it('names each flag in its own language, for screen readers', () => {
+  it('names each entry in its own language, for screen readers', async () => {
+    const user = userEvent.setup();
     render(<LocaleHarness />);
-    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('lang', 'en');
-    expect(screen.getByRole('button', { name: 'Fran\u00e7ais' })).toHaveAttribute('lang', 'fr');
+
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+
+    const entries = screen.getAllByRole('menuitemradio');
+    expect(entries.map((e) => [e.textContent, e.lang, e.getAttribute('aria-checked')])).toEqual([
+      ['English', 'en', 'true'],
+      ['Fran\u00e7ais', 'fr', 'false'],
+    ]);
   });
 });
