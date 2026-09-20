@@ -555,7 +555,7 @@ describe('API advisor', () => {
     expect(get).toHaveBeenCalledWith(OTHER_ID64, 2, 'en');
     const [chat] = ollama?.chats as Array<{ messages: Array<{ role: string; content: string }> }>;
     expect(chat.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
-    expect(chat.messages[0].content).toContain('#9 The Nail : manquant');
+    expect(chat.messages[0].content).toContain('#9 The Nail: missing');
     expect(chat.messages.slice(1).map((m) => m.content)).toEqual(['Bonjour', 'Bonjour !', 'How do I get The Nail (#9)?']);
   });
 
@@ -564,7 +564,7 @@ describe('API advisor', () => {
     const [context] = await lines(await ask(base, QUESTION));
     expect(context).toEqual({ kind: 'context', sources: [{ id: 9, name: 'The Nail' }] });
     const [chat] = ollama?.chats as Array<{ messages: Array<{ content: string }> }>;
-    expect(chat.messages[0].content).toContain('Base wiki absente');
+    expect(chat.messages[0].content).toContain('Wiki base missing');
   });
 
   it('answers 503 when Ollama is unreachable', async () => {

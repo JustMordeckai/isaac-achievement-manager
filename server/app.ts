@@ -210,9 +210,9 @@ export function createApp(deps: AppDeps): express.Express {
       deps.progress.get(request.profile, request.slot, deps.settings.locale),
       deps.kb.get(),
     ]);
-    // English plan for the model: task 6 still writes the advisor prompt in English.
+    // English plan for the model: only the language rule in the prompt depends on the reader's locale.
     const plan = kb ? buildPlan({ kb, ...progress, locale: 'en' }) : null;
-    const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
+    const context = buildAdvisorContext({ question: request.question, progress, kb, plan, locale: deps.settings.locale });
     const messages: OllamaMessage[] = [
       { role: 'system', content: context.system },
       ...request.history,
