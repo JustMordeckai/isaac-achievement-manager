@@ -19,7 +19,7 @@ never writes to them.
 | Game | Repentance+, Windows, launched at least once |
 | Reads | Steam achievement cache, `rep+persistentgamedata{1,2,3}.dat`, public Steam profile |
 | Requirements | Windows 10 or 11, Node.js 26 or newer, Steam |
-| Advisor (optional) | an [Ollama](https://ollama.com/) server, `qwen3.5:4b` by default |
+| Advisor (optional) | an [Ollama](https://ollama.com/) server, which the app can install for you |
 
 Your Steam profile needs its game details set to public for the cross check and for looking up
 another player. Everything else works offline once the wiki base is downloaded.
@@ -90,18 +90,23 @@ are sent back.
 
 ### Settings
 
-![Advisor settings](assets/settings-advisor.png)
+![Advisor settings, with the setup block](assets/settings-advisor.png)
 
 Interface language, wiki sync with its progress, Ollama server and model (the list offers the models
 installed on the server), and the Steam paths and account that were detected. Saving writes
 `data/settings.json` and applies without a restart.
 
+As long as the advisor cannot answer, this screen offers to set it up: it says whether Ollama is on
+the machine and installs it with winget if it is not, reads the video memory to pick the model the
+machine can run, downloads it with its progress, and puts it to use once it is there. The whole
+advisor stays optional: skip it and the rest of the app works the same.
+
 ## Language
 
 ![French interface](assets/francais.png)
 
-English or French, picked from the two flags in the header. The choice is saved in
-`data/settings.json` and in the browser, so it survives a reload and a restart. The advisor answers
+English or French, picked from the flag in the header, which opens the list of languages. The choice
+is saved in `data/settings.json` and in the browser, so it survives a reload and a restart. The advisor answers
 in the language of the interface. The names of the game (achievements, characters, items, bosses)
 stay in English in both, because that is what the game shows.
 
@@ -143,9 +148,10 @@ If double clicking `Isaac Manager.cmd` does nothing, read `data/server.log`, che
 If the wiki sync fails, the previous base stays in use. With no network, the sync reuses the pages
 already copied in `data/wiki-cache/`; the report says how many.
 
-If the advisor does not answer: check the server address in the settings (**Check the connection**),
-that the model is installed (`ollama pull qwen3.5:4b`), and that the firewall of the server lets the
-port 11434 through. The rest of the app works without Ollama.
+If the advisor does not answer: the settings screen offers to install Ollama and to download a model
+for you. For a server on another machine, check its address there (**Check the connection**), that
+the model is installed (`ollama pull qwen3.5:4b`), and that its firewall lets the port 11434 through.
+The rest of the app works without Ollama.
 
 If the answers never arrive although the server responds: Ollama handles one request at a time per
 model, so another application keeping it busy makes yours wait. Video memory matters too: the app
@@ -169,7 +175,7 @@ The save slot shown by default is the most recently modified one; a picker chang
 
 ```
 npm run dev        # server plus Vite (hot reload) on http://127.0.0.1:5250/
-npm test           # 610 Vitest tests (server and front)
+npm test           # 629 Vitest tests (server and front)
 npm run typecheck  # TypeScript
 npm run sync-wiki  # wiki sync with no interface
 node scripts/check-language.mjs  # fails when French leaks outside shared/i18n/fr.ts
