@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { AdvisorSetup } from '../components/AdvisorSetup.tsx';
@@ -126,8 +126,6 @@ function AdvisorStatusText({ status }: { status: AdvisorStatus | null }) {
 function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   const t = useT();
   const locale = useLocale();
-  // The setup card detects what the machine has, and reads the advisor state again once it is done.
-  const setup = useAdvisorSetup(0, advisor.recheck);
   const { status } = advisor;
   const [url, setUrl] = useState(status?.url ?? '');
   const [model, setModel] = useState(status?.model ?? '');
@@ -136,6 +134,23 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   const [saved, setSaved] = useState(false);
   const filled = useRef(status !== null);
   const typed = useRef({ url: false, model: false });
+
+  // A model that was just downloaded becomes the one the advisor uses, otherwise nothing would
+  // change on screen; an install only calls for reading the state of the server again.
+  const finished = useCallback(
+    (job: 'install' | 'pull', model: string) => {
+      if (job !== 'pull') {
+        advisor.recheck();
+        return;
+      }
+      setModel(model);
+      void api
+        .saveAdvisorSettings({ url: status?.url ?? url, model })
+        .then((next) => advisor.replace(next), () => advisor.recheck());
+    },
+    [advisor, status?.url, url],
+  );
+  const setup = useAdvisorSetup(0, finished);
 
   useEffect(() => {
     // First time the state arrives (up to 3 s on an unreachable server): the fields the reader

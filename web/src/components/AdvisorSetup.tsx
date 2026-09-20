@@ -22,7 +22,7 @@ export function AdvisorSetup({ setup, status }: AdvisorSetupProps) {
   // Once the advisor answers there is nothing left to set up: only a running job keeps the card.
   if (!state || (ready && job.kind !== 'running')) return null;
 
-  const model = status?.model && status.model.length > 0 ? status.model : state.recommended;
+  const model = state.recommended;
   const running = job.kind === 'running';
   return (
     <div className="setup">

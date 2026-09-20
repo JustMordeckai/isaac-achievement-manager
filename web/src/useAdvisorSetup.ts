@@ -22,7 +22,10 @@ export interface AdvisorSetupHook {
  * Detects what the machine has, then runs the install or the download and follows their progress.
  * `onFinished` fires after a job that went through, so the caller can read the advisor state again.
  */
-export function useAdvisorSetup(reloadKey: number, onFinished: () => void): AdvisorSetupHook {
+export function useAdvisorSetup(
+  reloadKey: number,
+  onFinished: (job: 'install' | 'pull', model: string) => void,
+): AdvisorSetupHook {
   const locale = useLocale();
   const [state, setState] = useState<AdvisorSetupState | null>(null);
   const [job, setJob] = useState<SetupJob>({ kind: 'idle' });
@@ -43,7 +46,7 @@ export function useAdvisorSetup(reloadKey: number, onFinished: () => void): Advi
   }, [reloadKey, detections]);
 
   const run = useCallback(
-    (start: (onEvent: (event: AdvisorSetupEvent) => void) => Promise<AdvisorSetupEvent>) => {
+    (kind: 'install' | 'pull', model: string, start: (onEvent: (event: AdvisorSetupEvent) => void) => Promise<AdvisorSetupEvent>) => {
       setJob({ kind: 'running', message: '' });
       start((event) => {
         if (event.step === 'progress') setJob({ kind: 'running', message: event.message, done: event.done, total: event.total });
@@ -52,7 +55,7 @@ export function useAdvisorSetup(reloadKey: number, onFinished: () => void): Advi
           setJob(last.step === 'done' ? { kind: 'done', message: last.message } : { kind: 'failed', message: last.message });
           if (last.step === 'done') {
             setDetections((n) => n + 1);
-            onFinished();
+            onFinished(kind, model);
           }
         },
         (error: unknown) => setJob({ kind: 'failed', message: error instanceof Error ? error.message : String(error) }),
@@ -64,7 +67,10 @@ export function useAdvisorSetup(reloadKey: number, onFinished: () => void): Advi
   return {
     state,
     job,
-    install: useCallback(() => run((onEvent) => api.installOllama(locale, onEvent)), [run, locale]),
-    pull: useCallback((model: string) => run((onEvent) => api.pullModel(model, locale, onEvent)), [run, locale]),
+    install: useCallback(() => run('install', '', (onEvent) => api.installOllama(locale, onEvent)), [run, locale]),
+    pull: useCallback(
+      (model: string) => run('pull', model, (onEvent) => api.pullModel(model, locale, onEvent)),
+      [run, locale],
+    ),
   };
 }

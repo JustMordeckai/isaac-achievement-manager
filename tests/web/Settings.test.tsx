@@ -172,6 +172,7 @@ describe('Settings: advisor setup', () => {
           { step: 'progress', message: 'pulling 1a2b', done: 5 * 1024 * 1024, total: 20 * 1024 * 1024 },
           { step: 'done', message: 'qwen3.5:9b is ready.' },
         ]),
+      'POST /api/advisor/settings': () => ({ ...ADVISOR_OK, model: 'qwen3.5:9b' }),
     });
     const advisor = makeAdvisorState({ ...ADVISOR_OK, state: 'error', model: 'qwen3.5:9b', models: [] });
     renderSettings({ advisor });
@@ -185,6 +186,10 @@ describe('Settings: advisor setup', () => {
     expect(await section.findByText('qwen3.5:9b is ready.')).toBeInTheDocument();
     const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/advisor/pull')!;
     expect(JSON.parse(String(init?.body))).toEqual({ model: 'qwen3.5:9b' });
+    // The model that was just downloaded becomes the one the advisor uses.
+    const [, saved] = mock.mock.calls.find(([input]) => String(input) === '/api/advisor/settings')!;
+    expect(JSON.parse(String(saved?.body))).toMatchObject({ model: 'qwen3.5:9b' });
+    expect(advisor.replace).toHaveBeenCalled();
   });
 
   it('reports a refused job and stays out of the way once the advisor answers', async () => {
