@@ -3,6 +3,7 @@ import { inferMarks } from '../../server/planner/marks.ts';
 import { buildPlan } from '../../server/planner/plan.ts';
 import { mergeProgress, type SaveProgress } from '../../server/sources/progress.ts';
 import { endingByName, type EndingId } from '../../shared/endings.ts';
+import type { Locale } from '../../shared/i18n/index.ts';
 import { type CharacterMarks, MARK_IDS, markForEnding, type MarkId } from '../../shared/marks.ts';
 import type { PlannedRun, RoutePlan } from '../../shared/types.ts';
 import { fixtureMergeInput } from './helpers/merge-input.ts';
@@ -10,31 +11,31 @@ import { testKnowledgeBase } from './helpers/kb.ts';
 
 const merged = mergeProgress(fixtureMergeInput());
 
-async function planWithSave(unlock: (id: number) => boolean | null, save: SaveProgress | null) {
+async function planWithSave(unlock: (id: number) => boolean | null, save: SaveProgress | null, locale: Locale = 'en') {
   const kb = await testKnowledgeBase();
   const achievements = merged.achievements.map((a) => ({ ...a, unlocked: unlock(a.id) ?? a.unlocked }));
-  return buildPlan({ kb, achievements, save });
+  return buildPlan({ kb, achievements, save, locale });
 }
 
-function planFor(unlock: (id: number) => boolean | null, withSave: boolean) {
-  return planWithSave(unlock, withSave ? merged.save : null);
+function planFor(unlock: (id: number) => boolean | null, withSave: boolean, locale: Locale = 'en') {
+  return planWithSave(unlock, withSave ? merged.save : null, locale);
 }
 
-/** Sauvegarde de la fixture où Isaac a toutes ses marques en difficile, sauf celles données. */
+/** Fixture save where Isaac has every mark on hard, except the ones given. */
 function saveWithIsaacMarks(marks: Partial<CharacterMarks>): SaveProgress {
-  if (!merged.save?.marks) throw new Error('La sauvegarde de la fixture doit contenir les marques.');
+  if (!merged.save?.marks) throw new Error('The fixture save must contain marks.');
   const hard = Object.fromEntries(MARK_IDS.map((mark) => [mark, 2])) as CharacterMarks;
   return { ...merged.save, marks: { ...merged.save.marks, isaac: { ...hard, ...marks } } };
 }
 
-/** Runs d'un personnage dans l'ordre où le planificateur les a choisies. */
+/** A character's runs in the order the planner chose them. */
 function runsOf(plan: RoutePlan, character: string): PlannedRun[] {
   const rank = (run: PlannedRun) => Number(run.id.slice(run.id.lastIndexOf('-') + 1));
   return plan.runs.filter((r) => r.character === character).sort((a, b) => rank(a) - rank(b));
 }
 
 describe('buildPlan', () => {
-  it('planifie les runs de Player à partir de sa sauvegarde', async () => {
+  it("schedules Player's runs from his save", async () => {
     const plan = await planFor(() => null, true);
     expect(plan.marksSource).toBe('save');
     expect(plan.runs).toHaveLength(190);
@@ -51,7 +52,7 @@ describe('buildPlan', () => {
     expect(isaac[1].missing).toEqual([{ anyOf: [{ id: 407, name: 'A Secret Exit' }], met: false }]);
   });
 
-  it('range les runs jouables avant les autres, par score décroissant', async () => {
+  it('ranks playable runs before the others, by descending score', async () => {
     const { runs } = await planFor(() => null, true);
     const playable = runs.filter((r) => r.missing.length === 0);
     expect(runs.slice(0, playable.length)).toEqual(playable);
@@ -60,7 +61,7 @@ describe('buildPlan', () => {
     expect(runs[0].steps).toHaveLength(10);
   });
 
-  it('ne promet jamais deux fois le même succès et couvre tous les succès manquants', async () => {
+  it('never promises the same achievement twice and covers every missing achievement', async () => {
     const plan = await planFor(() => null, true);
     const inRuns = plan.runs.flatMap((r) => r.achievements.map((a) => a.id));
     expect(new Set(inRuns).size).toBe(inRuns.length);
@@ -72,16 +73,16 @@ describe('buildPlan', () => {
   });
 
   it.each([
-    ['la sauvegarde', true],
-    ['les marques déduites', false],
-  ])('ne rend jouable aucune run dont un succès dépend d’une run planifiée (%s)', async (_, withSave) => {
+    ['the save', true],
+    ['the inferred marks', false],
+  ])('never makes playable a run whose achievement depends on a planned run (%s)', async (_, withSave) => {
     const kb = await testKnowledgeBase();
     const plan = await planFor(() => null, withSave);
     const unlocked = new Set(merged.achievements.filter((a) => a.unlocked).map((a) => a.id));
     const marks = withSave ? merged.save?.marks : inferMarks(kb, unlocked);
-    if (!marks) throw new Error('La sauvegarde de la fixture doit contenir les marques.');
+    if (!marks) throw new Error('The fixture save must contain marks.');
     const hows = new Map(kb.achievements.map((a) => [a.id, a.how]));
-    // Niveau qu'une run apporte à une marque, et fins déjà battues d'après le seul état réel.
+    // Level a run brings to a mark, and endings already beaten according to the real state alone.
     const reached = (run: PlannedRun, mark: MarkId) =>
       Math.max(
         0,
@@ -115,9 +116,9 @@ describe('buildPlan', () => {
     expect(dependent).toEqual([]);
   });
 
-  it('bloque la run qui complète la note grâce à une run bloquée', async () => {
-    // Isaac : Mother et Greed en normal. Sans A Secret Exit (#407), la run de Mother est bloquée,
-    // donc la run de Greedier qui obtiendrait Buddy Baby (#253) juste après l'est aussi.
+  it('blocks the run that completes the card thanks to a blocked run', async () => {
+    // Isaac: Mother and Greed on normal. Without A Secret Exit (#407), the Mother run is blocked,
+    // so the Greedier run that would get Buddy Baby (#253) right after is blocked too.
     const plan = await planWithSave((id) => ![253, 407, 440].includes(id), saveWithIsaacMarks({ mother: 1, greed: 1 }));
     const blocked = [{ anyOf: [{ id: 407, name: 'A Secret Exit' }], met: false }];
     expect(plan.runs).toHaveLength(2);
@@ -127,8 +128,8 @@ describe('buildPlan', () => {
     ]);
   });
 
-  it('ajoute une run de préparation quand la note complète demande plusieurs runs', async () => {
-    // Isaac : tout en difficile sauf Mother et The Beast, qui ne se battent pas dans la même run.
+  it('adds a preparation run when the completed card needs several runs', async () => {
+    // Isaac: everything on hard except Mother and The Beast, which are not beaten in the same run.
     const plan = await planWithSave((id) => id !== 253, saveWithIsaacMarks({ mother: 1, beast: 1 }));
     expect(plan.runs).toHaveLength(2);
     const runs = runsOf(plan, 'isaac');
@@ -138,7 +139,7 @@ describe('buildPlan', () => {
     ]);
   });
 
-  it('prépare la note complète d’un profil distant', async () => {
+  it('prepares the completed card of a remote profile', async () => {
     const plan = await planFor((id) => id !== 253, false);
     const runs = runsOf(plan, 'isaac');
     expect(plan.runs).toHaveLength(runs.length);
@@ -150,8 +151,8 @@ describe('buildPlan', () => {
     ]);
   });
 
-  it('prépare un succès à plusieurs marques qui ne tiennent pas dans une run', async () => {
-    // Mom's Lock (#548) : Isaac, ???, Satan et The Lamb avec Tainted Isaac.
+  it('prepares a multi-mark achievement that does not fit in one run', async () => {
+    // Mom's Lock (#548): Isaac, ???, Satan and The Lamb with Tainted Isaac.
     const plan = await planFor((id) => id !== 548, false);
     const runs = runsOf(plan, 'taintedIsaac');
     expect(plan.runs).toHaveLength(runs.length);
@@ -161,14 +162,14 @@ describe('buildPlan', () => {
     ]);
   });
 
-  it('attribue un succès à plusieurs boss à la seconde run qui les complète', async () => {
+  it('credits a multi-boss achievement to the second run that completes it', async () => {
     const plan = await planFor(() => null, true);
-    // Golden God! : battre ??? et The Lamb, qui ne se font pas dans la même run.
+    // Golden God!: beat ??? and The Lamb, which are not done in the same run.
     const run = plan.runs.find((r) => r.achievements.some((a) => a.id === 41));
     expect(run?.endings).toEqual(['momsHeart', 'isaac', 'blueBaby']);
   });
 
-  it('propose de battre Mom à un profil neuf', async () => {
+  it('offers to beat Mom for a new profile', async () => {
     const plan = await planFor(() => false, false);
     expect(plan.marksSource).toBe('inferred');
     const playable = plan.runs.filter((r) => r.missing.length === 0);
@@ -177,19 +178,24 @@ describe('buildPlan', () => {
       ['isaac', ['ultraGreed']],
     ]);
     expect(playable[0].achievements.map((a) => a.id)).toEqual([4, 5, 6, 166, 265, 266, 269, 272, 274, 278]);
-    expect(playable[0].steps).toEqual(['Traverser Basement, Caves et Depths, puis battre Mom en Depths II.']);
+    expect(playable[0].steps).toEqual(['Go through Basement, Caves and Depths, then beat Mom in Depths II.']);
     const magdalene = plan.runs.find((r) => r.character === 'magdalene');
     expect(magdalene?.missing[0]).toEqual({ anyOf: [{ id: 1, name: 'Magdalene' }], met: false });
+
+    // Same plan, in the reader's language: proves buildPlan threads locale through to the run text.
+    const frPlan = await planFor(() => false, false, 'fr');
+    const frPlayable = frPlan.runs.filter((r) => r.missing.length === 0);
+    expect(frPlayable[0].steps).toEqual(['Traverser Basement, Caves et Depths, puis battre Mom en Depths II.']);
   });
 
-  it("ne propose rien quand tout est débloqué", async () => {
+  it('offers nothing once everything is unlocked', async () => {
     const plan = await planFor(() => true, false);
     expect(plan.runs).toEqual([]);
     expect(plan.offRoute).toEqual({ challenges: [], counters: [], closets: [], redKey: true, misc: [] });
     expect(plan.characters.every((c) => c.unlocked && c.hardAll !== false)).toBe(true);
   });
 
-  it('déduit les marques des succès sans sauvegarde', async () => {
+  it('infers marks from achievements with no save', async () => {
     const plan = await planFor(() => null, false);
     expect(plan.marksSource).toBe('inferred');
     expect(plan.characters[0]).toEqual({
@@ -215,15 +221,15 @@ describe('buildPlan', () => {
     expect(plan.characters.find((c) => c.id === 'taintedIsaac')?.hardAll).toBeNull();
   });
 
-  it('ne crédite une victoire comptée que si elle suffit', async () => {
+  it('credits a counted win only once it is enough', async () => {
     const plan = await planFor(() => null, true);
-    // Mom's Heart battu 16 fois : les paliers 21 et 30 ne tombent pas en une run.
+    // Mom's Heart beaten 16 times: the 21 and 30 thresholds do not land within a single run.
     const counted = plan.runs.flatMap((r) => r.achievements.map((a) => a.id)).filter((id) => [344, 345].includes(id));
     expect(counted).toEqual([]);
     const oneMore = mergeProgress(fixtureMergeInput());
     const save = oneMore.save ? { ...oneMore.save, counters: oneMore.save.counters.map((v, i) => (i === 1 ? 20 : v)) } : null;
     const kb = await testKnowledgeBase();
-    const next = buildPlan({ kb, achievements: oneMore.achievements, save });
+    const next = buildPlan({ kb, achievements: oneMore.achievements, save, locale: 'en' });
     expect(next.runs.find((r) => r.achievements.some((a) => a.id === 344))?.endings).toContain('momsHeart');
   });
 });

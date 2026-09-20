@@ -1,15 +1,16 @@
 import type { CharacterId } from '../../shared/characters.ts';
+import type { MessageKey } from '../../shared/i18n/index.ts';
 
 export interface CharacterInfo {
-  /** Succès qui débloque le personnage, null s'il est disponible d'emblée. */
+  /** Achievement that unlocks the character, null if it is available from the start. */
   unlockedBy: number | null;
   /**
-   * Coefficient de facilité pour le score (barème manuel à ajuster) : 1 facile, 0,7 intermédiaire,
-   * 0,4 difficile (The Lost, Tainted Lost, Keeper, Tainted Keeper).
+   * Ease coefficient for the score (a manual scale to adjust): 1 easy, 0.7 medium,
+   * 0.4 hard (The Lost, Tainted Lost, Keeper, Tainted Keeper).
    */
   coefficient: number;
-  /** Rappel affiché avec les runs du personnage. */
-  note: string | null;
+  /** Catalogue key of the reminder shown with the character's runs, null if none. */
+  note: MessageKey | null;
 }
 
 const EASY = 1;
@@ -17,8 +18,8 @@ const MEDIUM = 0.7;
 const HARD = 0.4;
 
 /**
- * Déblocages relevés sur les pages des personnages (section Unlocking et infobox), 2026-09-17.
- * La base wiki classe aussi #191 comme déblocage de Keeper : c'est un objet de départ, Keeper vient de #251.
+ * Unlocks read off the character pages (Unlocking section and infobox), 2026-09-17.
+ * The wiki database also lists #191 as Keeper's unlock: it is a starting item, Keeper comes from #251.
  */
 export const CHARACTER_INFO: Record<CharacterId, CharacterInfo> = {
   isaac: { unlockedBy: null, coefficient: EASY, note: null },
@@ -30,7 +31,7 @@ export const CHARACTER_INFO: Record<CharacterId, CharacterInfo> = {
   samson: { unlockedBy: 67, coefficient: EASY, note: null },
   azazel: { unlockedBy: 79, coefficient: EASY, note: null },
   lazarus: { unlockedBy: 80, coefficient: EASY, note: null },
-  eden: { unlockedBy: 81, coefficient: MEDIUM, note: "Chaque partie coûte un Eden Token (gagné en battant Mom's Heart, It Lives, Ultra Greed ou The Beast)." },
+  eden: { unlockedBy: 81, coefficient: MEDIUM, note: 'planner.note.eden' },
   theLost: { unlockedBy: 82, coefficient: HARD, note: null },
   lilith: { unlockedBy: 199, coefficient: MEDIUM, note: null },
   keeper: { unlockedBy: 251, coefficient: HARD, note: null },
@@ -38,7 +39,7 @@ export const CHARACTER_INFO: Record<CharacterId, CharacterInfo> = {
   theForgotten: {
     unlockedBy: 390,
     coefficient: MEDIUM,
-    note: "Déblocage en plusieurs étapes : Broken Shovel, Boss Rush avec la pelle, puis Mom's Shovel en Dark Room.",
+    note: 'planner.note.theForgotten',
   },
   bethany: { unlockedBy: 404, coefficient: MEDIUM, note: null },
   jacobAndEsau: { unlockedBy: 405, coefficient: MEDIUM, note: null },

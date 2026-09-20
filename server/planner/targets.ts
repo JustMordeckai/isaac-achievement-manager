@@ -1,97 +1,98 @@
 import type { EndingId } from '../../shared/endings.ts';
+import type { MessageKey } from '../../shared/i18n/index.ts';
 
 export interface Target {
-  /** Succès à débloquer avant de pouvoir atteindre cette fin. */
+  /** Achievements to unlock before this ending is reachable. */
   requires: number[];
-  /** Groupes dont au moins un succès doit être débloqué. */
+  /** Groups of which at least one achievement must be unlocked. */
   requiresAny: number[][];
-  /** Étape propre à cette fin, en français (noms du jeu en anglais). */
-  step: string;
-  /** Page du wiki d'où viennent ces faits. */
+  /** Catalogue key of this ending's own step (game names stay in English). */
+  step: MessageKey;
+  /** Wiki page these facts come from. */
   source: string;
 }
 
 /**
- * Fins de run, relevées sur le wiki le 2026-09-17 (pages des boss, Completion Marks, Mom, A Strange Door, Home).
- * Isaac et Satan exigent It Lives! (#34) pour un accès garanti ; avant, il faut une Angel Room ou une Devil Room.
+ * Run endings, read off the wiki on 2026-09-17 (boss pages, Completion Marks, Mom, A Strange Door, Home).
+ * Isaac and Satan require It Lives! (#34) for guaranteed access; before that, an Angel Room or a Devil Room is needed.
  */
 export const TARGETS: Record<EndingId, Target> = {
   momsHeart: {
     requires: [4],
     requiresAny: [],
-    step: "Traverser Womb I et II et battre Mom's Heart (ou It Lives).",
+    step: 'planner.step.momsHeart',
     source: "Mom's Heart",
   },
   isaac: {
     requires: [4, 34],
     requiresAny: [],
-    step: 'Prendre le rayon de lumière vers Cathedral et battre Isaac.',
+    step: 'planner.step.isaac',
     source: 'Isaac (Boss)',
   },
   satan: {
     requires: [4, 34],
     requiresAny: [],
-    step: 'Prendre la trappe vers Sheol et battre Satan.',
+    step: 'planner.step.satan',
     source: 'Satan',
   },
   blueBaby: {
     requires: [57],
     requiresAny: [],
-    step: "Toucher le coffre d'Isaac en tenant The Polaroid pour entrer dans Chest, puis battre ???.",
+    step: 'planner.step.blueBaby',
     source: '??? (Boss)',
   },
   lamb: {
     requires: [78],
     requiresAny: [],
-    step: 'Toucher le coffre de Satan en tenant The Negative pour entrer dans Dark Room, puis battre The Lamb.',
+    step: 'planner.step.lamb',
     source: 'The Lamb',
   },
   megaSatan: {
     requires: [155],
     requiresAny: [],
-    step: 'Sans entrer dans le coffre, revenir à la salle de départ, ouvrir la Golden Gate avec Key Piece 1 et 2, puis battre Mega Satan.',
+    step: 'planner.step.megaSatan',
     source: 'Mega Satan',
   },
   bossRush: {
     requires: [4],
     requiresAny: [],
-    step: 'Battre Mom avant 20:00 (25:00 en Mausoleum), entrer dans le Boss Rush et vaincre les 15 vagues.',
+    step: 'planner.step.bossRush',
     source: 'Boss Rush',
   },
   hush: {
     requires: [234],
     requiresAny: [],
-    step: "Battre Mom's Heart avant 30:00, prendre l'entrée vers ??? (Blue Womb) et battre Hush.",
+    step: 'planner.step.hush',
     source: 'Hush',
   },
   delirium: {
     requires: [320],
     requiresAny: [],
-    step: 'Prendre le portail vers The Void, trouver la grande salle de boss et battre Delirium.',
+    step: 'planner.step.delirium',
     source: 'Delirium',
   },
   mother: {
     requires: [407],
     requiresAny: [],
-    step: 'En Corpse II, sauter dans le trou de la salle du boss et battre Mother.',
+    step: 'planner.step.mother',
     source: 'Mother',
   },
   beast: {
     requires: [635],
     requiresAny: [[57, 78]],
-    step: 'À Home, dormir dans le lit de Mom, puis battre Dogma et The Beast.',
+    step: 'planner.step.beast',
     source: 'The Beast',
   },
   ultraGreed: {
     requires: [],
     requiresAny: [],
-    step: 'Au 7e étage, battre Ultra Greed puis entrer dans le coffre de fin.',
+    step: 'planner.step.ultraGreed',
     source: 'Ultra Greed',
   },
   ultraGreedier: {
     requires: [341],
     requiresAny: [],
-    step: 'Au 7e étage, battre Ultra Greed puis sa seconde phase, Ultra Greedier.',
+    step: 'planner.step.ultraGreedier',
     source: 'Ultra Greed',
   },
 };

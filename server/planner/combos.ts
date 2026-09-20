@@ -1,20 +1,21 @@
 import type { EndingId } from '../../shared/endings.ts';
+import { t, type Locale, type MessageKey } from '../../shared/i18n/index.ts';
 import { TARGETS } from './targets.ts';
 
 export type RouteKind = 'mom' | 'main' | 'mother' | 'beast' | 'greed' | 'greedier';
 
 export interface RouteOption {
   kind: RouteKind;
-  /** Fins atteintes, dans l'ordre. */
+  /** Endings reached, in order. */
   endings: EndingId[];
-  /** Succès exigés par l'enchaînement lui-même, en plus de ceux des fins. */
+  /** Achievements required by the sequence itself, on top of the endings'. */
   extraRequires: number[];
   minutes: number;
 }
 
 /**
- * Durées estimées à la main, en minutes (à ajuster) : run de base puis supplément par fin.
- * Aucune source : ce sont des ordres de grandeur pour comparer les runs entre elles.
+ * Hand-estimated durations, in minutes (to adjust): base run plus a supplement per ending.
+ * No source: these are orders of magnitude to compare runs against each other.
  */
 export const MINUTES = {
   mom: 20,
@@ -31,7 +32,7 @@ export const MINUTES = {
   delirium: 15,
 };
 
-/** Hush déjà battu une fois (New Area) : sans lui, la première victoire sur Hush termine la partie. */
+/** Hush already beaten once (New Area): without it, the first win over Hush ends the run. */
 const HUSH_DEFEATED = 320;
 
 const BRANCHES: EndingId[][] = [
@@ -44,7 +45,7 @@ const BRANCHES: EndingId[][] = [
   ['satan', 'lamb', 'megaSatan'],
 ];
 
-/** Fins après lesquelles un portail vers The Void est garanti (Repentance+, The Void débloquée). */
+/** Endings after which a portal to The Void is guaranteed (Repentance+, The Void unlocked). */
 const VOID_AFTER: EndingId[] = ['hush', 'blueBaby', 'lamb', 'megaSatan'];
 
 function mainOptions(): RouteOption[] {
@@ -56,7 +57,7 @@ function mainOptions(): RouteOption[] {
         const last = [...before, ...branch].at(-1) as EndingId;
         for (const delirium of VOID_AFTER.includes(last) ? [false, true] : [false]) {
           const endings = [...before, ...branch, ...(delirium ? ['delirium' as const] : [])];
-          // Continuer après Hush suppose qu'il a déjà été battu lors d'une partie précédente.
+          // Continuing after Hush assumes it was already beaten in a previous run.
           const extraRequires = hush && endings.at(-1) !== 'hush' ? [HUSH_DEFEATED] : [];
           const minutes =
             MINUTES.main +
@@ -74,9 +75,9 @@ function mainOptions(): RouteOption[] {
   return options;
 }
 
-/** Toutes les runs possibles, d'après les combinaisons vérifiées sur le wiki (Completion Marks, Hush, The Void, Mother, Home). */
+/** Every possible run, from the combinations checked on the wiki (Completion Marks, Hush, The Void, Mother, Home). */
 export const ROUTE_OPTIONS: RouteOption[] = [
-  // Première run d'un profil neuf : battre Mom ouvre la suite (The Womb).
+  // First run of a fresh profile: beating Mom opens up the rest (The Womb).
   { kind: 'mom', endings: [], extraRequires: [], minutes: MINUTES.mom },
   ...mainOptions(),
   { kind: 'mother', endings: ['mother'], extraRequires: [], minutes: MINUTES.mother },
@@ -87,65 +88,58 @@ export const ROUTE_OPTIONS: RouteOption[] = [
   { kind: 'greedier', endings: ['ultraGreedier'], extraRequires: [], minutes: MINUTES.greedier },
 ];
 
-const MOTHER_PATH = [
-  'Battre le boss de Basement I ou II, puis ouvrir avec une clé la porte vers Downpour.',
-  'En Downpour II, toucher le White Fire Place pour devenir The Lost, traverser le miroir et prendre Knife Piece 1.',
-  'Après le boss de Downpour II, ouvrir avec 2 bombes la porte condamnée vers les Mines.',
-  'En Mines II, presser les 3 boutons, prendre le minecart et récupérer Knife Piece 2.',
-  'Après le boss de Mines II, payer 2 cœurs pour entrer dans Mausoleum.',
+const MOTHER_PATH: MessageKey[] = [
+  'planner.step.motherBasementDoor',
+  'planner.step.motherDownpourMirror',
+  'planner.step.motherMinesDoor',
+  'planner.step.motherMinecart',
+  'planner.step.motherMausoleumEntry',
 ];
 
-const BEAST_PATH = [
-  'Traverser Basement et Caves.',
-  'En Depths II, battre Mom et prendre The Polaroid ou The Negative.',
-];
+const BEAST_PATH: MessageKey[] = ['planner.step.beastBasementCaves', 'planner.step.beastDepthsMom'];
 
-/** Chemin de la run, étape par étape. */
-export function routeSteps(option: RouteOption): string[] {
+/** Run's path, step by step. */
+export function routeSteps(option: RouteOption, locale: Locale): string[] {
   const has = (ending: EndingId) => option.endings.includes(ending);
-  const bossRush = has('bossRush') ? [TARGETS.bossRush.step] : [];
+  const bossRush = has('bossRush') ? [t(locale, TARGETS.bossRush.step)] : [];
   switch (option.kind) {
     case 'mom':
-      return ['Traverser Basement, Caves et Depths, puis battre Mom en Depths II.'];
+      return [t(locale, 'planner.step.momRun')];
     case 'greed':
-      return [
-        'Lancer une partie en mode Greed.',
-        'Sur chaque étage, vaincre toutes les vagues (dont les 2 vagues de boss) pour ouvrir la sortie.',
-        TARGETS.ultraGreed.step,
-      ];
+      return [t(locale, 'planner.step.startGreed'), t(locale, 'planner.step.clearGreedWaves'), t(locale, TARGETS.ultraGreed.step)];
     case 'greedier':
       return [
-        'Lancer une partie en mode Greedier.',
-        'Sur chaque étage, vaincre toutes les vagues (dont les 2 vagues de boss) pour ouvrir la sortie.',
-        TARGETS.ultraGreedier.step,
+        t(locale, 'planner.step.startGreedier'),
+        t(locale, 'planner.step.clearGreedWaves'),
+        t(locale, TARGETS.ultraGreedier.step),
       ];
     case 'mother':
       return [
-        ...MOTHER_PATH,
-        'En Mausoleum II, battre Mom.',
+        ...MOTHER_PATH.map((key) => t(locale, key)),
+        t(locale, 'planner.step.motherBattleMom'),
         ...bossRush,
-        "Lancer le couteau sur la porte de chair, battre Mom's Heart, puis descendre dans Corpse.",
-        TARGETS.mother.step,
+        t(locale, 'planner.step.motherKnifeDoor'),
+        t(locale, TARGETS.mother.step),
       ];
     case 'beast':
       return [
-        ...BEAST_PATH,
+        ...BEAST_PATH.map((key) => t(locale, key)),
         ...bossRush,
-        "Sortir de la salle de Mom par téléportation (0 - The Fool du Marked Skull), puis donner l'objet à A Strange Door.",
-        "En Mausoleum II, prendre Dad's Note et remonter l'Ascent jusqu'à Home.",
-        "À Home, ouvrir le coffre de Mom (Red Key au premier passage) et le placard caché avec la Red Key.",
-        TARGETS.beast.step,
+        t(locale, 'planner.step.beastTeleport'),
+        t(locale, 'planner.step.beastDadsNote'),
+        t(locale, 'planner.step.beastHomeChest'),
+        t(locale, TARGETS.beast.step),
       ];
     case 'main': {
       const steps: string[] = [];
-      if (has('megaSatan')) steps.push("Pendant la run, faire exploser les statues des Angel Rooms pour battre Uriel et Gabriel (Key Piece 1 et 2).");
-      steps.push('Traverser Basement, Caves et Depths, puis battre Mom en Depths II.');
-      if (has('blueBaby')) steps.push('Après Mom, prendre The Polaroid (The Negative disparaît).');
-      if (has('lamb')) steps.push('Après Mom, prendre The Negative (The Polaroid disparaît).');
-      steps.push(...bossRush, TARGETS.momsHeart.step);
-      if (has('hush')) steps.push(TARGETS.hush.step);
+      if (has('megaSatan')) steps.push(t(locale, 'planner.step.mainAngelStatues'));
+      steps.push(t(locale, 'planner.step.momRun'));
+      if (has('blueBaby')) steps.push(t(locale, 'planner.step.mainTakePolaroid'));
+      if (has('lamb')) steps.push(t(locale, 'planner.step.mainTakeNegative'));
+      steps.push(...bossRush, t(locale, TARGETS.momsHeart.step));
+      if (has('hush')) steps.push(t(locale, TARGETS.hush.step));
       for (const ending of ['isaac', 'satan', 'blueBaby', 'lamb', 'megaSatan', 'delirium'] as const) {
-        if (has(ending)) steps.push(TARGETS[ending].step);
+        if (has(ending)) steps.push(t(locale, TARGETS[ending].step));
       }
       return steps;
     }

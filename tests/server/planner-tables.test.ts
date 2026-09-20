@@ -5,14 +5,15 @@ import { requirementGroups } from '../../server/planner/requirements.ts';
 import { TARGETS } from '../../server/planner/targets.ts';
 import { CHARACTERS } from '../../shared/characters.ts';
 import { ENDINGS } from '../../shared/endings.ts';
+import { t } from '../../shared/i18n/index.ts';
 import { testKnowledgeBase } from './helpers/kb.ts';
 
 describe('TARGETS', () => {
-  it('décrit les 13 fins avec des prérequis existants', async () => {
+  it('describes the 13 endings with existing requirements', async () => {
     const kb = await testKnowledgeBase();
     const names = new Map(kb.achievements.map((a) => [a.id, a.name]));
     expect(Object.keys(TARGETS).sort()).toEqual(ENDINGS.map((e) => e.id).sort());
-    const ids = new Set(Object.values(TARGETS).flatMap((t) => [...t.requires, ...t.requiresAny.flat()]));
+    const ids = new Set(Object.values(TARGETS).flatMap((target) => [...target.requires, ...target.requiresAny.flat()]));
     expect(Object.fromEntries([...ids].sort((a, b) => a - b).map((id) => [id, names.get(id)]))).toEqual({
       4: 'The Womb',
       34: 'It Lives!',
@@ -32,7 +33,7 @@ describe('TARGETS', () => {
 describe('ROUTE_OPTIONS', () => {
   const main = ROUTE_OPTIONS.filter((o) => o.kind === 'main');
 
-  it('liste les runs possibles', () => {
+  it('lists the possible runs', () => {
     expect(ROUTE_OPTIONS).toHaveLength(53);
     expect(main).toHaveLength(46);
     expect(ROUTE_OPTIONS.filter((o) => o.kind !== 'main').map((o) => o.endings)).toEqual([
@@ -46,12 +47,12 @@ describe('ROUTE_OPTIONS', () => {
     ]);
   });
 
-  it('respecte les combinaisons du wiki', () => {
+  it('follows the wiki combinations', () => {
     for (const option of main) {
       const e = option.endings;
       expect(new Set(e).size).toBe(e.length);
       expect(e).toContain('momsHeart');
-      // Cathedral et Sheol s'excluent.
+      // Cathedral and Sheol are mutually exclusive.
       expect(e.includes('isaac') && e.includes('satan')).toBe(false);
       if (e.includes('blueBaby')) expect(e.indexOf('isaac')).toBe(e.indexOf('blueBaby') - 1);
       if (e.includes('lamb')) expect(e.indexOf('satan')).toBe(e.indexOf('lamb') - 1);
@@ -65,7 +66,7 @@ describe('ROUTE_OPTIONS', () => {
     }
   });
 
-  it('estime la durée par fin ajoutée', () => {
+  it('estimates the duration per added ending', () => {
     const longest = main.find((o) => o.endings.join() === 'bossRush,momsHeart,hush,isaac,blueBaby,megaSatan,delirium');
     expect(longest?.minutes).toBe(
       MINUTES.main + MINUTES.bossRush + MINUTES.hush + MINUTES.cathedralOrSheol + MINUTES.chestOrDarkRoom + MINUTES.megaSatan + MINUTES.delirium,
@@ -75,10 +76,20 @@ describe('ROUTE_OPTIONS', () => {
 });
 
 describe('routeSteps', () => {
-  it('décrit une run Chest avec Mega Satan', () => {
+  it('describes a Chest run with Mega Satan', () => {
     const option = ROUTE_OPTIONS.find((o) => o.endings.join() === 'momsHeart,isaac,blueBaby,megaSatan');
-    if (!option) throw new Error('route absente');
-    expect(routeSteps(option)).toEqual([
+    if (!option) throw new Error('missing route');
+    expect(routeSteps(option, 'en')).toEqual([
+      'During the run, blow up the Angel Room statues to beat Uriel and Gabriel (Key Piece 1 and 2).',
+      'Go through Basement, Caves and Depths, then beat Mom in Depths II.',
+      'After Mom, take The Polaroid (The Negative disappears).',
+      "Go through Womb I and II and beat Mom's Heart (or It Lives).",
+      'Take the beam of light to Cathedral and beat Isaac.',
+      "Touch Isaac's chest while holding The Polaroid to enter Chest, then beat ???.",
+      'Without entering the chest, go back to the starting room, open the Golden Gate with Key Piece 1 and 2, then beat Mega Satan.',
+    ]);
+    // Same route, in the reader's language: proves routeSteps builds each sentence through the catalogues.
+    expect(routeSteps(option, 'fr')).toEqual([
       'Pendant la run, faire exploser les statues des Angel Rooms pour battre Uriel et Gabriel (Key Piece 1 et 2).',
       'Traverser Basement, Caves et Depths, puis battre Mom en Depths II.',
       'Après Mom, prendre The Polaroid (The Negative disparaît).',
@@ -89,34 +100,34 @@ describe('routeSteps', () => {
     ]);
   });
 
-  it('place le Boss Rush au bon moment des routes Mother et The Beast', () => {
-    const mother = routeSteps({ kind: 'mother', endings: ['bossRush', 'mother'], extraRequires: [], minutes: 63 });
+  it('places Boss Rush at the right point of the Mother and The Beast routes', () => {
+    const mother = routeSteps({ kind: 'mother', endings: ['bossRush', 'mother'], extraRequires: [], minutes: 63 }, 'en');
     expect(mother).toHaveLength(9);
-    expect(mother[5]).toBe('En Mausoleum II, battre Mom.');
-    expect(mother[6]).toBe(TARGETS.bossRush.step);
-    expect(mother.at(-1)).toBe(TARGETS.mother.step);
-    const beast = routeSteps({ kind: 'beast', endings: ['beast'], extraRequires: [], minutes: 60 });
-    expect(beast).not.toContain(TARGETS.bossRush.step);
-    expect(beast.at(-1)).toBe(TARGETS.beast.step);
-    expect(routeSteps({ kind: 'greedier', endings: ['ultraGreedier'], extraRequires: [], minutes: 45 })[0]).toBe(
-      'Lancer une partie en mode Greedier.',
+    expect(mother[5]).toBe('In Mausoleum II, beat Mom.');
+    expect(mother[6]).toBe(t('en', TARGETS.bossRush.step));
+    expect(mother.at(-1)).toBe(t('en', TARGETS.mother.step));
+    const beast = routeSteps({ kind: 'beast', endings: ['beast'], extraRequires: [], minutes: 60 }, 'en');
+    expect(beast).not.toContain(t('en', TARGETS.bossRush.step));
+    expect(beast.at(-1)).toBe(t('en', TARGETS.beast.step));
+    expect(routeSteps({ kind: 'greedier', endings: ['ultraGreedier'], extraRequires: [], minutes: 45 }, 'en')[0]).toBe(
+      'Start a run in Greedier mode.',
     );
   });
 });
 
 describe('CHARACTER_INFO', () => {
-  it('relie chaque personnage à son succès de déblocage', async () => {
+  it('links each character to its unlock achievement', async () => {
     const kb = await testKnowledgeBase();
     const characterUnlocks = kb.achievements.filter((a) => a.unlocks.kind === 'character').map((a) => a.id);
     const table = CHARACTERS.flatMap((c) => (CHARACTER_INFO[c.id].unlockedBy === null ? [] : [CHARACTER_INFO[c.id].unlockedBy]));
     expect(Object.keys(CHARACTER_INFO)).toEqual(CHARACTERS.map((c) => c.id));
     expect(table).toHaveLength(33);
-    // Seule divergence avec la base : #191 est un objet de départ de Keeper, pas son déblocage.
+    // Only divergence from the database: #191 is a Keeper starting item, not its unlock.
     expect(characterUnlocks.filter((id) => !table.includes(id))).toEqual([191]);
     expect(table.filter((id) => !characterUnlocks.includes(id as number))).toEqual([]);
   });
 
-  it('sait si un personnage est jouable', () => {
+  it('knows whether a character is playable', () => {
     expect(isCharacterUnlocked('isaac', new Set())).toBe(true);
     expect(isCharacterUnlocked('keeper', new Set([191]))).toBe(false);
     expect(isCharacterUnlocked('keeper', new Set([251]))).toBe(true);
@@ -125,14 +136,14 @@ describe('CHARACTER_INFO', () => {
 });
 
 describe('requirementGroups', () => {
-  it('réunit déblocage du personnage, fins et exigences de la route sans doublon', () => {
+  it('combines character unlock, endings and route requirements without duplicates', () => {
     expect(requirementGroups('taintedIsaac', ['isaac', 'blueBaby'])).toEqual([[474], [4], [34], [57]]);
     expect(requirementGroups(null, ['beast', 'bossRush'], [320])).toEqual([[635], [57, 78], [4], [320]]);
     expect(requirementGroups('isaac', [])).toEqual([]);
   });
 
-  it('retire un groupe déjà couvert par un succès exigé seul', () => {
-    // The Beast demande The Polaroid ou The Negative ; ??? exige déjà The Polaroid.
+  it('drops a group already covered by an achievement required alone', () => {
+    // The Beast requires The Polaroid or The Negative; ??? already requires The Polaroid.
     expect(requirementGroups(null, ['blueBaby', 'beast'])).toEqual([[57], [635]]);
     expect(requirementGroups(null, ['lamb', 'blueBaby', 'beast'])).toEqual([[78], [57], [635]]);
   });

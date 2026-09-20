@@ -142,7 +142,7 @@ export function createApp(deps: AppDeps): express.Express {
     const achievement = progress.achievements.find((a) => a.id === id);
     if (!achievement) throw new HttpError(404, t(deps.settings.locale, 'errors.achievementNotFound', { id }));
     const [entry] = enrichAchievements([achievement], kb);
-    const plan = kb ? cardPlan(kb, buildPlan({ kb, ...progress }), progress.achievements, id) : null;
+    const plan = kb ? cardPlan(kb, buildPlan({ kb, ...progress, locale: deps.settings.locale }), progress.achievements, id) : null;
     res.json({ achievement: entry, wiki: kb ? buildAchievementWiki(kb, id) : null, kb: status, plan } satisfies AchievementCard);
   });
 
@@ -153,7 +153,7 @@ export function createApp(deps: AppDeps): express.Express {
       deps.kb.get(),
       deps.kb.status(deps.settings.locale),
     ]);
-    res.json({ kb: status, plan: kb ? buildPlan({ kb, ...progress }) : null } satisfies RoutesResponse);
+    res.json({ kb: status, plan: kb ? buildPlan({ kb, ...progress, locale: deps.settings.locale }) : null } satisfies RoutesResponse);
   });
 
   api.get('/profile/resolve', async (req, res) => {
@@ -210,7 +210,8 @@ export function createApp(deps: AppDeps): express.Express {
       deps.progress.get(request.profile, request.slot, deps.settings.locale),
       deps.kb.get(),
     ]);
-    const plan = kb ? buildPlan({ kb, ...progress }) : null;
+    // English plan for the model: task 6 still writes the advisor prompt in English.
+    const plan = kb ? buildPlan({ kb, ...progress, locale: 'en' }) : null;
     const context = buildAdvisorContext({ question: request.question, progress, kb, plan });
     const messages: OllamaMessage[] = [
       { role: 'system', content: context.system },

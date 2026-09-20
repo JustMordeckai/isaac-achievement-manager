@@ -1,5 +1,6 @@
 import { CHARACTERS, type CharacterId } from '../../shared/characters.ts';
 import { ENDINGS, endingByName, type EndingId } from '../../shared/endings.ts';
+import { t, type Locale } from '../../shared/i18n/index.ts';
 import {
   type CharacterMarks,
   type CompletionMarks,
@@ -20,12 +21,13 @@ import { requirementGroups, toRequirements } from './requirements.ts';
 
 export interface PlanInput {
   kb: KnowledgeBase;
-  /** Liste fusionnée des succès (nom et état). */
+  /** Merged achievement list (name and state). */
   achievements: AchievementState[];
   save: SaveProgress | null;
+  locale: Locale;
 }
 
-/** Compteurs de victoires sur les fins, pour créditer « battre X n fois ». */
+/** Ending kill counters, to credit "beat X n times". */
 const KILL_COUNTERS = new Map<number, EndingId>([
   [1, 'momsHeart'],
   [11, 'isaac'],
@@ -33,30 +35,31 @@ const KILL_COUNTERS = new Map<number, EndingId>([
   [158, 'hush'],
 ]);
 
-/** Nombre maximal de runs proposées par personnage. */
+/** Maximum number of runs offered per character. */
 const MAX_RUNS = 12;
 
 interface Context {
   names: Map<number, string>;
-  /** Succès obtenus, plus ceux déjà promis par une run retenue. */
+  /** Achievements unlocked, plus those already promised by a chosen run. */
   claimed: Set<number>;
   unlocked: ReadonlySet<number>;
   counters: readonly number[] | null;
-  /** Compteur de la sauvegarde et fin comptée, pour chaque succès « battre X n fois » reconnu. */
+  /** Save counter and counted ending, for each recognized "beat X n times" achievement. */
   killCounters: Map<number, { index: number; ending: EndingId }>;
   byCharacter: Map<CharacterId, KbAchievement[]>;
   others: KbAchievement[];
+  locale: Locale;
 }
 
-/** Situation dans laquelle on évalue une run. */
+/** Situation in which a run is evaluated. */
 interface State {
-  /** Marques du personnage. */
+  /** Character's marks. */
   marks: CharacterMarks;
-  /** Fins déjà battues par au moins un personnage. */
+  /** Endings already beaten by at least one character. */
   beaten: ReadonlySet<EndingId>;
 }
 
-/** Marque à élever jusqu'à un niveau pour un succès encore visé. */
+/** Mark to raise to a level for an achievement still targeted. */
 interface Pair {
   mark: MarkId;
   level: MarkLevel;
@@ -77,7 +80,7 @@ function required(ending: EndingId, hard: boolean): Pair {
   return { mark, level: hard ? 2 : level };
 }
 
-/** Succès « toutes les marques en difficile » du personnage, s'il en a un. */
+/** Character's "all marks on hard" achievement, if it has one. */
 function hardAllOf(byCharacter: Map<CharacterId, KbAchievement[]>, character: CharacterId): KbAchievement | undefined {
   return (byCharacter.get(character) ?? []).find((a) => a.how.kind === 'hard-all');
 }
@@ -102,7 +105,7 @@ function gainsFor(ctx: Context, character: CharacterId, state: State, option: Ro
     else if (how.kind === 'multi-mark') {
       gained = how.endings.every((e) => has(e, how.hard)) && how.endings.some((e) => reaches(e, how.hard));
     } else if (how.kind === 'hard-all') {
-      // Attribué à la run qui complète la note : toutes les marques en difficile après elle, pas avant.
+      // Credited to the run that completes the card: every mark on hard after it, not before.
       gained =
         MARK_IDS.every((mark) => Math.max(marks[mark], provided.get(mark) ?? 0) === 2) &&
         MARK_IDS.some((mark) => marks[mark] < 2);
@@ -141,7 +144,7 @@ function requirementKey(requirement: Requirement): string {
   return requirement.anyOf.map((a) => a.id).join('|');
 }
 
-/** Ajoute à une liste de prérequis ceux qui n'y figurent pas encore. */
+/** Adds to a requirement list the ones not already in it. */
 function mergeRequirements(list: Requirement[], extra: Requirement[]): Requirement[] {
   const seen = new Set(list.map(requirementKey));
   const merged = [...list];
@@ -155,8 +158,8 @@ function mergeRequirements(list: Requirement[], extra: Requirement[]): Requireme
 }
 
 /**
- * Prérequis manquants d'une run. Si un de ses gains n'existe que grâce aux runs déjà retenues (il
- * n'apparaît pas face à l'état réel), elle hérite des prérequis manquants des runs bloquées du personnage.
+ * Missing requirements of a run. If one of its gains only exists thanks to runs already chosen (it
+ * does not appear against the real state), it inherits the missing requirements of the character's blocked runs.
  */
 function missingFor(
   ctx: Context,
@@ -171,6 +174,7 @@ function missingFor(
     requirementGroups(character, option.endings, option.extraRequires),
     ctx.names,
     ctx.unlocked,
+    ctx.locale,
   ).filter((r) => !r.met);
   if (blocked.length === 0 || gains.length === 0) return missing;
   const realGains = new Set(gainsFor(ctx, character, real, option, mode));
@@ -192,9 +196,9 @@ interface Candidate {
   option: RouteOption;
   mode: RunMode;
   gains: number[];
-  /** Succès visés dont la run élève au moins une marque (run de préparation). */
+  /** Targeted achievements this run raises at least one mark toward (preparation run). */
   prepares: number[];
-  /** Nombre de marques distinctes élevées vers un succès visé (run de préparation). */
+  /** Number of distinct marks raised toward a targeted achievement (preparation run). */
   raised: number;
   missing: Requirement[];
 }
@@ -203,7 +207,7 @@ function better(a: Candidate, b: Candidate, value: (c: Candidate) => number): bo
   const playableA = a.missing.length === 0;
   const playableB = b.missing.length === 0;
   if (playableA !== playableB) return playableA;
-  // Le plus de succès par run (spec §7.4), ou de marques élevées, puis la run la plus courte.
+  // Most achievements per run (spec section 7.4), or marks raised, then the shortest run.
   if (value(a) !== value(b)) return value(a) > value(b);
   return a.option.minutes < b.option.minutes;
 }
@@ -211,16 +215,16 @@ function better(a: Candidate, b: Candidate, value: (c: Candidate) => number): bo
 interface Search {
   ctx: Context;
   character: CharacterId;
-  /** Marques du personnage après les runs déjà retenues, et fins battues par les runs jouables. */
+  /** Character's marks after the runs already chosen, and endings beaten by the playable runs. */
   state: State;
-  /** État réel, avant toute run planifiée. */
+  /** Real state, before any planned run. */
   real: State;
   hard: boolean;
-  /** Prérequis manquants des runs bloquées déjà retenues pour ce personnage. */
+  /** Missing requirements of the character's already chosen blocked runs. */
   blocked: Requirement[];
 }
 
-/** Run qui rapporte le plus de succès tout de suite. */
+/** Run that immediately yields the most achievements. */
 function bestRun({ ctx, character, state, real, hard, blocked }: Search): Candidate | null {
   let best: Candidate | null = null;
   for (const option of ROUTE_OPTIONS) {
@@ -234,7 +238,7 @@ function bestRun({ ctx, character, state, real, hard, blocked }: Search): Candid
   return best;
 }
 
-/** Marques encore à élever pour chaque succès `hard-all` ou `multi-mark` visé par le personnage. */
+/** Marks still to raise for each `hard-all` or `multi-mark` achievement the character targets. */
 function pendingTargets(ctx: Context, character: CharacterId, marks: CharacterMarks) {
   const targets: Array<{ id: number; pairs: Pair[] }> = [];
   for (const achievement of ctx.byCharacter.get(character) ?? []) {
@@ -252,9 +256,9 @@ function pendingTargets(ctx: Context, character: CharacterId, marks: CharacterMa
 }
 
 /**
- * Run de préparation, quand aucune run ne rapporte de succès : celle qui élève le plus de marques
- * encore exigées par un succès visé (note complète en plusieurs runs, fins d'un `multi-mark` qui ne
- * tiennent pas dans une seule run).
+ * Preparation run, when no run yields an achievement: the one that raises the most marks still
+ * required by a targeted achievement (card completed over several runs, endings of a `multi-mark`
+ * that do not fit in a single run).
  */
 function bestPreparation({ ctx, character, state, real, hard, blocked }: Search): Candidate | null {
   const targets = pendingTargets(ctx, character, state.marks);
@@ -279,7 +283,7 @@ function bestPreparation({ ctx, character, state, real, hard, blocked }: Search)
   return best;
 }
 
-/** Fins dont la marque est déjà obtenue par au moins un personnage. */
+/** Endings whose mark is already earned by at least one character. */
 function beatenEndings(marks: CompletionMarks): Set<EndingId> {
   const beaten = new Set<EndingId>();
   for (const ending of ENDINGS) {
@@ -293,8 +297,8 @@ function round(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-/** Runs à faire pour chaque personnage, triées : jouables d'abord, puis par score. */
-export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
+/** Runs to do for each character, sorted: playable first, then by score. */
+export function buildPlan({ kb, achievements, save, locale }: PlanInput): RoutePlan {
   const unlocked = new Set(achievements.filter((a) => a.unlocked).map((a) => a.id));
   const names = new Map(achievements.map((a) => [a.id, a.name]));
   const byCharacter = new Map<CharacterId, KbAchievement[]>();
@@ -323,10 +327,11 @@ export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
     killCounters,
     byCharacter,
     others,
+    locale,
   };
   const current = save?.marks ?? inferMarks(kb, unlocked);
   const realBeaten = beatenEndings(current);
-  // Fins battues en vrai, plus celles des runs jouables déjà retenues.
+  // Endings truly beaten, plus those of the playable runs already chosen.
   const beaten = new Set(realBeaten);
   const shown = displayMarks(kb, current, save?.marks != null);
 
@@ -353,20 +358,21 @@ export function buildPlan({ kb, achievements, save }: PlanInput): RoutePlan {
         search.blocked = mergeRequirements(search.blocked, best.missing);
       }
       applyRun(marks, best.option.endings, best.mode);
-      const named = (id: number) => ({ id, name: names.get(id) ?? `#${id}` });
+      const named = (id: number) => ({ id, name: names.get(id) ?? t(locale, 'planner.unnamedAchievement', { id }) });
+      const noteKey = CHARACTER_INFO[character].note;
       runs.push({
         id: `${character}-${n}`,
         character,
         mode: best.mode,
         endings: best.option.endings,
-        steps: routeSteps(best.option),
+        steps: routeSteps(best.option, locale),
         achievements: best.gains.map(named),
         prepares: best.prepares.map(named),
         minutes: best.option.minutes,
-        // Succès par heure de jeu, pondérés par la facilité du personnage (0 pour une run de préparation).
+        // Achievements per hour of play, weighted by the character's ease (0 for a preparation run).
         score: round((best.gains.length * coefficient * 60) / best.option.minutes),
         missing: best.missing,
-        note: CHARACTER_INFO[character].note,
+        note: noteKey ? t(locale, noteKey) : null,
       });
     }
   }

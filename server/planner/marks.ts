@@ -16,8 +16,8 @@ function raise(marks: CharacterMarks, mark: MarkId, level: MarkLevel): void {
 }
 
 /**
- * Marques déduites des succès obtenus, pour un profil sans sauvegarde : un succès de marque obtenu
- * prouve la marque (difficile s'il l'exige), « toutes les marques en difficile » les prouve toutes.
+ * Marks inferred from unlocked achievements, for a profile with no save: an unlocked mark
+ * achievement proves the mark (on hard if it requires it), "all marks on hard" proves them all.
  */
 export function inferMarks(kb: KnowledgeBase, unlocked: ReadonlySet<number>): CompletionMarks {
   const marks = Object.fromEntries(CHARACTERS.map((c) => [c.id, emptyMarks()])) as CompletionMarks;
@@ -38,10 +38,10 @@ export function inferMarks(kb: KnowledgeBase, unlocked: ReadonlySet<number>): Co
 }
 
 /**
- * Marques à afficher. Avec la sauvegarde, elles sont exactes. Déduites, une marque absente reste
- * inconnue (null) sauf si un succès `mark` en mode normal l'aurait prouvée (ex. Mom's Heart des
- * personnages de base, qui n'a de succès qu'en difficile, reste inconnue). Un succès à plusieurs
- * marques ou de Greedier manquant ne dit rien d'une marque normale seule.
+ * Marks to display. With a save, they are exact. Inferred, an absent mark stays unknown (null)
+ * unless a normal-mode `mark` achievement would have proven it (e.g. Mom's Heart of the base
+ * characters, which only has a hard achievement, stays unknown). A missing multi-mark or
+ * Greedier achievement says nothing about a single normal mark.
  */
 export function displayMarks(
   kb: KnowledgeBase,

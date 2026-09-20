@@ -32,6 +32,13 @@ const CLEAN = [
   'server/wiki/client.ts',
   'server/wiki/sync.ts',
   'server/wiki/setup.ts',
+  'server/planner/plan.ts',
+  'server/planner/combos.ts',
+  'server/planner/targets.ts',
+  'server/planner/characters.ts',
+  'server/planner/marks.ts',
+  'server/planner/requirements.ts',
+  'server/planner/card-plan.ts',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

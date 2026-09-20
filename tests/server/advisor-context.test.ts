@@ -17,7 +17,9 @@ const progress = mergeProgress(fixtureMergeInput());
 
 async function context(question: string, input: Partial<Parameters<typeof buildAdvisorContext>[0]> = {}) {
   const kb = await testKnowledgeBase();
-  return buildAdvisorContext({ question, progress, kb, plan: buildPlan({ kb, ...progress }), ...input });
+  // The advisor prompt itself is still French until task 6: keep the plan French too, so this
+  // file's existing French assertions on the plan's run text stay valid.
+  return buildAdvisorContext({ question, progress, kb, plan: buildPlan({ kb, ...progress, locale: 'fr' }), ...input });
 }
 
 const ids = (sources: Array<{ id: number }>) => sources.map((s) => s.id);
@@ -65,7 +67,7 @@ describe('buildAdvisorContext : résumé', () => {
   it('signale des marques déduites et inconnues sans sauvegarde', async () => {
     const kb = await testKnowledgeBase();
     const remote = { ...progress, save: null, summary: { ...progress.summary, save: null } };
-    const { system } = buildAdvisorContext({ question: 'Isaac', progress: remote, kb, plan: buildPlan({ kb, ...remote }) });
+    const { system } = buildAdvisorContext({ question: 'Isaac', progress: remote, kb, plan: buildPlan({ kb, ...remote, locale: 'fr' }) });
     const lines = system.split('\n');
     expect(lines).toContain('Profil : Player, sans sauvegarde (succès Steam seulement).');
     expect(system).toContain('Marques de complétion (déduites des succès, certaines inconnues ;');
