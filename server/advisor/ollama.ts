@@ -1,20 +1,24 @@
+import { t, type Locale } from '../../shared/i18n/index.ts';
 import { ndjsonLines } from '../../shared/ndjson.ts';
 import type { ChatMessage } from '../../shared/types.ts';
 
 /**
- * Contexte demandé à chaque appel : sans lui, Ollama le règle selon la VRAM libre (parfois 16k).
- * 32k suffit largement (consigne 12 000 jetons au plus, historique 12 000, réponse 1 500) et tient dans la
- * VRAM du serveur : mesuré le 2026-09-17 sur la même question, premier jeton en 26 s à 32k, rien en 240 s à 64k.
+ * Context asked for on every call: without it, Ollama sizes it from the free VRAM (sometimes 16k).
+ * 32k is plenty (prompt 12,000 tokens at most, history 12,000, answer 1,500) and fits in the server's
+ * VRAM: measured on 2026-09-17 on the same question, first token in 26 s at 32k, nothing in 240 s at 64k.
  */
 export const NUM_CTX = 32768;
-/** Longueur maximale d'une réponse, en jetons : un petit modèle peut boucler sans fin (environ 80 s à 18 jetons par seconde). */
+/** Longest answer, in tokens: a small model can loop forever (about 80 s at 18 tokens per second). */
 export const NUM_PREDICT = 1500;
-/** Ajouté à une réponse coupée par la limite de longueur. */
-export const TRUNCATED_NOTICE = '(Réponse coupée : limite de longueur atteinte.)';
-/** Attente maximale sans nouvelle donnée pendant une réponse, chargement du modèle compris. */
+/** Longest wait with no new data during an answer, model loading included. */
 export const IDLE_TIMEOUT_MS = 120_000;
-/** Attente maximale de la liste des modèles. */
+/** Longest wait for the list of models. */
 export const STATUS_TIMEOUT_MS = 3000;
+
+/** Added to an answer the length limit cut short. */
+export function truncatedNotice(locale: Locale): string {
+  return t(locale, 'advisor.truncated');
+}
 
 export type OllamaErrorKind = 'unreachable' | 'model' | 'upstream' | 'timeout';
 
@@ -37,15 +41,17 @@ function endpoint(url: string, path: string): string {
   return new URL(path, url.endsWith('/') ? url : `${url}/`).toString();
 }
 
-function unreachable(url: string, error: unknown, timeoutMs: number = STATUS_TIMEOUT_MS): OllamaError {
+function unreachable(url: string, error: unknown, locale: Locale, timeoutMs: number = STATUS_TIMEOUT_MS): OllamaError {
   if (error instanceof Error && error.name === 'TimeoutError') {
-    return new OllamaError('unreachable', `Ollama injoignable sur ${url} (pas de réponse en ${timeoutMs / 1000} s)`);
+    return new OllamaError('unreachable', t(locale, 'advisor.unreachableTimeout', { url, seconds: timeoutMs / 1000 }));
   }
   const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
-  return new OllamaError('unreachable', `Ollama injoignable sur ${url}${typeof code === 'string' ? ` (${code})` : ''}`);
+  const message =
+    typeof code === 'string' ? t(locale, 'advisor.unreachableCode', { url, code }) : t(locale, 'advisor.unreachable', { url });
+  return new OllamaError('unreachable', message);
 }
 
-/** Corps JSON, ou null si ce n'est pas du JSON. Une lecture coupée ou trop longue remonte telle quelle. */
+/** JSON body, or null when it is not JSON. A truncated or oversized read is passed on as it is. */
 async function jsonBody(res: Response): Promise<unknown> {
   try {
     return await res.json();
@@ -61,30 +67,32 @@ async function errorText(res: Response): Promise<string> {
   return typeof error === 'string' ? error : `HTTP ${res.status}`;
 }
 
-/** Nom complet d'un modèle : Ollama ajoute « :latest » quand l'étiquette manque. */
+/** Full name of a model: Ollama appends ":latest" when the tag is missing. */
 export function fullModelName(model: string): string {
   return model.includes(':') ? model : `${model}:latest`;
 }
 
-export function modelMissingMessage(model: string): string {
-  return `Modèle ${model} absent du serveur Ollama : lance « ollama pull ${model} » sur ce serveur`;
+export function modelMissingMessage(locale: Locale, model: string): string {
+  return t(locale, 'advisor.modelMissing', { model });
 }
 
-/** Modèles installés sur le serveur (GET /api/tags), triés par nom. `timeoutMs` sert surtout aux tests. */
-export async function listModels(url: string, timeoutMs: number = STATUS_TIMEOUT_MS): Promise<string[]> {
+/** Models installed on the server (GET /api/tags), sorted by name. `timeoutMs` is mostly there for the tests. */
+export async function listModels(url: string, locale: Locale, timeoutMs: number = STATUS_TIMEOUT_MS): Promise<string[]> {
   let body: unknown;
   try {
     const res = await fetch(endpoint(url, 'api/tags'), { signal: AbortSignal.timeout(timeoutMs) });
-    // Une réponse qui traîne (en-têtes reçus, corps jamais fini) doit rester « injoignable », pas « upstream ».
-    if (!res.ok) throw new OllamaError('upstream', `Ollama a répondu ${res.status} : ${await errorText(res)}`);
+    // An answer that drags on (headers received, body never finished) must stay "unreachable", not "upstream".
+    if (!res.ok) {
+      throw new OllamaError('upstream', t(locale, 'advisor.upstreamStatus', { status: res.status, message: await errorText(res) }));
+    }
     body = await jsonBody(res);
   } catch (error) {
     if (error instanceof OllamaError) throw error;
-    throw unreachable(url, error, timeoutMs);
+    throw unreachable(url, error, locale, timeoutMs);
   }
   const models = typeof body === 'object' && body !== null ? (body as { models?: unknown }).models : undefined;
   if (!Array.isArray(models)) {
-    throw new OllamaError('upstream', `Réponse inattendue de ${url} : est-ce bien un serveur Ollama ?`);
+    throw new OllamaError('upstream', t(locale, 'advisor.notOllama', { url }));
   }
   return models
     .map((entry) => (typeof entry === 'object' && entry !== null ? (entry as { name?: unknown }).name : undefined))
@@ -96,23 +104,26 @@ export interface ChatOptions {
   url: string;
   model: string;
   messages: OllamaMessage[];
-  /** Abandon demandé par l'appelant (navigateur déconnecté, bouton Arrêter). */
+  /** Abort asked for by the caller (browser gone, Stop button). */
   signal: AbortSignal;
+  /** Locale of the messages this call can fail with. */
+  locale: Locale;
   idleTimeoutMs?: number;
 }
 
 /**
- * Ouvre une réponse en streaming (POST /api/chat). La promesse échoue avant tout texte si Ollama est
- * injoignable ou si le modèle manque ; le générateur renvoie ensuite les morceaux de la réponse.
- * Après un abandon par `signal`, l'erreur d'abandon remonte telle quelle.
- * Le minuteur d'inactivité est armé avant l'appel et n'est libéré que par le `finally` du générateur :
- * tout appelant doit donc parcourir le générateur jusqu'à sa fin ou l'abandonner.
+ * Opens a streaming answer (POST /api/chat). The promise fails before any text when Ollama is
+ * unreachable or the model is missing; the generator then yields the chunks of the answer.
+ * After an abort through `signal`, the abort error is passed on as it is.
+ * The idle timer is armed before the call and only released by the generator's `finally`:
+ * every caller must therefore walk the generator to its end or abort it.
  */
 export async function openChat({
   url,
   model,
   messages,
   signal,
+  locale,
   idleTimeoutMs = IDLE_TIMEOUT_MS,
 }: ChatOptions): Promise<AsyncGenerator<string>> {
   const idle = new AbortController();
@@ -125,10 +136,7 @@ export async function openChat({
     clearTimeout(timer);
     if (idle.signal.aborted && !signal.aborted) {
       const seconds = Math.ceil(idleTimeoutMs / 1000);
-      throw new OllamaError(
-        'timeout',
-        `Ollama ne répond plus (rien reçu depuis ${seconds} s) : le serveur est peut-être occupé par une autre demande`,
-      );
+      throw new OllamaError('timeout', t(locale, 'advisor.idle', { seconds }));
     }
     throw error;
   };
@@ -149,10 +157,10 @@ export async function openChat({
       signal: AbortSignal.any([signal, idle.signal]),
     });
   } catch (error) {
-    return fail(signal.aborted ? error : unreachable(url, error));
+    return fail(signal.aborted ? error : unreachable(url, error, locale));
   }
   if (!res.ok || !res.body) {
-    // Le minuteur reste armé : un serveur qui ne finit jamais son corps d'erreur doit échouer en « timeout ».
+    // The timer stays armed: a server that never finishes its error body must fail as "timeout".
     let message: string;
     try {
       message = await errorText(res);
@@ -160,8 +168,8 @@ export async function openChat({
       return fail(error);
     }
     clearTimeout(timer);
-    if (res.status === 404 && /not found/i.test(message)) throw new OllamaError('model', modelMissingMessage(model));
-    throw new OllamaError('upstream', `Ollama a répondu ${res.status} : ${message}`);
+    if (res.status === 404 && /not found/i.test(message)) throw new OllamaError('model', modelMissingMessage(locale, model));
+    throw new OllamaError('upstream', t(locale, 'advisor.upstreamStatus', { status: res.status, message }));
   }
 
   const body = res.body;
@@ -173,20 +181,20 @@ export async function openChat({
         try {
           parsed = JSON.parse(line);
         } catch {
-          throw new OllamaError('upstream', "Réponse d'Ollama illisible");
+          throw new OllamaError('upstream', t(locale, 'advisor.unreadable'));
         }
-        // Une ligne valide en JSON mais qui n'est pas un objet (`null`, un nombre...) est illisible aussi.
-        if (typeof parsed !== 'object' || parsed === null) throw new OllamaError('upstream', "Réponse d'Ollama illisible");
+        // A line that is valid JSON but not an object (`null`, a number...) is unreadable too.
+        if (typeof parsed !== 'object' || parsed === null) throw new OllamaError('upstream', t(locale, 'advisor.unreadable'));
         const data = parsed as { message?: { content?: unknown }; done?: unknown; done_reason?: unknown; error?: unknown };
-        if (typeof data.error === 'string') throw new OllamaError('upstream', `Erreur d'Ollama : ${data.error}`);
+        if (typeof data.error === 'string') throw new OllamaError('upstream', t(locale, 'advisor.upstreamError', { error: data.error }));
         const text = data.message?.content;
         if (typeof text === 'string' && text !== '') yield text;
         if (data.done === true) {
-          if (data.done_reason === 'length') yield `\n\n${TRUNCATED_NOTICE}`;
+          if (data.done_reason === 'length') yield `\n\n${truncatedNotice(locale)}`;
           return;
         }
       }
-      throw new OllamaError('upstream', "Réponse d'Ollama interrompue avant la fin");
+      throw new OllamaError('upstream', t(locale, 'advisor.interrupted'));
     } catch (error) {
       return fail(error);
     } finally {

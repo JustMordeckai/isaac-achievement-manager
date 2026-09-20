@@ -40,6 +40,9 @@ const CLEAN = [
   'server/planner/requirements.ts',
   'server/planner/card-plan.ts',
   'server/advisor/context.ts',
+  'server/advisor/ollama.ts',
+  'server/advisor/request.ts',
+  'server/advisor/service.ts',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

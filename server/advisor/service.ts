@@ -1,17 +1,18 @@
+import type { Locale } from '../../shared/i18n/index.ts';
 import type { AdvisorStatus, OllamaSettings } from '../../shared/types.ts';
 import { fullModelName, listModels, modelMissingMessage, OllamaError, type OllamaMessage, openChat } from './ollama.ts';
 
 export interface AdvisorService {
-  /** Interroge le serveur Ollama à chaque appel (pas de cache). */
-  status(): Promise<AdvisorStatus>;
-  /** Enregistre de nouveaux réglages, les applique sans redémarrage et renvoie l'état obtenu. */
-  configure(settings: OllamaSettings): Promise<AdvisorStatus>;
-  chat(messages: OllamaMessage[], signal: AbortSignal): Promise<AsyncGenerator<string>>;
+  /** Asks the Ollama server on every call (no cache). */
+  status(locale: Locale): Promise<AdvisorStatus>;
+  /** Saves new settings, applies them without a restart and returns the state they produce. */
+  configure(settings: OllamaSettings, locale: Locale): Promise<AdvisorStatus>;
+  chat(messages: OllamaMessage[], signal: AbortSignal, locale: Locale): Promise<AsyncGenerator<string>>;
 }
 
 export interface AdvisorServiceOptions {
   settings: OllamaSettings;
-  /** Écrit les réglages dans data/settings.json. */
+  /** Writes the settings to data/settings.json. */
   save(settings: OllamaSettings): Promise<void>;
   idleTimeoutMs?: number;
 }
@@ -19,12 +20,12 @@ export interface AdvisorServiceOptions {
 export function createAdvisorService({ settings, save, idleTimeoutMs }: AdvisorServiceOptions): AdvisorService {
   let current: OllamaSettings = { ...settings };
 
-  async function status(): Promise<AdvisorStatus> {
+  async function status(locale: Locale): Promise<AdvisorStatus> {
     const { url, model } = current;
     try {
-      const models = await listModels(url);
+      const models = await listModels(url, locale);
       if (models.some((name) => fullModelName(name) === fullModelName(model))) return { state: 'ok', url, model, models };
-      return { state: 'error', url, model, models, message: modelMissingMessage(model) };
+      return { state: 'error', url, model, models, message: modelMissingMessage(locale, model) };
     } catch (error) {
       const state = error instanceof OllamaError && error.kind === 'unreachable' ? 'absent' : 'error';
       return { state, url, model, models: [], message: error instanceof Error ? error.message : String(error) };
@@ -33,13 +34,13 @@ export function createAdvisorService({ settings, save, idleTimeoutMs }: AdvisorS
 
   return {
     status,
-    async configure(next) {
+    async configure(next, locale) {
       await save(next);
       current = { ...next };
-      return status();
+      return status(locale);
     },
-    chat(messages, signal) {
-      return openChat({ ...current, messages, signal, idleTimeoutMs });
+    chat(messages, signal, locale) {
+      return openChat({ ...current, messages, signal, locale, idleTimeoutMs });
     },
   };
 }

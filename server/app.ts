@@ -192,11 +192,11 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   api.get('/advisor/status', async (_req, res) => {
-    res.json(await deps.advisor.status());
+    res.json(await deps.advisor.status(deps.settings.locale));
   });
 
   api.post('/advisor/settings', requireAction('advisor-settings', deps.settings), jsonBody(deps.settings), async (req, res) => {
-    res.json(await deps.advisor.configure(parseOllamaSettings(req.body)));
+    res.json(await deps.advisor.configure(parseOllamaSettings(req.body, deps.settings.locale), deps.settings.locale));
   });
 
   api.post('/advisor', requireAction('advisor', deps.settings), jsonBody(deps.settings), async (req, res) => {
@@ -205,7 +205,7 @@ export function createApp(deps: AppDeps): express.Express {
     res.on('close', () => {
       if (!res.writableFinished) controller.abort();
     });
-    const request = parseAdvisorRequest(req.body);
+    const request = parseAdvisorRequest(req.body, deps.settings.locale);
     const [progress, kb] = await Promise.all([
       deps.progress.get(request.profile, request.slot, deps.settings.locale),
       deps.kb.get(),
@@ -220,7 +220,7 @@ export function createApp(deps: AppDeps): express.Express {
     ];
     let reply: AsyncGenerator<string>;
     try {
-      reply = await deps.advisor.chat(messages, controller.signal);
+      reply = await deps.advisor.chat(messages, controller.signal, deps.settings.locale);
     } catch (error) {
       if (controller.signal.aborted) return;
       // Before any text, a real HTTP status: 503 server unreachable, 504 no response, 502 otherwise (missing model...).

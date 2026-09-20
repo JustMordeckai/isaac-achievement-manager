@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { t } from '../../shared/i18n/index.ts';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
 import { type AdvisorService, createAdvisorService } from '../../server/advisor/service.ts';
 import { createApp, type AppDeps } from '../../server/app.ts';
@@ -514,7 +515,7 @@ describe('API advisor', () => {
     expect(configure).not.toHaveBeenCalled();
     const saved = await post({ url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' });
     expect(await saved.json()).toEqual(ADVISOR_OK);
-    expect(configure).toHaveBeenCalledWith({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' });
+    expect(configure).toHaveBeenCalledWith({ url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' }, 'en');
   });
 
   it('refuses a question with no header, unreadable, invalid or too large', async () => {
@@ -527,13 +528,20 @@ describe('API advisor', () => {
     expect(await unreadable.json()).toEqual({ error: 'Unreadable JSON body' });
     const empty = await ask(base, { ...QUESTION, question: ' ' });
     expect(empty.status).toBe(400);
-    expect(await empty.json()).toEqual({ error: 'Question vide' });
+    expect(await empty.json()).toEqual({ error: 'Empty question' });
     const hugeBody = { ...QUESTION, history: [{ role: 'user', content: 'x'.repeat(300_000) }] };
     const huge = await ask(base, hugeBody);
     expect(huge.status).toBe(413);
     expect(await huge.json()).toEqual({ error: 'Request body too large' });
     // The header is checked before the body is read.
     expect((await ask(base, hugeBody, {})).status).toBe(403);
+  });
+
+  it('refuses a question in the language of the settings', async () => {
+    const frBase = await start({ settings: { ...SETTINGS, locale: 'fr' } });
+    const empty = await ask(frBase, { ...QUESTION, question: ' ' });
+    expect(empty.status).toBe(400);
+    expect(await empty.json()).toEqual({ error: t('fr', 'advisor.questionEmpty') });
   });
 
   it('streams the consulted cards then Ollama\'s reply', async () => {
@@ -572,7 +580,7 @@ describe('API advisor', () => {
     const base = await start({ advisor: createAdvisorService({ settings: { url, model: 'qwen3.5:9b' }, save: vi.fn() }) });
     const res = await ask(base, QUESTION);
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: `Ollama injoignable sur ${url} (ECONNREFUSED)` });
+    expect(await res.json()).toEqual({ error: `Ollama unreachable at ${url} (ECONNREFUSED)` });
   });
 
   it('answers 502 when the model is missing', async () => {
@@ -580,7 +588,7 @@ describe('API advisor', () => {
     const res = await ask(base, QUESTION);
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({
-      error: 'Modèle mistral:7b absent du serveur Ollama : lance « ollama pull mistral:7b » sur ce serveur',
+      error: 'Model mistral:7b is not on the Ollama server: run "ollama pull mistral:7b" there',
     });
   });
 
@@ -594,7 +602,7 @@ describe('API advisor', () => {
     const base = await start({ advisor, kb: fakeKb(await testKnowledgeBase()) });
     const res = await ask(base, QUESTION);
     expect(res.status).toBe(504);
-    expect((await res.json()).error).toMatch(/^Ollama ne répond plus \(rien reçu depuis 1 s\)/);
+    expect((await res.json()).error).toMatch(/^Ollama has gone quiet \(nothing received for 1 s\)/);
   });
 
   it('ends the stream with the error sent by Ollama mid-flight', async () => {
@@ -607,7 +615,7 @@ describe('API advisor', () => {
     const base = await startWithOllama();
     expect((await lines(await ask(base, QUESTION))).slice(1)).toEqual([
       { kind: 'delta', text: 'Début' },
-      { kind: 'error', message: "Erreur d'Ollama : out of memory" },
+      { kind: 'error', message: 'Ollama error: out of memory' },
     ]);
   });
 
