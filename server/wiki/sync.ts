@@ -64,7 +64,9 @@ export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase>
   const rows = parseAchievementsPage(achievementsText, unknown);
   if (rows.length === 0) throw new Error(t(locale, 'wiki.achievementsPageEmpty'));
   const refs = parseChallengeNav(contentOf(CORE_PAGES.challenges) ?? '');
-  emit({ step: 'core', done: 1, total: 1, message: t(locale, 'wiki.coreFound', { achievements: rows.length, challenges: refs.length }) });
+  const achievementsFound = plural(locale, 'wiki.achievementsFound', rows.length);
+  const challengesFound = plural(locale, 'wiki.challengesFound', refs.length);
+  emit({ step: 'core', done: 1, total: 1, message: t(locale, 'wiki.coreFound', { achievements: achievementsFound, challenges: challengesFound }) });
 
   const titles = [...new Set([...refs.map((r) => r.title), ...rows.map((r) => r.link), ...EXTRA_PAGES])];
   emit({
@@ -169,7 +171,7 @@ export async function buildKnowledgeBase(deps: SyncDeps): Promise<KnowledgeBase>
     otherUnlockCount: achievements.filter((a) => a.inWiki && a.unlocks.kind === 'other').length,
     cachedPages: core.fromCache.length + fetched.fromCache.length,
   };
-  emit({ step: 'build', done: 1, total: 1, message: t(locale, 'wiki.pagesAnalyzed', { count: report.pages }) });
+  emit({ step: 'build', done: 1, total: 1, message: plural(locale, 'wiki.pagesAnalyzed', report.pages) });
 
   return {
     version: KB_VERSION,

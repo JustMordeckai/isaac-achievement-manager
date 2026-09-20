@@ -1,5 +1,5 @@
 import { DLC_ORDER, dlcForId } from '../../shared/dlc.ts';
-import { DEFAULT_LOCALE, t, type Locale } from '../../shared/i18n/index.ts';
+import { DEFAULT_LOCALE, plural, type Locale } from '../../shared/i18n/index.ts';
 import type { CompletionMarks } from '../../shared/marks.ts';
 import type {
   AchievementDef,
@@ -92,7 +92,7 @@ export function mergeProgress(input: MergeInput, locale: Locale = DEFAULT_LOCALE
       }
       if (ahead > 0) {
         steamCacheStatus.state = 'stale';
-        steamCacheStatus.message = t(locale, 'sources.profileAhead', { ahead });
+        steamCacheStatus.message = plural(locale, 'sources.profileAhead', ahead);
       }
     }
   } else {

@@ -48,7 +48,7 @@ describe('mergeProgress', () => {
     const { summary, achievements } = mergeProgress(input, 'en');
     expect(summary.sources.steamCache).toEqual({
       state: 'stale',
-      message: 'The online profile holds 1 achievements the local cache does not.',
+      message: 'The online profile holds 1 achievement the local cache does not.',
     });
     expect(summary.unlocked).toBe(125);
     expect(summary.desyncs).toContainEqual({ id: 343, name: 'Flooded Caves', kind: 'profileAhead' });
@@ -58,6 +58,29 @@ describe('mergeProgress', () => {
     expect(fr.summary.sources.steamCache).toEqual({
       state: 'stale',
       message: 'Le profil en ligne compte 1 succès de plus que le cache local',
+    });
+  });
+
+  it('pluralizes the note for more than one achievement ahead, in both languages', () => {
+    const base = fixtureMergeInput();
+    const cache = new Map(base.steamCache.data);
+    const ahead = onlineStats(base)
+      .achievements.filter((a) => a.unlocked && cache.has(a.id))
+      .slice(0, 2);
+    expect(ahead).toHaveLength(2);
+    for (const a of ahead) cache.delete(a.id);
+    const input = { ...base, steamCache: { status: { state: 'ok' as const }, data: cache } };
+
+    const { summary } = mergeProgress(input, 'en');
+    expect(summary.sources.steamCache).toEqual({
+      state: 'stale',
+      message: 'The online profile holds 2 achievements the local cache does not.',
+    });
+
+    const fr = mergeProgress(input, 'fr');
+    expect(fr.summary.sources.steamCache).toEqual({
+      state: 'stale',
+      message: 'Le profil en ligne compte 2 succès de plus que le cache local',
     });
   });
 
