@@ -6,7 +6,7 @@ interface ListNode {
   children: ListNode[];
 }
 
-/** Éléments de liste consécutifs vers un arbre : un niveau plus profond devient une sous-liste. */
+/** Consecutive list items into a tree: a deeper level becomes a sublist. */
 function toTree(items: TextBlock[]): ListNode[] {
   const root: ListNode[] = [];
   const stack: Array<{ level: number; children: ListNode[] }> = [{ level: 0, children: root }];
@@ -35,11 +35,11 @@ function List({ nodes }: { nodes: ListNode[] }) {
 
 export interface TextBlocksProps {
   blocks: TextBlock[];
-  /** Niveau HTML des titres de premier niveau (les suivants descendent d'un cran, jusqu'à h6). */
+  /** HTML level of the top headings (the next ones go one step down, as far as h6). */
   headingLevel: 4 | 5 | 6;
 }
 
-/** Texte du wiki (anglais) : paragraphes, listes imbriquées et intertitres. */
+/** Text of the wiki (English): paragraphs, nested lists and subheadings. */
 export function TextBlocks({ blocks, headingLevel }: TextBlocksProps) {
   const out: ReactNode[] = [];
   for (let i = 0; i < blocks.length; i++) {

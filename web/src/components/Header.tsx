@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef } from 'react';
+import type { MessageKey } from '../../../shared/i18n/index.ts';
 import type { AdvisorStatus, KbStatus, ProgressSummary } from '../../../shared/types.ts';
 import type { ProfileQuery } from '../api.ts';
-import { LanguagePicker } from '../i18n.tsx';
+import { LanguagePicker, useT } from '../i18n.tsx';
 import type { Theme } from '../theme.ts';
 import type { Tab } from '../useHashTab.ts';
 import { ProfilePicker } from './ProfilePicker.tsx';
@@ -11,7 +12,7 @@ export interface HeaderProps {
   summary: ProgressSummary | null;
   kb: KbStatus | null;
   advisor: AdvisorStatus | null;
-  /** SteamID64 du compte local servi sous « Mon profil », s'il est connu. */
+  /** SteamID64 of the local account served under "My profile", when it is known. */
   meSteamId: string | null;
   query: ProfileQuery;
   onQueryChange(query: ProfileQuery): void;
@@ -24,15 +25,15 @@ export interface HeaderProps {
   onStop(): void;
 }
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'dashboard', label: 'Tableau de bord' },
-  { id: 'achievements', label: 'Succès' },
-  { id: 'routes', label: 'Routes' },
-  { id: 'advisor', label: 'Conseiller' },
-  { id: 'settings', label: 'Paramètres' },
+const TABS: Array<{ id: Tab; key: MessageKey }> = [
+  { id: 'dashboard', key: 'app.tabDashboard' },
+  { id: 'achievements', key: 'app.tabAchievements' },
+  { id: 'routes', key: 'app.tabRoutes' },
+  { id: 'advisor', key: 'app.tabAdvisor' },
+  { id: 'settings', key: 'app.tabSettings' },
 ];
 
-/** Publie la hauteur de l'en-tête (variable CSS --header-height) pour placer la fiche et le défilement. */
+/** Publishes the height of the header (CSS variable --header-height) to place the card and the scroll. */
 function useHeaderHeight() {
   const ref = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -50,6 +51,7 @@ function useHeaderHeight() {
 }
 
 export function Header(props: HeaderProps) {
+  const t = useT();
   const { summary, query } = props;
   const save = summary?.save ?? null;
   const ref = useHeaderHeight();
@@ -57,8 +59,8 @@ export function Header(props: HeaderProps) {
   return (
     <header className="header" ref={ref}>
       <div className="header__top">
-        <h1 className="brand">Isaac Achievement Manager</h1>
-        <nav className="tabs" aria-label="Sections">
+        <h1 className="brand">{t('app.brand')}</h1>
+        <nav className="tabs" aria-label={t('app.sections')}>
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -67,20 +69,20 @@ export function Header(props: HeaderProps) {
               aria-current={props.tab === tab.id ? 'page' : undefined}
               onClick={() => props.onTabChange(tab.id)}
             >
-              {tab.label}
+              {t(tab.key)}
             </button>
           ))}
         </nav>
         <div className="header__actions">
           <button type="button" className="btn" onClick={props.onRefresh} disabled={props.refreshing}>
-            {props.refreshing ? 'Actualisation…' : 'Actualiser'}
+            {props.refreshing ? t('app.refreshing') : t('app.refresh')}
           </button>
           <LanguagePicker />
           <button type="button" className="btn btn--ghost" onClick={props.onToggleTheme}>
-            {props.theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'}
+            {props.theme === 'dark' ? t('app.toLightTheme') : t('app.toDarkTheme')}
           </button>
           <button type="button" className="btn btn--ghost" onClick={props.onStop}>
-            Arrêter
+            {t('app.stop')}
           </button>
         </div>
       </div>
@@ -94,14 +96,14 @@ export function Header(props: HeaderProps) {
         />
         {save && save.slots.length > 1 && (
           <label className="field">
-            <span>Sauvegarde</span>
+            <span>{t('app.save')}</span>
             <select
               value={query.slot ?? save.slot}
               onChange={(e) => props.onQueryChange({ profile: query.profile, slot: Number(e.target.value) })}
             >
               {save.slots.map((slot) => (
                 <option key={slot} value={slot}>
-                  Slot {slot}
+                  {t('app.slot', { slot })}
                 </option>
               ))}
             </select>

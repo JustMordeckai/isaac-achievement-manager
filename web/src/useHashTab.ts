@@ -4,12 +4,12 @@ export type Tab = 'dashboard' | 'achievements' | 'routes' | 'advisor' | 'setting
 
 const HASHES: Record<Tab, string> = {
   dashboard: '#/',
-  achievements: '#/succes',
+  achievements: '#/achievements',
   routes: '#/routes',
-  advisor: '#/conseiller',
-  settings: '#/parametres',
+  advisor: '#/advisor',
+  settings: '#/settings',
 };
-const CARD_HASH = /^#\/succes\/(\d+)$/;
+const CARD_HASH = /^#\/achievements\/(\d+)$/;
 
 function tabFromHash(hash: string): Tab {
   if (hash.startsWith(HASHES.achievements)) return 'achievements';
@@ -24,7 +24,7 @@ function achievementFromHash(hash: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Valeur dérivée de l'adresse, suivie à chaque changement de fragment. */
+/** Value derived from the address, followed on every change of the fragment. */
 function useHashValue<T>(read: (hash: string) => T): [T, (value: T) => void] {
   const [value, setValue] = useState<T>(() => read(window.location.hash));
   useEffect(() => {
@@ -39,7 +39,7 @@ export function useHashTab(): [Tab, (tab: Tab) => void] {
   const [tab, setTab] = useHashValue(tabFromHash);
   const select = useCallback(
     (next: Tab) => {
-      // Un nouvel onglet s'affiche depuis le haut de la page.
+      // A new tab is shown from the top of the page.
       if (tabFromHash(window.location.hash) !== next) document.documentElement.scrollTop = 0;
       window.location.hash = HASHES[next];
       setTab(next);
@@ -49,7 +49,7 @@ export function useHashTab(): [Tab, (tab: Tab) => void] {
   return [tab, select];
 }
 
-/** Fiche ouverte (`#/succes/<id>`), null sinon ; fermer la fiche revient à la liste. */
+/** Card that is open (`#/achievements/<id>`), null otherwise; closing it goes back to the list. */
 export function useHashAchievement(): [number | null, (id: number | null) => void] {
   const [id, setId] = useHashValue(achievementFromHash);
   const select = useCallback(

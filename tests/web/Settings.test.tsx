@@ -1,7 +1,9 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { t } from '../../shared/i18n/index.ts';
 import type { KbStatus, WikiSyncReport } from '../../shared/types.ts';
+import { LocaleProvider } from '../../web/src/i18n.tsx';
 import { Settings, type SettingsProps } from '../../web/src/pages/Settings.tsx';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeAdvisorState, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
@@ -29,87 +31,103 @@ function renderSettings(overrides: Partial<SettingsProps> = {}) {
   return { ...view, props };
 }
 
-const kbSection = () => screen.getByRole('region', { name: 'Base wiki' });
-const advisorSection = () => within(screen.getByRole('region', { name: 'Conseiller IA' }));
+const kbSection = () => screen.getByRole('region', { name: 'Wiki base' });
+const advisorSection = () => within(screen.getByRole('region', { name: 'AI advisor' }));
 
 describe('Settings', () => {
-  it('affiche l’état de la base et lance la synchro', async () => {
+  it('shows the state of the base and starts the sync', async () => {
     const user = userEvent.setup();
     const { props } = renderSettings();
-    // L'heure dépend du fuseau de la machine : seule la date est figée.
-    expect(within(kbSection()).getByText(/^Base synchronisée le 17 Sept 2026, \d{2}:\d{2}\.$/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Synchroniser le wiki' }));
+    // The time depends on the time zone of the machine: only the date is fixed.
+    expect(within(kbSection()).getByText(/^Base synced on 17 Sept 2026, \d{2}:\d{2}\.$/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sync the wiki' }));
     expect(props.onSync).toHaveBeenCalledTimes(1);
   });
 
-  it('explique une base absente et signale le dernier échec', () => {
+  it('speaks French inside a French locale', () => {
+    render(
+      <LocaleProvider locale="fr">
+        <Settings
+          settings={{ status: 'ready', info: SETTINGS }}
+          kb={KB_OK}
+          sync={{ kind: 'idle' }}
+          onSync={vi.fn()}
+          advisor={makeAdvisorState()}
+        />
+      </LocaleProvider>,
+    );
+    expect(screen.getByRole('heading', { name: t('fr', 'settings.wikiTitle') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('fr', 'settings.sync') })).toBeInTheDocument();
+  });
+
+  it('explains a missing base and reports the last failure', () => {
     const kb: KbStatus = { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' };
     renderSettings({ kb });
-    expect(within(kbSection()).getByText(/pas encore téléchargée/)).toBeInTheDocument();
+    expect(within(kbSection()).getByText(/has not been downloaded yet/)).toBeInTheDocument();
     expect(within(kbSection()).getByText('Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
   });
 
-  it('affiche une base illisible', () => {
+  it('shows an unreadable base', () => {
     renderSettings({ kb: { state: 'error', syncedAt: null, running: false, message: 'Base wiki illisible : JSON invalide' } });
     expect(within(kbSection()).getByText('Base wiki illisible : JSON invalide')).toBeInTheDocument();
   });
 
-  it('suit l’avancement et bloque le bouton pendant la synchro', () => {
+  it('follows the progress and locks the button during the sync', () => {
     const { rerender, props } = renderSettings({ sync: { kind: 'running', event: null } });
-    expect(screen.getByRole('button', { name: 'Synchro en cours…' })).toBeDisabled();
-    expect(screen.getByText('Connexion au wiki…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync under way…' })).toBeDisabled();
+    expect(screen.getByText('Connecting to the wiki…')).toBeInTheDocument();
     rerender(<Settings {...props} sync={{ kind: 'running', event: { step: 'pages', done: 3, total: 12, message: 'Lot 3 sur 12' } }} />);
     expect(screen.getByText('Lot 3 sur 12')).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: 'Pages téléchargées' })).toHaveAttribute('aria-valuenow', '3');
+    expect(screen.getByRole('progressbar', { name: 'Pages downloaded' })).toHaveAttribute('aria-valuenow', '3');
     rerender(<Settings {...props} sync={{ kind: 'idle' }} kb={{ ...KB_OK, running: true }} />);
-    expect(screen.getByRole('button', { name: 'Synchro en cours…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sync under way…' })).toBeDisabled();
   });
 
-  it('résume le rapport de synchro', () => {
+  it('sums up the sync report', () => {
     renderSettings({ sync: { kind: 'done', report: REPORT } });
-    expect(screen.getByRole('status')).toHaveTextContent('Synchro terminée.');
+    expect(screen.getByRole('status')).toHaveTextContent('Sync complete.');
     const report = within(kbSection());
-    expect(report.getByText('Pages analysées').nextElementSibling).toHaveTextContent('518');
-    expect(report.getByText('Pages reprises du cache').nextElementSibling).toHaveTextContent('aucune');
-    expect(report.getByText('Non classés').nextElementSibling).toHaveTextContent('108 conditions et 61 déblocages');
-    expect(report.getByText('2 pages liées absentes du wiki')).toBeInTheDocument();
+    expect(report.getByText('Pages analyzed').nextElementSibling).toHaveTextContent('518');
+    expect(report.getByText('Pages taken from the cache').nextElementSibling).toHaveTextContent('none');
+    expect(report.getByText('Unclassified').nextElementSibling).toHaveTextContent('108 conditions and 61 unlocks');
+    expect(report.getByText('2 linked pages missing from the wiki')).toBeInTheDocument();
     expect(report.getByText('1001%, Basement Boy')).toBeInTheDocument();
     expect(report.getByText('repentance babies (6)')).toHaveAttribute('lang', 'en');
   });
 
-  it('affiche l’échec de la synchro', () => {
+  it('shows the failure of the sync', () => {
     renderSettings({ sync: { kind: 'failed', message: 'Une synchro du wiki est déjà en cours' } });
-    expect(screen.getByRole('alert')).toHaveTextContent('Synchro échouée : Une synchro du wiki est déjà en cours');
-    expect(screen.getByRole('button', { name: 'Synchroniser le wiki' })).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Sync failed: Une synchro du wiki est déjà en cours');
+    expect(screen.getByRole('button', { name: 'Sync the wiki' })).toBeEnabled();
   });
 
-  it('liste les réglages détectés en lecture seule', () => {
+  it('lists the detected settings, read only', () => {
     renderSettings();
-    const app = within(screen.getByRole('region', { name: 'Steam et application' }));
+    const app = within(screen.getByRole('region', { name: 'Steam and application' }));
     expect(app.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(app.getByText('Dossier Steam').nextElementSibling).toHaveTextContent('c:\\program files (x86)\\steam');
-    expect(app.getByText('Compte utilisé').nextElementSibling).toHaveTextContent('Player (76561198083722517)');
-    expect(app.getByText('Adresse').nextElementSibling).toHaveTextContent('http://127.0.0.1:5250/');
-    expect(app.getByText('Dossier des données').nextElementSibling).toHaveTextContent('C:\\isaac\\data');
+    expect(app.getByText('Steam folder').nextElementSibling).toHaveTextContent('c:\\program files (x86)\\steam');
+    expect(app.getByText('Account used').nextElementSibling).toHaveTextContent('Player (76561198083722517)');
+    expect(app.getByText('Address').nextElementSibling).toHaveTextContent('http://127.0.0.1:5250/');
+    expect(app.getByText('Data folder').nextElementSibling).toHaveTextContent('C:\\isaac\\data');
   });
 
-  it('précise un compte imposé, introuvable ou absent', () => {
+  it('spells out a forced, missing or absent account', () => {
     const { rerender, props } = renderSettings({ settings: { status: 'ready', info: { ...SETTINGS, forcedAccountId: 123456789 } } });
-    const account = () => screen.getByText('Compte utilisé').nextElementSibling;
-    expect(account()).toHaveTextContent('Player (76561198083722517), imposé par data/settings.json');
+    const account = () => screen.getByText('Account used').nextElementSibling;
+    expect(account()).toHaveTextContent('Player (76561198083722517), forced by data/settings.json');
     rerender(<Settings {...props} settings={{ status: 'ready', info: { ...SETTINGS, account: null, forcedAccountId: 123 } }} />);
-    expect(account()).toHaveTextContent('compte 123 imposé par data/settings.json, introuvable sur ce PC');
+    expect(account()).toHaveTextContent('account 123 forced by data/settings.json, not found on this PC');
     rerender(<Settings {...props} settings={{ status: 'ready', info: { ...SETTINGS, account: null, steamPath: null } }} />);
-    expect(account()).toHaveTextContent('aucun compte local avec des données Isaac');
-    expect(screen.getByText('Dossier Steam').nextElementSibling).toHaveTextContent('introuvable');
+    expect(account()).toHaveTextContent('no local account with Isaac data');
+    expect(screen.getByText('Steam folder').nextElementSibling).toHaveTextContent('not found');
   });
 
-  it('affiche le chargement et l’erreur des réglages', () => {
+  it('shows the loading and the error of the settings', () => {
     const { rerender, props } = renderSettings({ settings: { status: 'loading' }, kb: null });
-    expect(screen.getByText('Lecture des réglages…')).toBeInTheDocument();
-    expect(screen.getByText("Lecture de l'état de la base…")).toBeInTheDocument();
-    rerender(<Settings {...props} settings={{ status: 'error', message: 'Erreur HTTP 500' }} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Réglages indisponibles : Erreur HTTP 500');
+    expect(screen.getByText('Reading the settings…')).toBeInTheDocument();
+    expect(screen.getByText('Reading the state of the base…')).toBeInTheDocument();
+    rerender(<Settings {...props} settings={{ status: 'error', message: 'HTTP 500' }} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Settings unavailable: HTTP 500');
   });
 });
 
@@ -124,82 +142,82 @@ describe('Settings: language', () => {
   });
 });
 
-describe('Settings : conseiller', () => {
-  it('montre l’état du serveur et les réglages en cours', () => {
+describe('Settings: advisor', () => {
+  it('shows the state of the server and the current settings', () => {
     renderSettings();
     const section = advisorSection();
-    expect(section.getByText('Serveur joignable, modèle qwen3.5:9b installé.')).toBeInTheDocument();
-    expect(section.getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://127.0.0.1:11434');
-    expect(section.getByLabelText('Modèle')).toHaveValue('qwen3.5:9b');
-    expect(section.getByText(/^Modèles installés : qwen3\.5:4b, qwen3\.5:9b\./)).toBeInTheDocument();
+    expect(section.getByText('Server reachable, model qwen3.5:9b installed.')).toBeInTheDocument();
+    expect(section.getByLabelText('Address of the Ollama server')).toHaveValue('http://127.0.0.1:11434');
+    expect(section.getByLabelText('Model')).toHaveValue('qwen3.5:9b');
+    expect(section.getByText(/^Installed models: qwen3\.5:4b, qwen3\.5:9b\./)).toBeInTheDocument();
     const options = [...document.querySelectorAll('#ollama-models option')].map((o) => o.getAttribute('value'));
     expect(options).toEqual(['qwen3.5:4b', 'qwen3.5:9b']);
   });
 
-  it('signale un serveur injoignable et relance la vérification', async () => {
+  it('reports an unreachable server and checks again', async () => {
     const user = userEvent.setup();
     const advisor = makeAdvisorState(ADVISOR_OFFLINE);
     const { rerender, props } = renderSettings({ advisor });
     const section = advisorSection();
     expect(section.getByText('Ollama unreachable at http://127.0.0.1:11434 (ECONNREFUSED)')).toHaveClass('banner--error');
-    expect(section.getByText(/^Modèles installés : inconnus\./)).toBeInTheDocument();
-    await user.click(section.getByRole('button', { name: 'Vérifier la connexion' }));
+    expect(section.getByText(/^Installed models: unknown\./)).toBeInTheDocument();
+    await user.click(section.getByRole('button', { name: 'Check the connection' }));
     expect(advisor.recheck).toHaveBeenCalled();
     rerender(<Settings {...props} advisor={makeAdvisorState(ADVISOR_OFFLINE, true)} />);
-    expect(advisorSection().getByRole('button', { name: 'Vérification…' })).toBeDisabled();
+    expect(advisorSection().getByRole('button', { name: 'Checking…' })).toBeDisabled();
   });
 
-  it('remplit les champs quand l’état arrive', () => {
+  it('fills the fields when the state arrives', () => {
     const { rerender, props } = renderSettings({ advisor: makeAdvisorState(null) });
-    expect(advisorSection().getByText('Vérification du serveur Ollama…')).toBeInTheDocument();
-    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('');
+    expect(advisorSection().getByText('Checking the Ollama server…')).toBeInTheDocument();
+    expect(advisorSection().getByLabelText('Model')).toHaveValue('');
     rerender(<Settings {...props} advisor={makeAdvisorState()} />);
-    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('qwen3.5:9b');
+    expect(advisorSection().getByLabelText('Model')).toHaveValue('qwen3.5:9b');
   });
 
-  it('garde une saisie faite avant l’arrivée de l’état', async () => {
+  it('keeps what was typed before the state arrived', async () => {
     const user = userEvent.setup();
     const { rerender, props } = renderSettings({ advisor: makeAdvisorState(null) });
-    await user.type(advisorSection().getByLabelText('Modèle'), 'qwen3:4b');
+    await user.type(advisorSection().getByLabelText('Model'), 'qwen3:4b');
     rerender(<Settings {...props} advisor={makeAdvisorState()} />);
-    expect(advisorSection().getByLabelText('Modèle')).toHaveValue('qwen3:4b');
-    expect(advisorSection().getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://127.0.0.1:11434');
+    expect(advisorSection().getByLabelText('Model')).toHaveValue('qwen3:4b');
+    expect(advisorSection().getByLabelText('Address of the Ollama server')).toHaveValue('http://127.0.0.1:11434');
   });
 
-  it('enregistre l’adresse et le modèle', async () => {
+  it('saves the address and the model', async () => {
     const user = userEvent.setup();
     const saved = { ...ADVISOR_OK, url: 'http://10.0.0.5:11434', model: 'qwen3.5:4b' };
     const mock = stubFetch({ 'POST /api/advisor/settings': () => saved });
     const advisor = makeAdvisorState();
     renderSettings({ advisor });
     const section = advisorSection();
-    await user.clear(section.getByLabelText('Adresse du serveur Ollama'));
-    await user.type(section.getByLabelText('Adresse du serveur Ollama'), 'http://10.0.0.5:11434/');
-    await user.clear(section.getByLabelText('Modèle'));
-    await user.type(section.getByLabelText('Modèle'), 'qwen3.5:4b');
-    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
-    expect(await section.findByRole('status')).toHaveTextContent('Réglages enregistrés.');
+    await user.clear(section.getByLabelText('Address of the Ollama server'));
+    await user.type(section.getByLabelText('Address of the Ollama server'), 'http://10.0.0.5:11434/');
+    await user.clear(section.getByLabelText('Model'));
+    await user.type(section.getByLabelText('Model'), 'qwen3.5:4b');
+    await user.click(section.getByRole('button', { name: 'Save' }));
+    expect(await section.findByRole('status')).toHaveTextContent('Settings saved.');
     const [, init] = mock.mock.calls[0];
     expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('advisor-settings');
     expect(JSON.parse(String(init?.body))).toEqual({ url: 'http://10.0.0.5:11434/', model: 'qwen3.5:4b' });
     expect(advisor.replace).toHaveBeenCalledWith(saved);
-    expect(section.getByLabelText('Adresse du serveur Ollama')).toHaveValue('http://10.0.0.5:11434');
+    expect(section.getByLabelText('Address of the Ollama server')).toHaveValue('http://10.0.0.5:11434');
   });
 
-  it('affiche le refus du serveur', async () => {
+  it('shows the refusal from the server', async () => {
     const user = userEvent.setup();
     let reply: (response: Response) => void = () => {};
     stubFetch({ 'POST /api/advisor/settings': () => new Promise<Response>((resolve) => (reply = resolve)) });
     const advisor = makeAdvisorState();
     renderSettings({ advisor });
     const section = advisorSection();
-    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
-    expect(section.getByRole('button', { name: 'Enregistrement…' })).toBeDisabled();
+    await user.click(section.getByRole('button', { name: 'Save' }));
+    expect(section.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     await act(async () => reply(jsonResponse({ error: 'Adresse Ollama invalide (attendu : http://hôte:port)' }, 400)));
     expect(await section.findByRole('alert')).toHaveTextContent(
-      'Enregistrement impossible : Adresse Ollama invalide (attendu : http://hôte:port)',
+      'The settings could not be saved: Adresse Ollama invalide (attendu : http://hôte:port)',
     );
     expect(advisor.replace).not.toHaveBeenCalled();
-    expect(section.getByRole('button', { name: 'Enregistrer' })).toBeEnabled();
+    expect(section.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 });

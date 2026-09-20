@@ -44,8 +44,8 @@ function compare(sort: SortOrder) {
 }
 
 /**
- * `desyncIds` : succès en écart entre la sauvegarde et Steam, tirés du résumé de progression
- * (et non de `inSave`, qui ne dit rien quand aucune source Steam n'est disponible).
+ * `desyncIds`: achievements that differ between the save and Steam, taken from the progress summary
+ * (not from `inSave`, which says nothing when no Steam source is available).
  */
 export function filterAchievements(
   list: AchievementEntry[],

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KbStatus, SettingsInfo, WikiSyncEvent, WikiSyncReport } from '../../shared/types.ts';
+import { t } from '../../shared/i18n/index.ts';
 import { api } from './api.ts';
 import { useLocale } from './i18n.tsx';
 
@@ -7,23 +8,29 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** État de la base wiki, relu à chaque changement de `reloadKey`. */
+/** State of the wiki base, read again on every change of `reloadKey`. */
 export function useKbStatus(reloadKey: number): KbStatus | null {
+  const locale = useLocale();
   const [status, setStatus] = useState<KbStatus | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     api.wikiStatus(controller.signal).then(setStatus, (error: unknown) => {
       if (controller.signal.aborted) return;
-      setStatus({ state: 'error', syncedAt: null, running: false, message: `État du wiki indisponible : ${messageOf(error)}` });
+      setStatus({
+        state: 'error',
+        syncedAt: null,
+        running: false,
+        message: t(locale, 'app.wikiStateUnavailable', { message: messageOf(error) }),
+      });
     });
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [reloadKey, locale]);
   return status;
 }
 
 export type SettingsState = { status: 'loading' } | { status: 'ready'; info: SettingsInfo } | { status: 'error'; message: string };
 
-/** Réglages détectés par le serveur, lus une fois. */
+/** Settings the server detected, read once. */
 export function useSettings(): SettingsState {
   const [state, setState] = useState<SettingsState>({ status: 'loading' });
   useEffect(() => {
@@ -46,8 +53,8 @@ export type WikiSyncState =
   | { kind: 'failed'; message: string };
 
 /**
- * Synchro du wiki lancée depuis l'interface. L'état vit au niveau de l'application pour survivre
- * à un changement d'onglet ; `onFinished` est appelé après un succès comme après un échec.
+ * Wiki sync started from the interface. The state lives at the application level so it survives a
+ * tab change; `onFinished` is called after a success as well as after a failure.
  */
 export function useWikiSync(onFinished: () => void): [WikiSyncState, () => void] {
   const locale = useLocale();

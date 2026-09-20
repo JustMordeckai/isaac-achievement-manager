@@ -28,11 +28,11 @@ describe('useKbStatus', () => {
     expect(mock).toHaveBeenCalledTimes(2);
   });
 
-  it('transforme une erreur de lecture en état « erreur »', async () => {
+  it('turns a read error into an "error" state', async () => {
     stubFetch({ 'GET /api/wiki/status': () => jsonResponse({ error: 'boom' }, 500) });
     const { result } = renderHook(() => useKbStatus(0));
     await vi.waitFor(() =>
-      expect(result.current).toEqual({ state: 'error', syncedAt: null, running: false, message: 'État du wiki indisponible : boom' }),
+      expect(result.current).toEqual({ state: 'error', syncedAt: null, running: false, message: 'Wiki state unavailable: boom' }),
     );
   });
 });

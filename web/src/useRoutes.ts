@@ -7,7 +7,7 @@ export type RoutesState =
   | { status: 'error'; message: string }
   | { status: 'ready'; data: RoutesResponse; refreshing: boolean };
 
-/** Plan de routes du profil, relu quand le profil, le slot ou `reloadKey` changent. */
+/** Route plan of the profile, read again when the profile, the slot or `reloadKey` change. */
 export function useRoutes(query: ProfileQuery, reloadKey: number): RoutesState {
   const [state, setState] = useState<RoutesState>({ status: 'loading' });
   const lastQuery = useRef<string | null>(null);

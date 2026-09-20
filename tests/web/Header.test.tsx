@@ -1,8 +1,10 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { t } from '../../shared/i18n/index.ts';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
 import { ProfilePicker } from '../../web/src/components/ProfilePicker.tsx';
+import { LocaleProvider } from '../../web/src/i18n.tsx';
 import { rememberProfile, RECENT_PROFILES_KEY } from '../../web/src/recent-profiles.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
@@ -29,7 +31,7 @@ function renderHeader(overrides: Partial<HeaderProps> = {}) {
 }
 
 describe('Header', () => {
-  it('affiche l’état des sources avec leur message', () => {
+  it('shows the state of the sources with their message', () => {
     renderHeader({
       summary: makeSummary({
         sources: {
@@ -42,14 +44,14 @@ describe('Header', () => {
     expect(screen.getByText('Steam cache: stale')).toHaveAttribute('title', 'Le profil en ligne compte 1 succès de plus que le cache local');
     expect(screen.getByText('Save file: error')).toHaveClass('badge--error');
     expect(screen.getByText('Online profile: OK')).toHaveClass('badge--ok');
-    // Les messages des sources en défaut sont visibles sans survol.
+    // The messages of the sources in trouble are visible without hovering.
     expect(screen.getByText('Steam cache: Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
     expect(screen.getByText('Save file: En-tête inconnu')).toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'Source messages' })).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.queryByText('Save file: Slot 1')).not.toBeInTheDocument();
   });
 
-  it('ajoute l’état de la base wiki', () => {
+  it('adds the state of the wiki base', () => {
     renderHeader({ kb: KB_OK });
     const wiki = screen.getByText('Wiki: OK');
     expect(wiki).toHaveClass('badge--ok');
@@ -57,25 +59,25 @@ describe('Header', () => {
     expect(screen.queryByText(/^Wiki: Synced/)).not.toBeInTheDocument();
   });
 
-  it('affiche le dernier échec de synchro d’une base absente', () => {
+  it('shows the last failed sync of a missing base', () => {
     renderHeader({ kb: { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' } });
     expect(screen.getByText('Wiki: missing')).toHaveClass('badge--absent');
     expect(screen.getByText('Wiki: Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
   });
 
-  it('montre l’état du wiki même sans résumé de progression', () => {
+  it('shows the wiki state even with no progress summary', () => {
     renderHeader({ summary: null, kb: KB_ABSENT });
     expect(within(screen.getByRole('list', { name: 'Source states' })).getAllByRole('listitem')).toHaveLength(1);
   });
 
-  it('ajoute l’état du conseiller', () => {
+  it('adds the state of the advisor', () => {
     renderHeader({ advisor: ADVISOR_OK });
     const ollama = screen.getByText('Advisor: OK');
     expect(ollama).toHaveClass('badge--ok');
     expect(ollama).toHaveAttribute('title', 'qwen3.5:9b on http://127.0.0.1:11434');
   });
 
-  it('affiche le message d’un serveur Ollama injoignable', () => {
+  it('shows the message of an unreachable Ollama server', () => {
     renderHeader({ advisor: ADVISOR_OFFLINE });
     expect(screen.getByText('Advisor: unreachable')).toHaveClass('badge--absent');
     expect(
@@ -83,54 +85,78 @@ describe('Header', () => {
     ).toBeInTheDocument();
   });
 
-  it('propose les onglets Routes et Conseiller', async () => {
+  it('offers the Routes and Advisor tabs', async () => {
     const user = userEvent.setup();
     const props = renderHeader();
     const tabs = within(screen.getByRole('navigation')).getAllByRole('button').map((b) => b.textContent);
-    expect(tabs).toEqual(['Tableau de bord', 'Succès', 'Routes', 'Conseiller', 'Paramètres']);
+    expect(tabs).toEqual(['Dashboard', 'Achievements', 'Routes', 'Advisor', 'Settings']);
     await user.click(screen.getByRole('button', { name: 'Routes' }));
     expect(props.onTabChange).toHaveBeenCalledWith('routes');
-    await user.click(screen.getByRole('button', { name: 'Conseiller' }));
+    await user.click(screen.getByRole('button', { name: 'Advisor' }));
     expect(props.onTabChange).toHaveBeenCalledWith('advisor');
   });
 
-  it('propose l’onglet Paramètres', async () => {
+  it('speaks French inside a French locale', () => {
+    render(
+      <LocaleProvider locale="fr">
+        <Header
+          summary={makeSummary()}
+          kb={null}
+          advisor={null}
+          meSteamId={null}
+          query={{ profile: 'me', slot: null }}
+          onQueryChange={vi.fn()}
+          refreshing={false}
+          onRefresh={vi.fn()}
+          theme="dark"
+          onToggleTheme={vi.fn()}
+          tab="dashboard"
+          onTabChange={vi.fn()}
+          onStop={vi.fn()}
+        />
+      </LocaleProvider>,
+    );
+    expect(screen.getByRole('button', { name: t('fr', 'app.refresh') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('fr', 'app.tabAchievements') })).toBeInTheDocument();
+  });
+
+  it('offers the Settings tab', async () => {
     const user = userEvent.setup();
     const props = renderHeader({ tab: 'settings' });
-    expect(screen.getByRole('button', { name: 'Paramètres' })).toHaveAttribute('aria-current', 'page');
-    await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }));
     expect(props.onTabChange).toHaveBeenCalledWith('dashboard');
   });
 
-  it('change de slot', async () => {
+  it('changes the save slot', async () => {
     const user = userEvent.setup();
     const props = renderHeader();
-    await user.selectOptions(screen.getByLabelText('Sauvegarde'), 'Slot 2');
+    await user.selectOptions(screen.getByLabelText('Save file'), 'Slot 2');
     expect(props.onQueryChange).toHaveBeenCalledWith({ profile: 'me', slot: 2 });
   });
 
-  it('masque le choix du slot quand il n’y en a qu’un', () => {
+  it('hides the slot picker when there is only one', () => {
     renderHeader({ summary: makeSummary({ save: { slot: 1, slots: [1] } }) });
-    expect(screen.queryByLabelText('Sauvegarde')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Save file')).not.toBeInTheDocument();
   });
 
-  it('relaie les actions', async () => {
+  it('passes on the actions', async () => {
     const user = userEvent.setup();
     const props = renderHeader();
-    await user.click(screen.getByRole('button', { name: 'Succès' }));
-    await user.click(screen.getByRole('button', { name: 'Actualiser' }));
-    await user.click(screen.getByRole('button', { name: 'Passer au thème clair' }));
-    await user.click(screen.getByRole('button', { name: 'Arrêter' }));
+    await user.click(screen.getByRole('button', { name: 'Achievements' }));
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await user.click(screen.getByRole('button', { name: 'Switch to the light theme' }));
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
     expect(props.onTabChange).toHaveBeenCalledWith('achievements');
     expect(props.onRefresh).toHaveBeenCalled();
     expect(props.onToggleTheme).toHaveBeenCalled();
     expect(props.onStop).toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Tableau de bord' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('désactive Actualiser pendant un chargement et sans résumé', () => {
+  it('disables Refresh while loading and with no summary', () => {
     renderHeader({ summary: null, refreshing: true });
-    expect(screen.getByRole('button', { name: 'Actualisation…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled();
     expect(screen.queryByRole('list', { name: 'Source states' })).not.toBeInTheDocument();
   });
 
@@ -142,12 +168,12 @@ describe('Header', () => {
 });
 
 describe('ProfilePicker', () => {
-  it('affiche le nom du profil courant', () => {
+  it('shows the name of the current profile', () => {
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={vi.fn()} />);
-    expect(screen.getByRole('option', { name: 'Mon profil (Player)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'My profile (Player)' })).toBeInTheDocument();
   });
 
-  it('charge un autre joueur et le mémorise', async () => {
+  it('loads another player and remembers them', async () => {
     const user = userEvent.setup();
     stubFetch({
       'GET /api/profile/resolve': (url) => {
@@ -157,28 +183,28 @@ describe('ProfilePicker', () => {
     });
     const onChange = vi.fn();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
-    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'JustAFriend');
+    await user.click(screen.getByRole('button', { name: 'Load' }));
     expect(onChange).toHaveBeenCalledWith('76561198000000001');
     expect(JSON.parse(localStorage.getItem(RECENT_PROFILES_KEY) ?? '[]')).toEqual([{ steamId64: '76561198000000001', name: 'Ami' }]);
     expect(screen.getByRole('option', { name: 'Ami' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('SteamID64, URL de profil ou pseudo')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SteamID64, profile URL or nickname')).not.toBeInTheDocument();
   });
 
-  it('affiche l’erreur de résolution', async () => {
+  it('shows the lookup error', async () => {
     const user = userEvent.setup();
     stubFetch({ 'GET /api/profile/resolve': () => jsonResponse({ error: 'Profil Steam introuvable' }, 404) });
     const onChange = vi.fn();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={onChange} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'inconnu');
-    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'unknown');
+    await user.click(screen.getByRole('button', { name: 'Load' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Profil Steam introuvable');
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('propose les profils récents et les autres comptes locaux', async () => {
+  it('offers the recent profiles and the other local accounts', async () => {
     const user = userEvent.setup();
     rememberProfile({ steamId64: '76561198000000001', name: 'Ami' });
     const onChange = vi.fn();
@@ -194,12 +220,12 @@ describe('ProfilePicker', () => {
         onChange={onChange}
       />,
     );
-    expect(screen.getByRole('option', { name: 'Second Player (compte local)' })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Ami');
+    expect(screen.getByRole('option', { name: 'Second Player (local account)' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Ami');
     expect(onChange).toHaveBeenCalledWith('76561198000000001');
   });
 
-  it('ne répète pas le compte servi sous « Mon profil »', () => {
+  it('does not repeat the account served under "My profile"', () => {
     rememberProfile({ steamId64: '76561198083722517', name: 'Player' });
     render(
       <ProfilePicker
@@ -210,10 +236,10 @@ describe('ProfilePicker', () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Mon profil (Player)', 'Autre joueur…']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['My profile (Player)', 'Another player…']);
   });
 
-  it('liste un second compte local mais pas le compte principal', () => {
+  it('lists a second local account but not the main one', () => {
     render(
       <ProfilePicker
         meSteamId="76561198083722517"
@@ -227,27 +253,27 @@ describe('ProfilePicker', () => {
       />,
     );
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'Mon profil (Player)',
-      'Second Player (compte local)',
-      'Autre joueur…',
+      'My profile (Player)',
+      'Second Player (local account)',
+      'Another player…',
     ]);
   });
 
-  it('affiche un profil courant inconnu de la liste', () => {
-    render(<ProfilePicker meSteamId={null} profile="76561198000000009" accounts={[]} currentName="Inconnu" onChange={vi.fn()} />);
-    expect(screen.getByLabelText('Profil')).toHaveValue('76561198000000009');
-    expect(screen.getByRole('option', { name: 'Inconnu' })).toBeInTheDocument();
+  it('shows a current profile the list does not know', () => {
+    render(<ProfilePicker meSteamId={null} profile="76561198000000009" accounts={[]} currentName="Unknown" onChange={vi.fn()} />);
+    expect(screen.getByLabelText('Profile')).toHaveValue('76561198000000009');
+    expect(screen.getByRole('option', { name: 'Unknown' })).toBeInTheDocument();
   });
 
-  it('annule la saisie', async () => {
+  it('cancels the input', async () => {
     const user = userEvent.setup();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.click(screen.getByRole('button', { name: 'Annuler' }));
-    expect(screen.getByLabelText('Profil')).toHaveValue('me');
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText('Profile')).toHaveValue('me');
   });
 
-  it('ignore une résolution qui arrive après l’annulation', async () => {
+  it('ignores a lookup that lands after the cancel', async () => {
     const user = userEvent.setup();
     let resolveFetch: (value: unknown) => void = () => {};
     const pending = new Promise<unknown>((resolve) => {
@@ -256,10 +282,10 @@ describe('ProfilePicker', () => {
     stubFetch({ 'GET /api/profile/resolve': () => pending });
     const onChange = vi.fn();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={onChange} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
-    await user.click(screen.getByRole('button', { name: 'Charger' }));
-    await user.click(screen.getByRole('button', { name: 'Annuler' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'JustAFriend');
+    await user.click(screen.getByRole('button', { name: 'Load' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
     await act(async () => {
       resolveFetch({ steamId64: '76561198000000001', name: 'Ami' });
       await pending;
@@ -270,17 +296,17 @@ describe('ProfilePicker', () => {
     expect(localStorage.getItem(RECENT_PROFILES_KEY)).toBeNull();
   });
 
-  it('vide le champ de saisie en rouvrant après une annulation', async () => {
+  it('empties the input when it opens again after a cancel', async () => {
     const user = userEvent.setup();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName={null} onChange={vi.fn()} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'texte perdu');
-    await user.click(screen.getByRole('button', { name: 'Annuler' }));
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    expect(screen.getByLabelText('SteamID64, URL de profil ou pseudo')).toHaveValue('');
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'lost text');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    expect(screen.getByLabelText('SteamID64, profile URL or nickname')).toHaveValue('');
   });
 
-  it('ignore une résolution obsolète et libère le formulaire quand on change de profil dans la liste', async () => {
+  it('ignores a stale lookup and frees the form when the profile changes in the list', async () => {
     const user = userEvent.setup();
     let resolveFetch: (value: unknown) => void = () => {};
     const pending = new Promise<unknown>((resolve) => {
@@ -289,10 +315,10 @@ describe('ProfilePicker', () => {
     stubFetch({ 'GET /api/profile/resolve': () => pending });
     const onChange = vi.fn();
     render(<ProfilePicker meSteamId={null} profile="me" accounts={[]} currentName="Player" onChange={onChange} />);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'JustAFriend');
-    await user.click(screen.getByRole('button', { name: 'Charger' }));
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Mon profil (Player)');
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'JustAFriend');
+    await user.click(screen.getByRole('button', { name: 'Load' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'My profile (Player)');
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith('me');
     await act(async () => {
@@ -301,8 +327,8 @@ describe('ProfilePicker', () => {
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(onChange).toHaveBeenCalledTimes(1);
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    expect(screen.getByRole('button', { name: 'Charger' })).toBeEnabled();
-    expect(screen.getByLabelText('SteamID64, URL de profil ou pseudo')).toHaveValue('');
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    expect(screen.getByRole('button', { name: 'Load' })).toBeEnabled();
+    expect(screen.getByLabelText('SteamID64, profile URL or nickname')).toHaveValue('');
   });
 });

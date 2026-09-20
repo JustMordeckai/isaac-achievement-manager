@@ -29,7 +29,7 @@ export function rememberProfile(profile: SavedProfile): SavedProfile[] {
   try {
     localStorage.setItem(RECENT_PROFILES_KEY, JSON.stringify(list));
   } catch {
-    // Stockage indisponible : la liste reste valable pour cette page.
+    // Storage unavailable: the list stays valid for this page only.
   }
   return list;
 }

@@ -9,34 +9,34 @@ const navigate = (hash: string) =>
   });
 
 describe('useHashTab', () => {
-  it('lit l’onglet depuis l’adresse', () => {
-    window.location.hash = '#/succes';
+  it('reads the tab from the address', () => {
+    window.location.hash = '#/achievements';
     const { result } = renderHook(() => useHashTab());
     expect(result.current[0]).toBe('achievements');
   });
 
-  it('met à jour l’adresse et suit les changements', () => {
+  it('updates the address and follows the changes', () => {
     const { result } = renderHook(() => useHashTab());
     expect(result.current[0]).toBe('dashboard');
     act(() => result.current[1]('achievements'));
-    expect(window.location.hash).toBe('#/succes');
+    expect(window.location.hash).toBe('#/achievements');
     expect(result.current[0]).toBe('achievements');
     navigate('#/');
     expect(result.current[0]).toBe('dashboard');
   });
 
-  it('reconnaît l’onglet Paramètres et reste sur Succès quand une fiche est ouverte', () => {
+  it('recognizes the Settings tab and stays on Achievements when a card is open', () => {
     const { result } = renderHook(() => useHashTab());
     act(() => result.current[1]('settings'));
-    expect(window.location.hash).toBe('#/parametres');
+    expect(window.location.hash).toBe('#/settings');
     expect(result.current[0]).toBe('settings');
-    navigate('#/succes/9');
+    navigate('#/achievements/9');
     expect(result.current[0]).toBe('achievements');
   });
 });
 
-describe('useHashTab : routes', () => {
-  it('reconnaît l’onglet Routes', () => {
+describe('useHashTab: routes', () => {
+  it('recognizes the Routes tab', () => {
     window.location.hash = '#/routes';
     const { result } = renderHook(() => useHashTab());
     expect(result.current[0]).toBe('routes');
@@ -46,7 +46,7 @@ describe('useHashTab : routes', () => {
     expect(window.location.hash).toBe('#/routes');
   });
 
-  it('remonte en haut de page seulement quand l’onglet change', () => {
+  it('scrolls back to the top only when the tab changes', () => {
     const { result } = renderHook(() => useHashTab());
     document.documentElement.scrollTop = 400;
     act(() => result.current[1]('dashboard'));
@@ -56,36 +56,36 @@ describe('useHashTab : routes', () => {
   });
 });
 
-describe('useHashTab : conseiller', () => {
-  it('reconnaît l’onglet Conseiller', () => {
-    window.location.hash = '#/conseiller';
+describe('useHashTab: advisor', () => {
+  it('recognizes the Advisor tab', () => {
+    window.location.hash = '#/advisor';
     const { result } = renderHook(() => useHashTab());
     expect(result.current[0]).toBe('advisor');
     act(() => result.current[1]('settings'));
     act(() => result.current[1]('advisor'));
-    expect(window.location.hash).toBe('#/conseiller');
+    expect(window.location.hash).toBe('#/advisor');
   });
 });
 
 describe('useHashAchievement', () => {
-  it('lit la fiche ouverte depuis l’adresse', () => {
-    window.location.hash = '#/succes/42';
+  it('reads the open card from the address', () => {
+    window.location.hash = '#/achievements/42';
     const { result } = renderHook(() => useHashAchievement());
     expect(result.current[0]).toBe(42);
   });
 
-  it('ouvre et ferme une fiche, et ignore les adresses sans numéro', () => {
+  it('opens and closes a card, and ignores addresses with no number', () => {
     const { result } = renderHook(() => useHashAchievement());
     expect(result.current[0]).toBeNull();
     act(() => result.current[1](9));
-    expect(window.location.hash).toBe('#/succes/9');
+    expect(window.location.hash).toBe('#/achievements/9');
     expect(result.current[0]).toBe(9);
     act(() => result.current[1](null));
-    expect(window.location.hash).toBe('#/succes');
+    expect(window.location.hash).toBe('#/achievements');
     expect(result.current[0]).toBeNull();
-    navigate('#/succes/abc');
+    navigate('#/achievements/abc');
     expect(result.current[0]).toBeNull();
-    navigate('#/succes/641');
+    navigate('#/achievements/641');
     expect(result.current[0]).toBe(641);
   });
 });

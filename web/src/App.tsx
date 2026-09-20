@@ -3,7 +3,7 @@ import type { Locale } from '../../shared/i18n/index.ts';
 import { api, type ProfileQuery } from './api.ts';
 import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
-import { loadLocale, LocaleProvider, storeLocale } from './i18n.tsx';
+import { loadLocale, LocaleProvider, storeLocale, useT } from './i18n.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
 import { Advisor } from './pages/Advisor.tsx';
@@ -22,6 +22,7 @@ type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; m
 const NO_DESYNC: ReadonlySet<number> = new Set();
 
 export function App() {
+  const t = useT();
   const [query, setQuery] = useState<ProfileQuery>({ profile: 'me', slot: null });
   const [reloadKey, setReloadKey] = useState(0);
   const [filter, setFilter] = useState<AchievementFilter>(DEFAULT_FILTER);
@@ -37,7 +38,7 @@ export function App() {
   const advisor = useAdvisorStatus(reloadKey);
   const chat = useAdvisorChat();
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
-  // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
+  // After a sync, the list is read again to pick up the ways to earn and the characters of the wiki.
   const [sync, startSync] = useWikiSync(reload);
   const [locale, setLocale] = useState<Locale>(loadLocale);
   const localeChosenRef = useRef(false);
@@ -68,14 +69,14 @@ export function App() {
   if (stop.kind === 'stopped') {
     return (
       <main className="stopped">
-        <h1>Serveur arrêté</h1>
-        <p>Tu peux fermer cet onglet. Pour relancer l'application : « Isaac Manager.vbs » ou « npm start ».</p>
+        <h1>{t('app.stoppedTitle')}</h1>
+        <p>{t('app.stoppedText')}</p>
       </main>
     );
   }
 
   async function requestStop() {
-    if (!window.confirm('Arrêter le serveur Isaac Achievement Manager ?')) return;
+    if (!window.confirm(t('app.confirmStop'))) return;
     try {
       await api.shutdown();
       setStop({ kind: 'stopped' });
@@ -89,7 +90,7 @@ export function App() {
     setTab('achievements');
   }
 
-  // Actualiser reste occupé tant que la progression ou les routes se (re)chargent.
+  // Refresh stays busy while the progress or the routes are loading.
   const busy =
     state.status === 'loading' ||
     (state.status === 'ready' && state.refreshing) ||
@@ -99,7 +100,7 @@ export function App() {
   const openSettings = () => setTab('settings');
   const openRoutes = () => setTab('routes');
   const resetProfile = query.profile !== 'me' ? () => setQuery({ profile: 'me', slot: null }) : null;
-  // « Demander au conseiller » : la question attend dans le champ, l'utilisateur la relit avant d'envoyer.
+  // "Ask the advisor": the question waits in the field, the reader checks it before sending.
   const askAdvisor = (question: string) => {
     setDraft(question);
     setTab('advisor');
@@ -131,7 +132,7 @@ export function App() {
         <main className="main">
           {stop.kind === 'failed' && (
             <p className="banner banner--error" role="alert">
-              Arrêt impossible : {stop.message}
+              {t('app.stopFailed', { message: stop.message })}
             </p>
           )}
           {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} />}
@@ -161,18 +162,18 @@ export function App() {
           )}
           {(tab === 'dashboard' || tab === 'achievements') && (
             <>
-              {state.status === 'loading' && <p className="placeholder">Chargement de la progression…</p>}
+              {state.status === 'loading' && <p className="placeholder">{t('app.loadingProgress')}</p>}
               {state.status === 'error' && (
                 <div className="card error-panel" role="alert">
-                  <h2>Impossible de charger la progression</h2>
+                  <h2>{t('app.progressFailed')}</h2>
                   <p>{state.message}</p>
                   <div className="error-panel__actions">
                     <button type="button" className="btn btn--primary" onClick={reload}>
-                      Réessayer
+                      {t('app.retry')}
                     </button>
                     {resetProfile && (
                       <button type="button" className="btn" onClick={resetProfile}>
-                        Revenir à mon profil
+                        {t('app.backToMyProfile')}
                       </button>
                     )}
                   </div>

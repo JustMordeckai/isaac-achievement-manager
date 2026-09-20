@@ -58,6 +58,19 @@ const CLEAN = [
   'web/src/components/RequirementNames.tsx',
   'web/src/components/RunCard.tsx',
   'web/src/pages/Routes.tsx',
+  'web/src/App.tsx',
+  'web/src/main.tsx',
+  'web/src/components/Header.tsx',
+  'web/src/components/ProfilePicker.tsx',
+  'web/src/components/TextBlocks.tsx',
+  'web/src/pages/Settings.tsx',
+  'web/src/useWiki.ts',
+  'web/src/useHashTab.ts',
+  'web/src/useProgress.ts',
+  'web/src/useRoutes.ts',
+  'web/src/recent-profiles.ts',
+  'web/src/theme.ts',
+  'web/src/lib/filter.ts',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

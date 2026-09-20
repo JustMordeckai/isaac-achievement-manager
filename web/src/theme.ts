@@ -15,6 +15,6 @@ export function applyTheme(theme: Theme): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
-    // Stockage indisponible : le thème reste valable pour cette page.
+    // Storage unavailable: the theme stays valid for this page only.
   }
 }

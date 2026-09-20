@@ -44,20 +44,20 @@ const callsTo = (mock: ReturnType<typeof stubFetch>, prefix: string) =>
 const progressCalls = (mock: ReturnType<typeof stubFetch>) => callsTo(mock, '/api/progress');
 
 describe('App', () => {
-  it('affiche le tableau de bord puis les succès manquants', async () => {
+  it('shows the dashboard then the missing achievements', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
-    expect(screen.getByText('Chargement de la progression…')).toBeInTheDocument();
+    expect(screen.getByText('Loading the progress…')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Progress' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'See the 516 missing achievements' }));
-    expect(window.location.hash).toBe('#/succes');
+    expect(window.location.hash).toBe('#/achievements');
     expect(screen.getByText('Cain')).toBeInTheDocument();
     expect(screen.getByText('Play Online')).toBeInTheDocument();
     expect(screen.queryByText('Magdalene')).not.toBeInTheDocument();
   });
 
-  it('ouvre la liste filtrée sur les écarts depuis le tableau de bord', async () => {
+  it('opens the list filtered on the differences from the dashboard', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
@@ -66,31 +66,31 @@ describe('App', () => {
     expect(screen.getByText('1 achievement')).toBeInTheDocument();
   });
 
-  it('garde les filtres en changeant d’onglet', async () => {
+  it('keeps the filters when the tab changes', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Succès' }));
+    await user.click(screen.getByRole('button', { name: 'Achievements' }));
     await user.type(screen.getByLabelText('Search'), 'cain');
-    await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
-    await user.click(screen.getByRole('button', { name: 'Succès' }));
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }));
+    await user.click(screen.getByRole('button', { name: 'Achievements' }));
     expect(screen.getByLabelText('Search')).toHaveValue('cain');
   });
 
-  it('recharge les données avec Actualiser', async () => {
+  it('loads the data again with Refresh', async () => {
     const user = userEvent.setup();
     const mock = stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
     expect(progressCalls(mock)).toBe(1);
-    await user.click(screen.getByRole('button', { name: 'Actualiser' }));
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
-    expect(await screen.findByRole('button', { name: 'Actualiser' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Refresh' })).toBeEnabled();
     expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
-  it('ouvre les routes depuis le tableau de bord, puis une fiche depuis une run', async () => {
+  it('opens the routes from the dashboard, then a card from a run', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
@@ -100,24 +100,24 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Progress' })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Guardian Angel' })[0]);
-    expect(window.location.hash).toBe('#/succes/45');
+    expect(window.location.hash).toBe('#/achievements/45');
     expect(await screen.findByRole('complementary', { name: 'Guardian Angel' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Succès' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Achievements' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('recharge aussi les routes avec Actualiser', async () => {
+  it('also loads the routes again with Refresh', async () => {
     const user = userEvent.setup();
     const mock = stubProgress();
     window.location.hash = '#/routes';
     render(<App />);
     await screen.findByRole('heading', { name: 'Suggested runs' });
     expect(callsTo(mock, '/api/routes')).toBe(1);
-    await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
+    await user.click(await screen.findByRole('button', { name: 'Refresh' }));
     await vi.waitFor(() => expect(callsTo(mock, '/api/routes')).toBe(2));
     expect(screen.getByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
   });
 
-  it('garde Actualiser occupé tant que les routes se rechargent', async () => {
+  it('keeps Refresh busy while the routes are loading', async () => {
     const user = userEvent.setup();
     const pending: { release?: () => void } = {};
     let routeCalls = 0;
@@ -133,28 +133,28 @@ describe('App', () => {
     window.location.hash = '#/routes';
     render(<App />);
     await screen.findByRole('heading', { name: 'Suggested runs' });
-    await user.click(await screen.findByRole('button', { name: 'Actualiser' }));
+    await user.click(await screen.findByRole('button', { name: 'Refresh' }));
     await vi.waitFor(() => expect(pending.release).toBeDefined());
-    // La progression est relue tout de suite ; seules les routes restent en attente.
+    // The progress is read again right away; only the routes are still pending.
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-    expect(screen.getByRole('button', { name: 'Actualisation…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled();
     await act(async () => pending.release?.());
-    expect(await screen.findByRole('button', { name: 'Actualiser' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Refresh' })).toBeEnabled();
   });
 
-  it('recharge avec le slot choisi', async () => {
+  it('loads again with the chosen slot', async () => {
     const user = userEvent.setup();
     const mock = stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.selectOptions(screen.getByLabelText('Sauvegarde'), 'Slot 2');
+    await user.selectOptions(screen.getByLabelText('Save file'), 'Slot 2');
     await vi.waitFor(() =>
       expect(mock.mock.calls.some(([input]) => String(input) === '/api/progress?profile=me&slot=2')).toBe(true),
     );
   });
 
-  it('affiche une erreur et permet de réessayer', async () => {
+  it('shows an error and offers to try again', async () => {
     const user = userEvent.setup();
     let fail = true;
     stubProgress({
@@ -163,90 +163,90 @@ describe('App', () => {
     render(<App />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Aucun compte Steam local');
     fail = false;
-    await user.click(screen.getByRole('button', { name: 'Réessayer' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
-  it('change de thème et le mémorise', async () => {
+  it('changes the theme and remembers it', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
     expect(document.documentElement.dataset.theme).toBe('dark');
-    await user.click(screen.getByRole('button', { name: 'Passer au thème clair' }));
+    await user.click(screen.getByRole('button', { name: 'Switch to the light theme' }));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('iam-theme')).toBe('light');
   });
 
-  it('arrête le serveur après confirmation', async () => {
+  it('stops the server after a confirmation', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubProgress({ 'POST /api/shutdown': () => ({ ok: true }) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Arrêter' }));
-    expect(await screen.findByRole('heading', { name: 'Serveur arrêté' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(await screen.findByRole('heading', { name: 'Server stopped' })).toBeInTheDocument();
   });
 
-  it('ne fait rien si l’arrêt est annulé', async () => {
+  it('does nothing when the stop is cancelled', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     const mock = stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Arrêter' }));
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
     expect(mock.mock.calls.some(([input]) => String(input) === '/api/shutdown')).toBe(false);
     expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
-  it('affiche une erreur si l’arrêt échoue et garde le tableau de bord', async () => {
+  it('shows an error when the stop fails and keeps the dashboard', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubProgress({ 'POST /api/shutdown': () => jsonResponse({ error: 'non' }, 403) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Arrêter' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Arrêt impossible');
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The server could not be stopped');
     expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
   });
 
-  it('ouvre la fiche d’un succès puis rend le focus à la liste en la fermant', async () => {
+  it('opens the card of an achievement then gives the focus back to the list on close', async () => {
     const user = userEvent.setup();
     stubProgress();
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Succès' }));
+    await user.click(screen.getByRole('button', { name: 'Achievements' }));
     const cain = screen.getByRole('button', { name: 'Cain' });
     await user.click(cain);
-    expect(window.location.hash).toBe('#/succes/2');
+    expect(window.location.hash).toBe('#/achievements/2');
     const panel = await screen.findByRole('complementary', { name: 'Cain' });
     expect(within(panel).getByText('Defeat Boss Rush as Azazel')).toBeInTheDocument();
     await user.click(within(panel).getByRole('button', { name: 'Close the card' }));
-    expect(window.location.hash).toBe('#/succes');
+    expect(window.location.hash).toBe('#/achievements');
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(cain).toHaveFocus();
   });
 
-  it('ouvre directement la fiche indiquée dans l’adresse', async () => {
-    window.location.hash = '#/succes/2';
+  it('opens the card named in the address right away', async () => {
+    window.location.hash = '#/achievements/2';
     stubProgress();
     render(<App />);
     expect(await screen.findByRole('complementary', { name: 'Cain' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Succès' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Achievements' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('signale une base wiki absente et mène aux paramètres', async () => {
+  it('reports a missing wiki base and leads to the settings', async () => {
     const user = userEvent.setup();
     stubProgress({ 'GET /api/wiki/status': () => KB_ABSENT });
     render(<App />);
     expect(await screen.findByText(/^Wiki base missing/)).toBeInTheDocument();
     expect(screen.getByText('Wiki: missing')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open the settings' }));
-    expect(window.location.hash).toBe('#/parametres');
-    expect(screen.getByRole('heading', { name: 'Base wiki' })).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/settings');
+    expect(screen.getByRole('heading', { name: 'Wiki base' })).toBeInTheDocument();
   });
 
-  it('synchronise le wiki depuis les paramètres puis recharge les données', async () => {
+  it('syncs the wiki from the settings then loads the data again', async () => {
     const user = userEvent.setup();
     const events: WikiSyncEvent[] = [
       { step: 'core', done: 0, total: 1, message: 'Téléchargement de la liste des succès' },
@@ -270,25 +270,25 @@ describe('App', () => {
     const mock = stubProgress({ 'POST /api/wiki/sync': () => new Response(body) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    await user.click(screen.getByRole('button', { name: 'Paramètres' }));
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Synchroniser le wiki' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Synchro terminée.');
+    await user.click(screen.getByRole('button', { name: 'Sync the wiki' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Sync complete.');
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(2));
     expect(callsTo(mock, '/api/achievements')).toBe(2);
     expect(callsTo(mock, '/api/wiki/status')).toBe(2);
-    expect(screen.getByRole('button', { name: 'Synchroniser le wiki' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sync the wiki' })).toBeEnabled();
   });
 
-  it('affiche les paramètres même si la progression échoue', async () => {
-    window.location.hash = '#/parametres';
+  it('shows the settings even when the progress fails', async () => {
+    window.location.hash = '#/settings';
     stubProgress({ 'GET /api/progress': () => jsonResponse({ error: 'Aucun compte Steam local' }, 404) });
     render(<App />);
     expect(await screen.findByText('Player (76561198083722517)')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Impossible de charger la progression' })).not.toBeInTheDocument();
   });
 
-  it('propose de réessayer quand les routes d’un autre joueur échouent, ou de revenir à son profil', async () => {
+  it('offers to try again when the routes of another player fail, or to go back to your profile', async () => {
     const user = userEvent.setup();
     const mock = stubProgress({
       'GET /api/profile/resolve': () => ({ steamId64: '76561198000000001', name: 'Ami' }),
@@ -298,9 +298,9 @@ describe('App', () => {
     window.location.hash = '#/routes';
     render(<App />);
     await screen.findByRole('heading', { name: 'Suggested runs' });
-    await user.selectOptions(screen.getByLabelText('Profil'), 'Autre joueur…');
-    await user.type(screen.getByLabelText('SteamID64, URL de profil ou pseudo'), 'ami');
-    await user.click(screen.getByRole('button', { name: 'Charger' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'Another player…');
+    await user.type(screen.getByLabelText('SteamID64, profile URL or nickname'), 'ami');
+    await user.click(screen.getByRole('button', { name: 'Load' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Profil Steam privé');
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
@@ -309,7 +309,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Suggested runs' })).toBeInTheDocument();
   });
 
-  it('pose au conseiller la question d’une run et garde la conversation entre les onglets', async () => {
+  it('asks the advisor the question of a run and keeps the conversation between tabs', async () => {
     const user = userEvent.setup();
     const events: AdvisorEvent[] = [
       { kind: 'context', sources: [{ id: 45, name: 'Guardian Angel' }] },
@@ -327,8 +327,8 @@ describe('App', () => {
     render(<App />);
     const [magdalene] = within(await screen.findByRole('region', { name: 'Suggested runs' })).getAllByRole('article');
     await user.click(within(magdalene).getByRole('button', { name: 'Ask the advisor' }));
-    expect(window.location.hash).toBe('#/conseiller');
-    expect(screen.getByRole('button', { name: 'Conseiller' })).toHaveAttribute('aria-current', 'page');
+    expect(window.location.hash).toBe('#/advisor');
+    expect(screen.getByRole('button', { name: 'Advisor' })).toHaveAttribute('aria-current', 'page');
     const field = screen.getByLabelText<HTMLTextAreaElement>('Your question');
     expect(field.value).toMatch(/^How do I clear this run with Magdalene in hard mode/);
     expect(field).toHaveFocus();
@@ -336,26 +336,26 @@ describe('App', () => {
     expect(await screen.findByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
     expect(bodies).toEqual([{ question: expect.stringMatching(/^How do I clear this run/), history: [], profile: 'me', slot: null }]);
     expect(screen.getByText('Advisor: OK')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
-    await user.click(screen.getByRole('button', { name: 'Conseiller' }));
+    await user.click(screen.getByRole('button', { name: 'Dashboard' }));
+    await user.click(screen.getByRole('button', { name: 'Advisor' }));
     expect(screen.getByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Guardian Angel' }));
-    expect(window.location.hash).toBe('#/succes/45');
+    expect(window.location.hash).toBe('#/achievements/45');
   });
 
-  it('pose au conseiller la question d’une fiche', async () => {
+  it('asks the advisor the question of a card', async () => {
     const user = userEvent.setup();
     const plan = { requirements: [], runs: [] };
     stubProgress({ 'GET /api/achievement/2': () => makeCard({ achievement: ACHIEVEMENTS[1], plan }) });
-    window.location.hash = '#/succes/2';
+    window.location.hash = '#/achievements/2';
     render(<App />);
     const panel = await screen.findByRole('complementary', { name: 'Cain' });
     await user.click(within(panel).getByRole('button', { name: 'Ask the advisor' }));
-    expect(window.location.hash).toBe('#/conseiller');
+    expect(window.location.hash).toBe('#/advisor');
     expect(screen.getByLabelText('Your question')).toHaveValue('How do I get Cain (#2)?');
   });
 
-  it('enregistre les réglages Ollama depuis les paramètres et met à jour la pastille du conseiller', async () => {
+  it('saves the Ollama settings from the settings screen and updates the advisor badge', async () => {
     const user = userEvent.setup();
     let status = ADVISOR_OFFLINE;
     stubProgress({
@@ -365,19 +365,19 @@ describe('App', () => {
         return status;
       },
     });
-    window.location.hash = '#/parametres';
+    window.location.hash = '#/settings';
     render(<App />);
     expect(await screen.findByText('Advisor: unreachable')).toBeInTheDocument();
-    const section = within(screen.getByRole('region', { name: 'Conseiller IA' }));
+    const section = within(screen.getByRole('region', { name: 'AI advisor' }));
     const url = await section.findByDisplayValue('http://127.0.0.1:11434');
     await user.clear(url);
     await user.type(url, 'http://10.0.0.5:11434');
-    await user.click(section.getByRole('button', { name: 'Enregistrer' }));
+    await user.click(section.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Advisor: OK')).toBeInTheDocument();
-    expect(section.getByText('Serveur joignable, modèle qwen3.5:9b installé.')).toBeInTheDocument();
+    expect(section.getByText('Server reachable, model qwen3.5:9b installed.')).toBeInTheDocument();
   });
 
-  it('ne répète pas le compte principal dans le choix du profil', async () => {
+  it('does not repeat the main account in the profile picker', async () => {
     stubProgress({
       'GET /api/progress': () =>
         makeSummary({
@@ -390,10 +390,10 @@ describe('App', () => {
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
     await vi.waitFor(() =>
-      expect(within(screen.getByLabelText('Profil')).getAllByRole('option').map((o) => o.textContent)).toEqual([
-        'Mon profil (Player)',
-        'Second Player (compte local)',
-        'Autre joueur…',
+      expect(within(screen.getByLabelText('Profile')).getAllByRole('option').map((o) => o.textContent)).toEqual([
+        'My profile (Player)',
+        'Second Player (local account)',
+        'Another player…',
       ]),
     );
   });

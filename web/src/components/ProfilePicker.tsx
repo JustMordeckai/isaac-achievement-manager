@@ -1,37 +1,39 @@
 import { useRef, useState } from 'react';
 import type { LocalAccount } from '../../../shared/types.ts';
 import { api } from '../api.ts';
+import { useT } from '../i18n.tsx';
 import { loadRecentProfiles, rememberProfile, type SavedProfile } from '../recent-profiles.ts';
 
 const OTHER = '__other__';
 
 export interface ProfilePickerProps {
-  /** "me" ou un SteamID64. */
+  /** "me" or a SteamID64. */
   profile: string;
   accounts: LocalAccount[];
-  /** SteamID64 du compte servi sous « Mon profil », null s'il est inconnu. */
+  /** SteamID64 of the account served under "My profile", null when it is unknown. */
   meSteamId: string | null;
-  /** Nom du profil actuellement affiché. */
+  /** Name of the profile on screen right now. */
   currentName: string | null;
   onChange(profile: string): void;
 }
 
 export function ProfilePicker({ profile, accounts, meSteamId, currentName, onChange }: ProfilePickerProps) {
+  const t = useT();
   const [recent, setRecent] = useState<SavedProfile[]>(loadRecentProfiles);
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Incrémenté à chaque annulation ou nouvelle sélection, pour ignorer une résolution obsolète. */
+  /** Bumped on every cancel or new pick, so a stale lookup is ignored. */
   const requestId = useRef(0);
 
-  // « Mon profil » représente déjà le compte choisi par le serveur : on ne le répète pas dans la liste.
+  // "My profile" already stands for the account the server picked: it is not repeated in the list.
   const otherLocals = meSteamId === null ? (accounts.length > 1 ? accounts : []) : accounts.filter((a) => a.steamId64 !== meSteamId);
   const recentOthers = recent.filter(
     (r) => r.steamId64 !== meSteamId && !otherLocals.some((a) => a.steamId64 === r.steamId64),
   );
   const known = new Set(['me', ...otherLocals.map((a) => a.steamId64), ...recentOthers.map((r) => r.steamId64)]);
-  const meLabel = profile === 'me' && currentName ? `Mon profil (${currentName})` : 'Mon profil';
+  const meLabel = profile === 'me' && currentName ? t('app.myProfileNamed', { name: currentName }) : t('app.myProfile');
 
   function select(value: string) {
     requestId.current += 1;
@@ -76,12 +78,12 @@ export function ProfilePicker({ profile, accounts, meSteamId, currentName, onCha
   return (
     <div className="profile-picker">
       <label className="field">
-        <span>Profil</span>
+        <span>{t('app.profile')}</span>
         <select value={editing ? OTHER : profile} onChange={(e) => select(e.target.value)}>
           <option value="me">{meLabel}</option>
           {otherLocals.map((a) => (
             <option key={a.steamId64} value={a.steamId64}>
-              {`${a.personaName ?? a.steamId64} (compte local)`}
+              {t('app.localAccount', { name: a.personaName ?? a.steamId64 })}
             </option>
           ))}
           {recentOthers.map((r) => (
@@ -90,7 +92,7 @@ export function ProfilePicker({ profile, accounts, meSteamId, currentName, onCha
             </option>
           ))}
           {!known.has(profile) && <option value={profile}>{currentName ?? profile}</option>}
-          <option value={OTHER}>Autre joueur…</option>
+          <option value={OTHER}>{t('app.otherPlayer')}</option>
         </select>
       </label>
       {editing && (
@@ -102,20 +104,20 @@ export function ProfilePicker({ profile, accounts, meSteamId, currentName, onCha
           }}
         >
           <label className="field field--grow">
-            <span>SteamID64, URL de profil ou pseudo</span>
+            <span>{t('app.profileInput')}</span>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="https://steamcommunity.com/id/…"
+              placeholder={t('app.profilePlaceholder')}
               autoFocus
               required
             />
           </label>
           <button className="btn btn--primary" type="submit" disabled={busy}>
-            {busy ? 'Recherche…' : 'Charger'}
+            {busy ? t('app.searching') : t('app.load')}
           </button>
           <button className="btn" type="button" onClick={cancel}>
-            Annuler
+            {t('app.cancel')}
           </button>
           {error && (
             <p className="form-error" role="alert">
