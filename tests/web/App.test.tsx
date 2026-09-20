@@ -413,4 +413,29 @@ describe('App', () => {
     expect(await screen.findByLabelText('Language')).toBeInTheDocument();
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
   });
+
+  it('keeps a language picked while settings are still loading', async () => {
+    const user = userEvent.setup();
+    let resolveSettings: (value: unknown) => void = () => {};
+    const pending = new Promise((resolve) => {
+      resolveSettings = resolve;
+    });
+    stubProgress({
+      'GET /api/settings': () => pending,
+      'POST /api/settings': () => ({ ...SETTINGS, locale: 'fr' }),
+    });
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'Français');
+    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveSettings({ ...SETTINGS, locale: 'en' });
+      await pending;
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(screen.getByLabelText('Langue')).toBeInTheDocument();
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('fr');
+  });
 });

@@ -6,7 +6,7 @@ import type { Locale } from '../../shared/i18n/index.ts';
 import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
 import { guessLocale, LocaleProvider, useT } from '../../web/src/i18n.tsx';
 import { makeSummary } from './factories.ts';
-import { stubFetch } from './fetch-stub.ts';
+import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
 describe('guessLocale', () => {
   it('picks French when the first language starts with fr', () => {
@@ -47,7 +47,7 @@ describe('LocaleProvider', () => {
   });
 });
 
-function baseHeaderProps(onLocaleChange: (locale: Locale) => void): HeaderProps {
+function baseHeaderProps(): HeaderProps {
   return {
     summary: makeSummary(),
     kb: null,
@@ -62,7 +62,6 @@ function baseHeaderProps(onLocaleChange: (locale: Locale) => void): HeaderProps 
     tab: 'dashboard',
     onTabChange: vi.fn(),
     onStop: vi.fn(),
-    onLocaleChange,
   };
 }
 
@@ -70,13 +69,13 @@ function baseHeaderProps(onLocaleChange: (locale: Locale) => void): HeaderProps 
 function LocaleHarness() {
   const [locale, setLocale] = useState<Locale>('en');
   return (
-    <LocaleProvider locale={locale}>
-      <Header {...baseHeaderProps(setLocale)} />
+    <LocaleProvider locale={locale} onLocaleChange={setLocale}>
+      <Header {...baseHeaderProps()} />
     </LocaleProvider>
   );
 }
 
-describe('language selector', () => {
+describe('LanguagePicker', () => {
   it('calls api.saveLocale and switches the interface without reloading', async () => {
     const user = userEvent.setup();
     const mock = stubFetch({ 'POST /api/settings': () => ({ locale: 'fr' }) });
@@ -91,5 +90,24 @@ describe('language selector', () => {
     const [, init] = mock.mock.calls.find(([input]) => String(input) === '/api/settings')!;
     expect(new Headers(init?.headers).get('X-IAM-Action')).toBe('settings');
     expect(JSON.parse(String(init?.body))).toEqual({ locale: 'fr' });
+  });
+
+  it('keeps the chosen language and reports a failed save', async () => {
+    const user = userEvent.setup();
+    stubFetch({ 'POST /api/settings': () => jsonResponse({ error: 'data/settings.json is read-only' }, 500) });
+    render(<LocaleHarness />);
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'Français');
+
+    expect(await screen.findByLabelText('Langue')).toHaveValue('fr');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Enregistré dans ce navigateur seulement : impossible d'écrire data/settings.json.",
+    );
+  });
+
+  it('carries the endonym language on each option for screen readers', () => {
+    render(<LocaleHarness />);
+    expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('lang', 'en');
+    expect(screen.getByRole('option', { name: 'Français' })).toHaveAttribute('lang', 'fr');
   });
 });

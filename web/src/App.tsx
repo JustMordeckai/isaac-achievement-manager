@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Locale } from '../../shared/i18n/index.ts';
 import { api, type ProfileQuery } from './api.ts';
 import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
@@ -40,15 +40,18 @@ export function App() {
   // Après une synchro, la liste est relue pour recevoir les méthodes et personnages du wiki.
   const [sync, startSync] = useWikiSync(reload);
   const [locale, setLocale] = useState<Locale>(loadLocale);
+  const localeChosenRef = useRef(false);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
   // The first paint already uses the remembered (or browser-guessed) locale, exactly like the
-  // theme; once the server answers, its value takes over and is remembered for the next visit.
+  // theme; once the server answers, its value takes over and is remembered for the next visit,
+  // unless the reader already picked a language this session (localeChosenRef), in which case
+  // that pick always wins.
   useEffect(() => {
-    if (settings.status !== 'ready') return;
+    if (settings.status !== 'ready' || localeChosenRef.current) return;
     setLocale(settings.info.locale);
     storeLocale(settings.info.locale);
   }, [settings.status]);
@@ -102,12 +105,13 @@ export function App() {
     setTab('advisor');
   };
   const handleLocaleChange = (next: Locale) => {
+    localeChosenRef.current = true;
     setLocale(next);
     storeLocale(next);
   };
 
   return (
-    <LocaleProvider locale={locale}>
+    <LocaleProvider locale={locale} onLocaleChange={handleLocaleChange}>
       <div className="app">
         <Header
           summary={summary}
@@ -123,7 +127,6 @@ export function App() {
           tab={tab}
           onTabChange={setTab}
           onStop={() => void requestStop()}
-          onLocaleChange={handleLocaleChange}
         />
         <main className="main">
           {stop.kind === 'failed' && (
@@ -131,9 +134,7 @@ export function App() {
               Arrêt impossible : {stop.message}
             </p>
           )}
-          {tab === 'settings' && (
-            <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} onLocaleChange={handleLocaleChange} />
-          )}
+          {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} />}
           {tab === 'routes' && (
             <Routes
               state={routes}

@@ -22,7 +22,6 @@ function renderHeader(overrides: Partial<HeaderProps> = {}) {
     tab: 'dashboard',
     onTabChange: vi.fn(),
     onStop: vi.fn(),
-    onLocaleChange: vi.fn(),
     ...overrides,
   };
   render(<Header {...props} />);
@@ -133,6 +132,12 @@ describe('Header', () => {
     renderHeader({ summary: null, refreshing: true });
     expect(screen.getByRole('button', { name: 'Actualisation…' })).toBeDisabled();
     expect(screen.queryByRole('list', { name: 'État des sources' })).not.toBeInTheDocument();
+  });
+
+  it('offers the language picker without its explanatory hint', () => {
+    renderHeader();
+    expect(screen.getByLabelText('Language')).toBeInTheDocument();
+    expect(screen.queryByText(/data\/settings\.json/)).not.toBeInTheDocument();
   });
 });
 

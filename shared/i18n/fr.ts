@@ -8,5 +8,6 @@ export const fr: Catalog = {
   'routes.moreRuns.other': 'Afficher {count} runs de plus',
   'errors.localeInvalid': 'Langue inconnue : {locale}',
   'errors.bodyExpected': 'Corps JSON attendu',
-  'settings.language.hint': 'Ton choix est enregistré dans data/settings.json.',
+  'settings.language.hint': 'Ton choix est enregistré dans data/settings.json et retenu dans ce navigateur.',
+  'settings.language.saveFailed': "Enregistré dans ce navigateur seulement : impossible d'écrire data/settings.json.",
 };

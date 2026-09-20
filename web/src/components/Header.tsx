@@ -1,9 +1,7 @@
-import type { ChangeEvent } from 'react';
 import { useLayoutEffect, useRef } from 'react';
-import { DEFAULT_LOCALE, LOCALE_NAMES, LOCALES, toLocale, type Locale } from '../../../shared/i18n/index.ts';
 import type { AdvisorStatus, KbStatus, ProgressSummary } from '../../../shared/types.ts';
-import { api, type ProfileQuery } from '../api.ts';
-import { useLocale, useT } from '../i18n.tsx';
+import type { ProfileQuery } from '../api.ts';
+import { LanguagePicker } from '../i18n.tsx';
 import type { Theme } from '../theme.ts';
 import type { Tab } from '../useHashTab.ts';
 import { ProfilePicker } from './ProfilePicker.tsx';
@@ -24,8 +22,6 @@ export interface HeaderProps {
   tab: Tab;
   onTabChange(tab: Tab): void;
   onStop(): void;
-  /** Applies the picked language immediately and persists it to data/settings.json. */
-  onLocaleChange(locale: Locale): void;
 }
 
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -57,14 +53,6 @@ export function Header(props: HeaderProps) {
   const { summary, query } = props;
   const save = summary?.save ?? null;
   const ref = useHeaderHeight();
-  const t = useT();
-  const locale = useLocale();
-
-  function handleLocaleChange(event: ChangeEvent<HTMLSelectElement>) {
-    const next = toLocale(event.target.value) ?? DEFAULT_LOCALE;
-    props.onLocaleChange(next);
-    void api.saveLocale(next).catch(() => {});
-  }
 
   return (
     <header className="header" ref={ref}>
@@ -87,16 +75,7 @@ export function Header(props: HeaderProps) {
           <button type="button" className="btn" onClick={props.onRefresh} disabled={props.refreshing}>
             {props.refreshing ? 'Actualisation…' : 'Actualiser'}
           </button>
-          <label className="field">
-            <span className="visually-hidden">{t('app.language')}</span>
-            <select value={locale} onChange={handleLocaleChange}>
-              {LOCALES.map((code) => (
-                <option key={code} value={code}>
-                  {LOCALE_NAMES[code]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <LanguagePicker />
           <button type="button" className="btn btn--ghost" onClick={props.onToggleTheme}>
             {props.theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'}
           </button>

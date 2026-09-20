@@ -1,24 +1,45 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { DEFAULT_LOCALE, plural, t, toLocale, type Locale, type MessageKey } from '../../shared/i18n/index.ts';
+import { createContext, useContext, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import {
+  DEFAULT_LOCALE,
+  LOCALE_NAMES,
+  LOCALES,
+  plural,
+  t,
+  toLocale,
+  type Locale,
+  type MessageKey,
+} from '../../shared/i18n/index.ts';
+import { api } from './api.ts';
 
-const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
+interface LocaleContextValue {
+  locale: Locale;
+  onLocaleChange(locale: Locale): void;
+}
+
+const LocaleContext = createContext<LocaleContextValue>({ locale: DEFAULT_LOCALE, onLocaleChange: () => {} });
 
 export interface LocaleProviderProps {
   locale: Locale;
+  /** Called when the reader picks a language through a LanguagePicker; a no-op when left out. */
+  onLocaleChange?(locale: Locale): void;
   children: ReactNode;
 }
 
 /** Publishes the interface language to the component tree and keeps `<html lang>` in sync with it. */
-export function LocaleProvider({ locale, children }: LocaleProviderProps) {
+export function LocaleProvider({ locale, onLocaleChange, children }: LocaleProviderProps) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
-  return <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>;
+  const value = useMemo<LocaleContextValue>(
+    () => ({ locale, onLocaleChange: onLocaleChange ?? (() => {}) }),
+    [locale, onLocaleChange],
+  );
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
 /** Current interface language; DEFAULT_LOCALE outside a LocaleProvider (isolated component tests). */
 export function useLocale(): Locale {
-  return useContext(LocaleContext);
+  return useContext(LocaleContext).locale;
 }
 
 /** Reads a catalogue key in the current interface language. */
@@ -58,4 +79,43 @@ export function storeLocale(locale: Locale): void {
   } catch {
     // Storage unavailable: the locale stays valid for this page only.
   }
+}
+
+export interface LanguagePickerProps {
+  /** Shows the explanatory hint below the select; used in Settings, left out in the compact header. */
+  hint?: boolean;
+}
+
+/**
+ * The one language switcher in the interface: a labelled select built from LOCALES, the call that
+ * applies the pick immediately, the save to the server, and the failure line if that save does not
+ * go through. Header.tsx and Settings.tsx both render this instead of duplicating the interaction.
+ */
+export function LanguagePicker({ hint }: LanguagePickerProps) {
+  const { locale, onLocaleChange } = useContext(LocaleContext);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  function handleChange(event: ChangeEvent<HTMLSelectElement>) {
+    const next = toLocale(event.target.value) ?? DEFAULT_LOCALE;
+    setSaveFailed(false);
+    onLocaleChange(next);
+    void api.saveLocale(next).catch(() => setSaveFailed(true));
+  }
+
+  return (
+    <>
+      <label className="field">
+        <span className="visually-hidden">{t(locale, 'app.language')}</span>
+        <select value={locale} onChange={handleChange}>
+          {LOCALES.map((code) => (
+            <option key={code} value={code} lang={code}>
+              {LOCALE_NAMES[code]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {saveFailed && <p role="alert">{t(locale, 'settings.language.saveFailed')}</p>}
+      {hint && <p className="hint">{t(locale, 'settings.language.hint')}</p>}
+    </>
+  );
 }

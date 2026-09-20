@@ -6,5 +6,6 @@ export const en = {
   'routes.moreRuns.other': 'Show {count} more runs',
   'errors.localeInvalid': 'Unknown language: {locale}',
   'errors.bodyExpected': 'A JSON body is required',
-  'settings.language.hint': 'Your choice is saved to data/settings.json.',
+  'settings.language.hint': 'Your choice is saved to data/settings.json and remembered in this browser.',
+  'settings.language.saveFailed': 'Saved in this browser only: data/settings.json could not be written.',
 } as const;
