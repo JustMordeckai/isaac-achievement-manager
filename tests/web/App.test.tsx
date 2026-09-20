@@ -62,8 +62,8 @@ describe('App', () => {
     stubProgress();
     render(<App />);
     await user.click(await screen.findByRole('button', { name: 'See them in the list' }));
-    expect(screen.getByLabelText('Écarts sauvegarde/Steam')).toBeChecked();
-    expect(screen.getByText('1 succès')).toBeInTheDocument();
+    expect(screen.getByLabelText('Save and Steam differences')).toBeChecked();
+    expect(screen.getByText('1 achievement')).toBeInTheDocument();
   });
 
   it('garde les filtres en changeant d’onglet', async () => {
@@ -72,10 +72,10 @@ describe('App', () => {
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
     await user.click(screen.getByRole('button', { name: 'Succès' }));
-    await user.type(screen.getByLabelText('Recherche'), 'cain');
+    await user.type(screen.getByLabelText('Search'), 'cain');
     await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
     await user.click(screen.getByRole('button', { name: 'Succès' }));
-    expect(screen.getByLabelText('Recherche')).toHaveValue('cain');
+    expect(screen.getByLabelText('Search')).toHaveValue('cain');
   });
 
   it('recharge les données avec Actualiser', async () => {
@@ -221,7 +221,7 @@ describe('App', () => {
     expect(window.location.hash).toBe('#/succes/2');
     const panel = await screen.findByRole('complementary', { name: 'Cain' });
     expect(within(panel).getByText('Defeat Boss Rush as Azazel')).toBeInTheDocument();
-    await user.click(within(panel).getByRole('button', { name: 'Fermer la fiche' }));
+    await user.click(within(panel).getByRole('button', { name: 'Close the card' }));
     expect(window.location.hash).toBe('#/succes');
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(cain).toHaveFocus();
@@ -350,7 +350,7 @@ describe('App', () => {
     window.location.hash = '#/succes/2';
     render(<App />);
     const panel = await screen.findByRole('complementary', { name: 'Cain' });
-    await user.click(within(panel).getByRole('button', { name: 'Demander au conseiller' }));
+    await user.click(within(panel).getByRole('button', { name: 'Ask the advisor' }));
     expect(window.location.hash).toBe('#/conseiller');
     expect(screen.getByLabelText('Your question')).toHaveValue('How do I get Cain (#2)?');
   });

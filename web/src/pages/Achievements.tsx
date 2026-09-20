@@ -3,7 +3,7 @@ import { CHARACTERS, type CharacterId } from '../../../shared/characters.ts';
 import { DLC_ORDER } from '../../../shared/dlc.ts';
 import type { AchievementEntry, Dlc, HowKind } from '../../../shared/types.ts';
 import { AchievementIcon } from '../components/AchievementIcon.tsx';
-import { useLocale } from '../i18n.tsx';
+import { useLocale, useT, useTPlural } from '../i18n.tsx';
 import { DLC_LABELS, formatDate, HOW_ORDER, howLabel } from '../labels.ts';
 import {
   filterAchievements,
@@ -19,17 +19,18 @@ export interface AchievementsProps {
   achievements: AchievementEntry[];
   filter: AchievementFilter;
   onFilterChange(filter: AchievementFilter): void;
-  /** Succès en écart entre la sauvegarde et Steam. */
+  /** Achievements that differ between the save and Steam. */
   desyncIds: ReadonlySet<number>;
-  /** Succès dont la fiche est ouverte. */
+  /** Achievement whose card is open. */
   selectedId: number | null;
   onOpen(id: number): void;
-  /** Fiche affichée à côté de la liste. */
+  /** Card shown next to the list. */
   panel: ReactNode;
 }
 
 function AchievementRow({ achievement: a, selected, onOpen }: { achievement: AchievementEntry; selected: boolean; onOpen(): void }) {
   const locale = useLocale();
+  const t = useT();
   return (
     <li className={`ach ${a.unlocked ? 'ach--unlocked' : 'ach--locked'}${selected ? ' ach--selected' : ''}`}>
       <AchievementIcon file={a.icon} alt="" />
@@ -46,7 +47,7 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
           >
             {a.name}
           </button>
-          {a.hidden && <span className="tag">secret</span>}
+          {a.hidden && <span className="tag">{t('achievements.secret')}</span>}
         </p>
         <p className="ach__desc" lang="en">
           {a.description}
@@ -58,16 +59,16 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
         {a.unlocked ? (
           a.unlockedAt ? (
             <span className="ach__state">
-              Débloqué le <time dateTime={a.unlockedAt}>{formatDate(locale, a.unlockedAt)}</time>
+              {t('achievements.unlockedOn')} <time dateTime={a.unlockedAt}>{formatDate(locale, a.unlockedAt)}</time>
             </span>
           ) : (
-            <span className="ach__state">Débloqué</span>
+            <span className="ach__state">{t('achievements.unlocked')}</span>
           )
         ) : (
-          <span className="ach__state ach__state--missing">Manquant</span>
+          <span className="ach__state ach__state--missing">{t('achievements.missing')}</span>
         )}
-        {a.inSave === true && !a.unlocked && <span className="tag tag--warn">dans la sauvegarde</span>}
-        {a.inSave === false && a.unlocked && <span className="tag tag--warn">absent de la sauvegarde</span>}
+        {a.inSave === true && !a.unlocked && <span className="tag tag--warn">{t('achievements.inSave')}</span>}
+        {a.inSave === false && a.unlocked && <span className="tag tag--warn">{t('achievements.notInSave')}</span>}
       </div>
     </li>
   );
@@ -75,20 +76,22 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
 
 export function Achievements(props: AchievementsProps) {
   const locale = useLocale();
+  const t = useT();
+  const tp = useTPlural();
   const { achievements, filter, onFilterChange, desyncIds, selectedId, onOpen, panel } = props;
   const visible = useMemo(() => filterAchievements(achievements, filter, desyncIds), [achievements, filter, desyncIds]);
   const [limit, setLimit] = useState(PAGE_SIZE);
   useEffect(() => setLimit(PAGE_SIZE), [filter]);
   const update = (patch: Partial<AchievementFilter>) => onFilterChange({ ...filter, ...patch });
 
-  // Sans base wiki, `how` et `character` valent null partout : les filtres correspondants n'ont pas de sens.
+  // With no wiki base, `how` and `character` are null everywhere: those filters would mean nothing.
   const hasWiki = achievements.some((a) => a.how !== null);
   const characters = useMemo(() => {
     const present = new Set(achievements.map((a) => a.character));
     return CHARACTERS.filter((c) => present.has(c.id));
   }, [achievements]);
 
-  // À la fermeture de la fiche, le focus revient sur le succès qui l'avait ouverte.
+  // When the card closes, the focus goes back to the achievement that opened it.
   const previous = useRef(selectedId);
   useEffect(() => {
     const last = previous.current;
@@ -101,26 +104,26 @@ export function Achievements(props: AchievementsProps) {
       <div className="achievements__list">
         <form className="card filters" role="search" onSubmit={(e) => e.preventDefault()}>
           <label className="field field--grow">
-            <span>Recherche</span>
+            <span>{t('achievements.search')}</span>
             <input
               type="search"
               value={filter.search}
-              placeholder="Nom, description ou #numéro"
+              placeholder={t('achievements.searchPlaceholder')}
               onChange={(e) => update({ search: e.target.value })}
             />
           </label>
           <label className="field">
-            <span>État</span>
+            <span>{t('achievements.status')}</span>
             <select value={filter.status} onChange={(e) => update({ status: e.target.value as StatusFilter })}>
-              <option value="missing">Manquants</option>
-              <option value="unlocked">Débloqués</option>
-              <option value="all">Tous</option>
+              <option value="missing">{t('achievements.statusMissing')}</option>
+              <option value="unlocked">{t('achievements.statusUnlocked')}</option>
+              <option value="all">{t('achievements.all')}</option>
             </select>
           </label>
           <label className="field">
-            <span>Extension</span>
+            <span>{t('achievements.dlc')}</span>
             <select value={filter.dlc} onChange={(e) => update({ dlc: e.target.value as Dlc | 'all' })}>
-              <option value="all">Toutes</option>
+              <option value="all">{t('achievements.all')}</option>
               {DLC_ORDER.map((dlc) => (
                 <option key={dlc} value={dlc}>
                   {DLC_LABELS[dlc]}
@@ -131,9 +134,9 @@ export function Achievements(props: AchievementsProps) {
           {hasWiki && (
             <>
               <label className="field">
-                <span>Méthode</span>
+                <span>{t('achievements.how')}</span>
                 <select value={filter.how} onChange={(e) => update({ how: e.target.value as HowKind | 'all' })}>
-                  <option value="all">Toutes</option>
+                  <option value="all">{t('achievements.all')}</option>
                   {HOW_ORDER.map((how) => (
                     <option key={how} value={how}>
                       {howLabel(locale, how)}
@@ -142,12 +145,12 @@ export function Achievements(props: AchievementsProps) {
                 </select>
               </label>
               <label className="field">
-                <span>Personnage</span>
+                <span>{t('achievements.character')}</span>
                 <select
                   value={filter.character}
                   onChange={(e) => update({ character: e.target.value as CharacterId | 'all' })}
                 >
-                  <option value="all">Tous</option>
+                  <option value="all">{t('achievements.all')}</option>
                   {characters.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -158,35 +161,35 @@ export function Achievements(props: AchievementsProps) {
             </>
           )}
           <label className="field">
-            <span>Secrets</span>
+            <span>{t('achievements.secrets')}</span>
             <select value={filter.secret} onChange={(e) => update({ secret: e.target.value as SecretFilter })}>
-              <option value="all">Tous</option>
-              <option value="only">Secrets uniquement</option>
-              <option value="exclude">Sans les secrets</option>
+              <option value="all">{t('achievements.all')}</option>
+              <option value="only">{t('achievements.secretsOnly')}</option>
+              <option value="exclude">{t('achievements.secretsExclude')}</option>
             </select>
           </label>
           <label className="field">
-            <span>Tri</span>
+            <span>{t('achievements.sort')}</span>
             <select value={filter.sort} onChange={(e) => update({ sort: e.target.value as SortOrder })}>
-              <option value="id">Numéro</option>
-              <option value="name">Nom</option>
-              <option value="recent">Déblocage récent</option>
+              <option value="id">{t('achievements.sortId')}</option>
+              <option value="name">{t('achievements.sortName')}</option>
+              <option value="recent">{t('achievements.sortRecent')}</option>
             </select>
           </label>
           <label className="check">
             <input type="checkbox" checked={filter.onlyDesync} onChange={(e) => update({ onlyDesync: e.target.checked })} />
-            Écarts sauvegarde/Steam
+            {t('achievements.onlyDesync')}
           </label>
         </form>
 
         <p className="result-count" aria-live="polite">
-          {visible.length} succès
+          {tp('achievements.count', visible.length)}
         </p>
 
         {visible.length === 0 ? (
-          <p className="placeholder">Aucun succès ne correspond à ces filtres.</p>
+          <p className="placeholder">{t('achievements.noMatch')}</p>
         ) : (
-          <ul className="ach-list" aria-label="Succès">
+          <ul className="ach-list" aria-label={t('achievements.listLabel')}>
             {visible.slice(0, limit).map((a) => (
               <AchievementRow key={a.id} achievement={a} selected={a.id === selectedId} onOpen={() => onOpen(a.id)} />
             ))}
@@ -195,7 +198,7 @@ export function Achievements(props: AchievementsProps) {
 
         {visible.length > limit && (
           <button type="button" className="btn load-more" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
-            Afficher plus ({visible.length - limit} {visible.length - limit === 1 ? 'restant' : 'restants'})
+            {tp('achievements.loadMore', visible.length - limit)}
           </button>
         )}
       </div>

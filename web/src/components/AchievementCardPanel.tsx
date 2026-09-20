@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AchievementCard, AchievementWiki, CardPlan, KbStatus } from '../../../shared/types.ts';
 import { achievementQuestion } from '../advisor-question.ts';
 import { api, type ProfileQuery } from '../api.ts';
-import { useLocale } from '../i18n.tsx';
+import { useLocale, useT, useTPlural } from '../i18n.tsx';
 import {
   characterName,
   DLC_LABELS,
@@ -20,12 +20,12 @@ import { TextBlocks } from './TextBlocks.tsx';
 export interface AchievementCardPanelProps {
   id: number;
   query: ProfileQuery;
-  /** Change après une actualisation ou une synchro : la fiche est relue. */
+  /** Changes after a refresh or a sync: the card is read again. */
   reloadKey: number;
   onClose(): void;
   onOpenSettings(): void;
   onOpenRoutes(): void;
-  /** Ouvre le conseiller avec une question sur ce succès. */
+  /** Opens the advisor with a question about this achievement. */
   onAsk(question: string): void;
 }
 
@@ -37,25 +37,30 @@ interface PlanSectionProps {
   onAsk(): void;
 }
 
-/** Prérequis et runs du planificateur pour un succès encore manquant, et accès au conseiller. */
+/** Prerequisites and planned runs of an achievement still missing, and the way to the advisor. */
 function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
   const locale = useLocale();
+  const t = useT();
+  const tp = useTPlural();
   return (
     <section aria-labelledby="ach-card-plan">
-      <h3 id="ach-card-plan">Pour l'obtenir</h3>
+      <h3 id="ach-card-plan">{t('card.howToGetIt')}</h3>
       {plan.requirements.length === 0 && plan.runs.length === 0 && (
-        <p className="muted">Aucun prérequis connu et aucune run planifiée pour ce succès.</p>
+        <p className="muted">{t('card.noPlan')}</p>
       )}
       {plan.requirements.length > 0 && (
         <>
-          <h4>Prérequis</h4>
+          <h4>{t('card.prerequisites')}</h4>
           <ul className="requirement-list">
             {plan.requirements.map((requirement) => (
               <li
                 key={requirement.anyOf.map((a) => a.id).join('-')}
                 className={requirement.met ? 'requirement requirement--met' : 'requirement requirement--missing'}
               >
-                <RequirementNames requirements={[requirement]} /> : {requirement.met ? 'débloqué' : 'à débloquer'}
+                <RequirementNames requirements={[requirement]} />
+                {t('card.requirementSuffix', {
+                  state: requirement.met ? t('card.requirementMet') : t('card.requirementMissing'),
+                })}
               </li>
             ))}
           </ul>
@@ -63,14 +68,17 @@ function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
       )}
       {plan.runs.length > 0 && (
         <>
-          <h4>{plan.runs.length === 1 ? 'Run du plan' : 'Runs du plan'}</h4>
+          <h4>{tp('card.planRun', plan.runs.length)}</h4>
           <ul className="plan-runs">
             {plan.runs.map((run) => (
               <li key={run.id}>
-                Run <span lang="en">{characterName(run.character)}</span> ({runModeLabel(locale, run.mode)}) : battre{' '}
-                <span lang="en">{endingList(run.endings)}</span>, environ {formatMinutes(run.minutes)}
-                {run.preparation && ', run de préparation'}
-                {run.blocked && ", à débloquer d'abord"}
+                {t('card.planRunPrefix')}
+                <span lang="en">{characterName(run.character)}</span>
+                {t('card.planRunMode', { mode: runModeLabel(locale, run.mode) })}
+                <span lang="en">{endingList(run.endings)}</span>
+                {t('card.planRunMinutes', { minutes: formatMinutes(run.minutes) })}
+                {run.preparation && t('card.planRunPreparation')}
+                {run.blocked && t('card.planRunBlocked')}
               </li>
             ))}
           </ul>
@@ -79,11 +87,11 @@ function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
       <div className="ach-card__actions">
         {plan.runs.length > 0 && (
           <button type="button" className="btn" onClick={onOpenRoutes}>
-            Voir les routes
+            {t('card.seeRoutes')}
           </button>
         )}
         <button type="button" className="btn" onClick={onAsk}>
-          Demander au conseiller
+          {t('card.askAdvisor')}
         </button>
       </div>
     </section>
@@ -100,12 +108,13 @@ interface WikiSectionProps {
 
 function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionProps) {
   const locale = useLocale();
+  const t = useT();
   const how = describeHow(locale, wiki.how);
   const page = wiki.unlockPage;
   return (
     <>
       <section aria-labelledby="ach-card-condition">
-        <h3 id="ach-card-condition">Condition</h3>
+        <h3 id="ach-card-condition">{t('card.condition')}</h3>
         <p lang="en">{wiki.condition}</p>
         {how && <p className="muted">{how}</p>}
       </section>
@@ -113,9 +122,10 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
       {plan && <PlanSection plan={plan} onOpenRoutes={onOpenRoutes} onAsk={onAsk} />}
 
       <section aria-labelledby="ach-card-unlocks">
-        <h3 id="ach-card-unlocks">Débloque</h3>
+        <h3 id="ach-card-unlocks">{t('card.unlocks')}</h3>
         <p>
-          {unlockLabel(locale, wiki.unlocks.kind)} : <span lang="en">{wiki.unlocks.name}</span>
+          {t('card.unlockPrefix', { kind: unlockLabel(locale, wiki.unlocks.kind) })}
+          <span lang="en">{wiki.unlocks.name}</span>
         </p>
         {page && (
           <>
@@ -124,11 +134,13 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
                 {page.effect}
               </p>
             )}
-            {page.quality && <p className="muted">Qualité {page.quality}</p>}
+            {page.quality && <p className="muted">{t('card.quality', { quality: page.quality })}</p>}
             <TextBlocks blocks={page.intro} headingLevel={4} />
             <p>
               <a href={page.url} target="_blank" rel="noreferrer">
-                Page «&nbsp;<span lang="en">{page.title}</span>&nbsp;» sur le wiki
+                {t('card.wikiPagePrefix')}
+                <span lang="en">{page.title}</span>
+                {t('card.wikiPageSuffix')}
               </a>
             </p>
           </>
@@ -136,9 +148,9 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
       </section>
 
       <section aria-labelledby="ach-card-tips">
-        <h3 id="ach-card-tips">Astuces</h3>
+        <h3 id="ach-card-tips">{t('card.tips')}</h3>
         {wiki.tips.length === 0 ? (
-          <p className="muted">Le wiki ne donne pas d'astuce pour ce succès.</p>
+          <p className="muted">{t('card.noTips')}</p>
         ) : (
           wiki.tips.map((source) => (
             <section key={source.page} className="tip-source">
@@ -154,7 +166,7 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
                   {section.truncated && (
                     <p>
                       <a href={source.url} target="_blank" rel="noreferrer">
-                        Suite sur le wiki
+                        {t('card.moreOnWiki')}
                       </a>
                     </p>
                   )}
@@ -166,29 +178,31 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
       </section>
 
       <p className="ach-card__source">
-        Source :{' '}
+        {t('card.sourcePrefix')}
         <a href={wiki.sourceUrl} target="_blank" rel="noreferrer">
-          wiki The Binding of Isaac: Rebirth
+          {t('card.sourceWiki')}
         </a>{' '}
-        (Fandom, licence CC BY-SA){syncedAt && `, synchro du ${formatDate(locale, syncedAt)}`}.
+        {t('card.sourceLicence')}
+        {syncedAt && t('card.syncedOn', { date: formatDate(locale, syncedAt) })}.
       </p>
     </>
   );
 }
 
 function MissingWiki({ kb, onOpenSettings }: { kb: KbStatus; onOpenSettings(): void }) {
-  if (kb.state === 'ok') return <p className="muted">Ce succès ne figure pas sur le wiki.</p>;
+  const t = useT();
+  if (kb.state === 'ok') return <p className="muted">{t('card.notOnWiki')}</p>;
   return (
     <div className="banner banner--info">
-      <p>{kb.state === 'absent' ? "La base wiki n'est pas encore téléchargée." : (kb.message ?? 'Base wiki inutilisable.')}</p>
+      <p>{kb.state === 'absent' ? t('card.kbNotDownloaded') : (kb.message ?? t('card.kbUnusable'))}</p>
       <button type="button" className="btn" onClick={onOpenSettings}>
-        Ouvrir les paramètres
+        {t('app.openSettings')}
       </button>
     </div>
   );
 }
 
-/** Fiche détaillée d'un succès, affichée à côté de la liste. */
+/** Detailed card of an achievement, shown next to the list. */
 export function AchievementCardPanel({
   id,
   query,
@@ -199,6 +213,7 @@ export function AchievementCardPanel({
   onAsk,
 }: AchievementCardPanelProps) {
   const locale = useLocale();
+  const t = useT();
   const [state, setState] = useState<CardState>({ status: 'loading' });
   const heading = useRef<HTMLHeadingElement>(null);
   const { profile, slot } = query;
@@ -233,14 +248,14 @@ export function AchievementCardPanel({
     >
       <div className="ach-card__head">
         <h2 id="ach-card-title" ref={heading} tabIndex={-1} lang={achievement ? 'en' : undefined}>
-          {achievement ? achievement.name : `Succès #${id}`}
+          {achievement ? achievement.name : t('card.title', { id })}
         </h2>
         <button type="button" className="btn btn--ghost" onClick={onClose}>
-          Fermer la fiche
+          {t('card.close')}
         </button>
       </div>
 
-      {state.status === 'loading' && <p className="placeholder">Chargement de la fiche…</p>}
+      {state.status === 'loading' && <p className="placeholder">{t('card.loading')}</p>}
       {state.status === 'error' && (
         <p className="form-error" role="alert">
           {state.message}
@@ -254,19 +269,20 @@ export function AchievementCardPanel({
               <p className="ach-card__meta">
                 <span className="ach__id">#{achievement.id}</span>
                 <span className="tag">{DLC_LABELS[achievement.dlc]}</span>
-                {achievement.hidden && <span className="tag">secret</span>}
+                {achievement.hidden && <span className="tag">{t('achievements.secret')}</span>}
               </p>
               <p className="ach-card__state">
                 {achievement.unlocked ? (
                   achievement.unlockedAt ? (
                     <>
-                      Débloqué le <time dateTime={achievement.unlockedAt}>{formatDate(locale, achievement.unlockedAt)}</time>
+                      {t('achievements.unlockedOn')}{' '}
+                      <time dateTime={achievement.unlockedAt}>{formatDate(locale, achievement.unlockedAt)}</time>
                     </>
                   ) : (
-                    'Débloqué'
+                    t('achievements.unlocked')
                   )
                 ) : (
-                  <span className="ach__state--missing">Manquant</span>
+                  <span className="ach__state--missing">{t('achievements.missing')}</span>
                 )}
               </p>
             </div>
