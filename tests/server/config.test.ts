@@ -170,8 +170,8 @@ describe('loadSettings', () => {
     expect(loadSettings(dir).ollama).toEqual(DEFAULT_OLLAMA);
   });
 
-  it('keeps the LAN server Ollama defaults', () => {
-    expect(DEFAULT_OLLAMA).toEqual({ url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b' });
+  it('defaults to a local Ollama server and a small model', () => {
+    expect(DEFAULT_OLLAMA).toEqual({ url: 'http://127.0.0.1:11434', model: 'qwen3.5:4b' });
   });
 });
 

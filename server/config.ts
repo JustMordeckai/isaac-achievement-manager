@@ -105,7 +105,7 @@ export interface Settings {
   locale: Locale;
 }
 
-export const DEFAULT_OLLAMA: OllamaSettings = { url: 'http://127.0.0.1:11434', model: 'qwen3.5:9b' };
+export const DEFAULT_OLLAMA: OllamaSettings = { url: 'http://127.0.0.1:11434', model: 'qwen3.5:4b' };
 
 export const DEFAULT_SETTINGS: Settings = { port: 5250, accountId: null, ollama: DEFAULT_OLLAMA, locale: DEFAULT_LOCALE };
 

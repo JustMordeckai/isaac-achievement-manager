@@ -1,113 +1,131 @@
 # Isaac Achievement Manager
 
-Application web locale qui lit ta progression sur *The Binding of Isaac: Rebirth* (Repentance+) et t'aide à savoir ce qu'il te reste à débloquer.
+A local web application that reads your progress in *The Binding of Isaac: Rebirth* (Repentance+) and tells you what is left to unlock. It runs on your own machine, in English or in French, and it never writes to Steam or to the game.
 
-Version actuelle (jalon M4) :
+What it does:
 
-- lecture du cache Steam local, de la sauvegarde Repentance+ et du profil Steam public ;
-- détection des écarts entre ces sources (par exemple un secret débloqué en jeu mais absent de Steam) ;
-- tableau de bord : progression globale et par extension, derniers déblocages, trois meilleures runs, grille des marques de complétion des 34 personnages, écarts ;
-- planificateur de routes : runs à faire par personnage (fins à battre, chemin, succès obtenus, prérequis), triées par succès gagnés par heure, et succès hors routes (défis, compteurs, placards de Home, divers) ;
-- conseiller IA : questions libres à un modèle Ollama du réseau local, qui répond en français à partir de ta progression, des runs conseillées et des fiches du wiki ; bouton « Demander au conseiller » sur chaque run et sur la fiche d'un succès manquant ;
-- liste des succès filtrable (état, extension, méthode d'obtention, personnage, secrets, recherche, écarts) ;
-- fiche détaillée de chaque succès, tirée du wiki anglais : condition, ce qu'il débloque, astuces, liens vers les pages sources, et pour un succès manquant ses prérequis et les runs du plan qui l'obtiennent ;
-- écran Paramètres : synchro du wiki avec avancement, serveur Ollama et modèle du conseiller, chemins et compte détectés ;
-- consultation du profil public d'un autre joueur (SteamID64, URL de profil ou pseudo personnalisé).
+- reads the local Steam cache, the Repentance+ save file and the public Steam profile;
+- spots the differences between those sources (a secret unlocked in game but missing from Steam, for instance);
+- dashboard: overall progress and progress per DLC, latest unlocks, three best runs, grid of the completion marks of the 34 characters, differences;
+- route planner: runs to play per character (endings to beat, path, achievements earned, prerequisites), sorted by achievements per hour, plus the achievements no run can bring (challenges, counters, the closets of Home, miscellaneous);
+- AI advisor: free questions to an Ollama model, answered from your progress, the suggested runs and the wiki cards, in the language of the interface; an "Ask the advisor" button on every run and on the card of a missing achievement;
+- filterable achievement list (state, DLC, way to earn it, character, secrets, search, differences);
+- detailed card for every achievement, taken from the English wiki: condition, what it unlocks, tips, links to the source pages, and for a missing achievement its prerequisites and the runs of the plan that earn it;
+- settings screen: interface language, wiki sync with its progress, Ollama server and advisor model, detected paths and account;
+- read the public profile of another player (SteamID64, profile URL or custom nickname).
 
-Le design complet est dans `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
+The full design is in `docs/superpowers/specs/2026-09-16-isaac-achievement-manager-design.md`.
 
-## Prérequis
+## Requirements
 
-- Windows avec Steam installé et le jeu lancé au moins une fois.
-- Node.js 26 ou plus récent (le serveur est écrit en TypeScript et exécuté directement par Node).
-- Pour la vérification croisée et les autres joueurs : détails de jeu du profil Steam en public.
-- Pour le conseiller : un serveur [Ollama](https://ollama.com/) joignable (par défaut `http://127.0.0.1:11434`) avec le modèle choisi (par défaut `qwen3.5:9b`).
+- Windows 10 or 11, with Steam installed and the game launched at least once.
+- Node.js 26 or newer (the server is written in TypeScript and run directly by Node).
+- For the cross check and for other players: the game details of the Steam profile set to public.
+- For the advisor: an [Ollama](https://ollama.com/) server you can reach (`http://127.0.0.1:11434` by default) with the chosen model installed (`qwen3.5:4b` by default). Everything else works without it.
 
-## Installation
+## Install
 
 ```bash
 npm install
 npm run build
 ```
 
-## Utilisation
+## First launch
 
-- Double-clic sur `Isaac Manager.vbs` : le serveur démarre sans fenêtre et le navigateur s'ouvre sur <http://127.0.0.1:5250/>. S'il tourne déjà, le navigateur s'ouvre simplement.
-- Ou, dans un terminal : `npm start`.
-- Arrêt : bouton « Arrêter » dans l'interface, ou `npm run stop`.
-- Journal du serveur lancé par le `.vbs` : `data/server.log`.
+- Double click `Isaac Manager.cmd`: it installs what is missing, builds the interface if needed, starts the server and opens <http://127.0.0.1:5250/> in your browser. `Isaac Manager.vbs` does the same with no console window and writes the server messages to `data/server.log`.
+- Or, in a terminal: `npm start`.
+- To stop it: the "Stop" button in the interface, or `npm run stop`.
 
-Au premier lancement, la base wiki n'existe pas encore : un bandeau le signale et renvoie vers l'écran Paramètres, dont le bouton « Synchroniser le wiki » la télécharge (environ 600 pages, une vingtaine de secondes). La même synchro existe en ligne de commande : `npm run sync-wiki`. Elle n'est jamais lancée automatiquement ; relance-la après une mise à jour du jeu ou du wiki.
+On the first launch the wiki database does not exist yet: a banner says so and leads to the settings screen, whose "Sync the wiki" button downloads it (about 600 pages, around twenty seconds). The same sync exists on the command line: `npm run sync-wiki`. It never runs on its own, so start it again after a game or wiki update.
 
-L'application n'écoute que sur `127.0.0.1` et ne modifie jamais les fichiers de Steam ni du jeu. Elle écrit seulement dans `data/` : icônes en cache, base wiki (`kb.json`), copie des pages du wiki (`wiki-cache/`), journal, et `settings.json` quand les réglages du conseiller sont enregistrés depuis l'interface.
+The application listens on `127.0.0.1` only and never changes the Steam or game files. It only writes inside `data/`: cached icons, wiki database (`kb.json`), copy of the wiki pages (`wiki-cache/`), log, and `settings.json` when the language or the advisor settings are saved from the interface.
 
-## Routes
+## The tabs
 
-L'onglet Routes et le tableau de bord ont besoin de la base wiki. Les marques de complétion viennent de la sauvegarde (compteurs du jeu) ; pour un autre joueur, elles sont déduites de ses succès, et celles qu'aucun succès ne prouve s'affichent « ? ». Le mode conseillé est difficile tant que le succès « toutes les marques en difficile » du personnage manque. Les durées des runs et les coefficients de difficulté des personnages sont des estimations manuelles, pas des mesures. Par défaut, seules les runs jouables tout de suite sont listées ; la case « Afficher aussi les runs à débloquer » montre les autres avec les succès à obtenir d'abord. Quand un succès demande plusieurs runs (toutes les marques en difficile, ou plusieurs fins avec le même personnage), le plan ajoute des runs de préparation, sans succès immédiat, avant la run qui l'obtient ; une run dont un succès dépend d'une run à débloquer est elle aussi à débloquer. Sans aucune run à proposer, l'écran indique que les succès liés aux marques sont tous obtenus.
+**Dashboard** sums up your progress, the latest unlocks, the best runs to play, the completion marks of every character and the differences between the sources.
 
-## Conseiller
+**Achievements** lists the 641 achievements with their filters and opens the card of each one: condition, what it unlocks, tips from the wiki, prerequisites and the runs that earn it.
 
-L'onglet Conseiller envoie ta question au serveur Ollama avec un résumé de ta progression (succès, marques de complétion, dix premières runs conseillées) et jusqu'à vingt fiches de succès choisies d'après les noms cités dans la question (succès, numéros comme #45, personnages, boss, objets). La réponse arrive au fil de l'eau ; « Arrêter la réponse » la coupe aussi côté serveur. Les fiches transmises au modèle s'affichent sous la réponse et ouvrent la fiche du succès. La conversation reste en mémoire tant que la page est ouverte : un rechargement l'efface, et seuls les cinq derniers échanges sont renvoyés au modèle.
+**Routes** needs the wiki database. The completion marks come from the save file (the counters of the game); for another player they are inferred from the achievements, and the ones no achievement proves are shown as "?". The suggested mode is hard as long as the "every mark on hard" achievement of the character is missing. Run durations and character difficulty factors are manual estimates, not measurements. By default only the runs you can play right now are listed; the "Also show the runs to unlock" box adds the others with the achievements to earn first. When an achievement needs several runs (every mark on hard, or several endings with the same character), the plan adds preparation runs, with no achievement of their own, before the run that earns it; a run whose achievement depends on a run to unlock is itself to unlock. With no run left to suggest, the screen says that the mark achievements are all earned.
 
-Le modèle ne doit s'appuyer que sur ces données, mais un petit modèle peut encore se tromper : vérifie dans les fiches. Le premier message peut prendre une dizaine de secondes, le temps que le serveur charge le modèle ; une réponse est coupée au-delà d'environ 1 500 jetons, et l'appli abandonne après 120 secondes sans rien recevoir (serveur occupé par une autre demande, par exemple). Sans base wiki, le conseiller ne connaît que ta progression.
+**Advisor** sends your question to the Ollama server along with a summary of your progress (achievements, completion marks, first ten suggested runs) and up to twenty achievement cards chosen from the names in the question (achievements, numbers such as #45, characters, bosses, items). The answer arrives as it is written; "Stop the answer" also cuts it on the server side. The cards sent to the model are listed under the answer and open the card of the achievement. The conversation lives as long as the page stays open: a reload clears it, and only the last five exchanges are sent back to the model.
 
-La pastille « Conseiller » de l'en-tête indique si le serveur répond et si le modèle y est installé. L'écran Paramètres permet de changer l'adresse du serveur et le modèle (la liste propose les modèles installés) : l'enregistrement écrit `data/settings.json` et s'applique sans redémarrer.
+**Settings** holds the interface language, the wiki sync, the Ollama server and model, and the paths and account that were detected.
 
-## Dépannage
+## The advisor
 
-Si le double-clic sur `Isaac Manager.vbs` ne fait rien :
+The model is told to answer from those data only, but a small model can still get it wrong: check in the cards. The first message can take around ten seconds, the time for the server to load the model; an answer is cut past about 1500 tokens, and the application gives up after 120 seconds with nothing received (the server busy with another request, for instance). With no wiki database, the advisor only knows your progress.
 
-- vérifier `node --version` (Node 26 ou plus, et présent dans le PATH) ;
-- vérifier que `npm install` et `npm run build` ont bien été faits ;
-- lire `data/server.log` ;
-- lancer `npm start` dans un terminal pour voir l'erreur directement.
+The "Advisor" badge in the header says whether the server answers and whether the model is installed there. The settings screen changes the address and the model (the list offers the installed models): saving writes `data/settings.json` and applies without a restart.
 
-Si la synchro du wiki échoue, la base précédente reste utilisée. Sans réseau, la synchro reprend les pages déjà copiées dans `data/wiki-cache/` ; le rapport indique combien.
+## Language
 
-Si le conseiller ne répond pas : vérifier dans Paramètres l'adresse du serveur (bouton « Vérifier la connexion »), que le modèle est installé (`ollama pull qwen3.5:9b` sur le serveur) et que le pare-feu du serveur laisse passer le port 11434. Le reste de l'application fonctionne sans Ollama.
+The header has a language picker, English or French. The choice is saved in `data/settings.json` and in the browser, so it survives a reload and a restart. The advisor answers in the language of the interface. The names of the game (achievements, characters, items, bosses) stay in English in both languages, because that is what the game shows.
 
-Si les réponses n'arrivent jamais alors que le serveur répond : il traite une demande à la fois par modèle, donc une autre application qui l'occupe fait attendre la tienne. La place en mémoire vidéo compte aussi : l'application demande un contexte de 32 768 jetons, qui tient à côté du modèle ; un contexte plus grand, ou un autre modèle chargé en même temps, fait déborder le cache et la génération devient interminable. `curl http://127.0.0.1:11434/api/ps` sur le serveur montre ce qui est chargé.
+## Settings file
 
-## Réglages
-
-Fichier optionnel `data/settings.json` :
+Optional file `data/settings.json`:
 
 ```json
 {
   "port": 5250,
-  "accountId": 123456789,
-  "ollama": { "url": "http://127.0.0.1:11434", "model": "qwen3.5:9b" }
+  "accountId": null,
+  "locale": "en",
+  "ollama": { "url": "http://127.0.0.1:11434", "model": "qwen3.5:4b" }
 }
 ```
 
-- `port` : port d'écoute local.
-- `accountId` : id de compte Steam à utiliser (sinon : compte connecté à Steam s'il a des données Isaac, puis le dernier compte connecté qui en a).
-- `ollama` : adresse du serveur Ollama et modèle du conseiller ; l'écran Paramètres les modifie directement.
+- `port`: local listening port.
+- `accountId`: Steam account id to use (otherwise: the account logged into Steam when it has Isaac data, then the last logged account that has some).
+- `locale`: `en` or `fr`; the language picker writes it.
+- `ollama`: address of the Ollama server and model of the advisor; the settings screen changes them directly.
 
-L'écran Paramètres affiche les valeurs utilisées ; pour `port` et `accountId`, il faut éditer ce fichier puis relancer l'application. Un fichier illisible n'est jamais écrasé : l'enregistrement des réglages du conseiller est alors refusé.
+The settings screen shows the values in use; `port` and `accountId` need an edit of this file and a restart. An unreadable file is never overwritten: saving the settings is then refused.
 
-## Sources lues
+## Troubleshooting
 
-| Source | Emplacement |
+If double clicking `Isaac Manager.cmd` does nothing:
+
+- check `node --version` (Node 26 or newer, and present in the PATH);
+- check that `npm install` and `npm run build` went through;
+- read `data/server.log`;
+- run `npm start` in a terminal to see the error directly.
+
+If the wiki sync fails, the previous database stays in use. With no network, the sync reuses the pages already copied in `data/wiki-cache/`; the report says how many.
+
+If the advisor does not answer: check the server address in the settings ("Check the connection" button), that the model is installed (`ollama pull qwen3.5:4b` on the server) and that the firewall of the server lets the port 11434 through. The rest of the application works without Ollama.
+
+If the answers never arrive although the server responds: it handles one request at a time per model, so another application keeping it busy makes yours wait. Video memory matters too: the application asks for a 32768 token context, which has to fit next to the model; a larger context, or another model loaded at the same time, overflows the cache and the generation becomes endless. `curl http://127.0.0.1:11434/api/ps` on the server shows what is loaded.
+
+## Sources read
+
+| Source | Location |
 |---|---|
-| Schéma des succès | `Steam/appcache/stats/UserGameStatsSchema_250900.bin` |
-| Succès Steam locaux | `Steam/appcache/stats/UserGameStats_<compte>_250900.bin` |
-| Sauvegarde (secrets, compteurs, marques de complétion) | `Steam/userdata/<compte>/250900/remote/rep+persistentgamedata{1,2,3}.dat` |
-| Profil public | `https://steamcommunity.com/profiles/<SteamID64>/stats/250900/?xml=1` |
-| Wiki (synchro manuelle) | `https://bindingofisaacrebirth.fandom.com/api.php` |
-| Conseiller | serveur Ollama du réseau local (`/api/tags`, `/api/chat`) |
+| Achievement schema | `Steam/appcache/stats/UserGameStatsSchema_250900.bin` |
+| Local Steam achievements | `Steam/appcache/stats/UserGameStats_<account>_250900.bin` |
+| Save file (secrets, counters, completion marks) | `Steam/userdata/<account>/250900/remote/rep+persistentgamedata{1,2,3}.dat` |
+| Public profile | `https://steamcommunity.com/profiles/<SteamID64>/stats/250900/?xml=1` |
+| Wiki (manual sync) | `https://bindingofisaacrebirth.fandom.com/api.php` |
+| Advisor | an Ollama server (`/api/tags`, `/api/chat`) |
 
-Le slot de sauvegarde affiché par défaut est le plus récemment modifié ; un sélecteur permet d'en changer.
+The save slot shown by default is the most recently modified one; a picker changes it.
 
-Le contenu des fiches vient du [wiki The Binding of Isaac: Rebirth](https://bindingofisaacrebirth.fandom.com/) (Fandom), sous licence CC BY-SA ; chaque fiche renvoie vers ses pages sources.
-
-## Développement
+## Development
 
 ```bash
-npm run dev        # serveur + Vite (rechargement à chaud) sur http://127.0.0.1:5250/
-npm test           # tests Vitest (serveur et front)
-npm run typecheck  # vérification TypeScript
-npm run sync-wiki  # synchro du wiki sans interface
+npm run dev        # server plus Vite (hot reload) on http://127.0.0.1:5250/
+npm test           # Vitest tests (server and front)
+npm run typecheck  # TypeScript check
+npm run sync-wiki  # wiki sync with no interface
+node scripts/check-language.mjs  # fails when French leaks outside shared/i18n/fr.ts
 ```
 
-Les fichiers de `tests/fixtures/` sont des copies réelles (dont un SteamID) : à anonymiser avant toute publication du dépôt.
+The interface texts live in `shared/i18n/en.ts` and `shared/i18n/fr.ts`, one key per string, and both the server and the front read them. A new string goes into both catalogues.
+
+The files under `tests/fixtures/` are real copies, including a SteamID and a save file: replace them before publishing a fork.
+
+## Licence and credits
+
+MIT, see [LICENSE](LICENSE).
+
+This is an unofficial fan tool. It has no affiliation with Nicalis or Edmund McMillen; *The Binding of Isaac* and the names of the game belong to them. The card contents come from the [The Binding of Isaac: Rebirth wiki](https://bindingofisaacrebirth.fandom.com/) (Fandom), under CC BY-SA, and every card links to its source pages. [Ollama](https://ollama.com/) and the models you run on it keep their own licences.
