@@ -51,6 +51,21 @@ the first launch is already complete.
 
 Windows shows a SmartScreen warning the first time, because the file is not signed.
 
+### Updates
+
+The app reads the latest [release](https://github.com/JustMordeckai/isaac-achievement-manager/releases)
+when it starts. When a newer one is out, a line appears above the pages: one button downloads the new
+executable next to the running one, checks it against the `SHA256SUMS.txt` of the release and puts it
+in place, a second one restarts the app on it. Nothing to download by hand, nothing to reinstall, and
+the `data/` folder stays where it is.
+
+Windows keeps a running executable locked against writes, so the old file is renamed to
+`... .exe.old` rather than deleted; the next start drops it. If the download or the checksum fails,
+nothing is replaced and the line says why.
+
+A copy running from its sources says so instead: `git pull`, then start it again. The settings screen
+shows the version in use and checks again on demand.
+
 On the first launch the wiki base does not exist yet: a banner says so and leads to the settings,
 whose **Sync the wiki** button downloads it (about 600 pages, around twenty seconds). The same sync
 exists on the command line: `npm run sync-wiki`. It never runs on its own, so start it again after a
@@ -145,7 +160,8 @@ overwritten: saving from the interface is then refused.
 ## Safety
 
 - The app listens on `127.0.0.1` only. Nothing leaves the machine except the wiki sync, the public
-  Steam profile it is asked for, and the questions you send to your own Ollama server.
+  Steam profile it is asked for, the questions you send to your own Ollama server, and the version of
+  the latest release read from the GitHub API at startup.
 - Steam and game files are only ever read. The app writes inside `data/` and nowhere else: cached
   icons, wiki base (`kb.json`), copy of the wiki pages (`wiki-cache/`), log, settings.
 - No account, no telemetry, no cloud.
@@ -185,7 +201,7 @@ The save slot shown by default is the most recently modified one; a picker chang
 
 ```
 npm run dev        # server plus Vite (hot reload) on http://127.0.0.1:5250/
-npm test           # 641 Vitest tests (server and front)
+npm test           # 676 Vitest tests (server and front)
 npm run typecheck  # TypeScript
 npm run sync-wiki  # wiki sync with no interface
 npm run build:exe  # dist/Isaac Achievement Manager.exe, Node included
@@ -194,6 +210,10 @@ node scripts/check-language.mjs  # fails when French leaks outside shared/i18n/f
 
 The interface texts live in `shared/i18n/en.ts` and `shared/i18n/fr.ts`, one key per string, read by
 both the server and the front. A new string goes into both catalogues.
+
+A release is the version in `package.json` and in `shared/version.ts` (a test keeps them equal), then
+`npm run build:exe`, then a GitHub release tagged `vX.Y.Z` carrying the executable and a
+`SHA256SUMS.txt`. That is what the running apps look at.
 
 The files under `tests/fixtures/` are real game files (achievement schema, Steam cache, save, wiki
 pages) with the Steam identity replaced by a fictional account: id `123456789`, SteamID64

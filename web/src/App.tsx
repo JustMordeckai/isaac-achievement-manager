@@ -3,6 +3,7 @@ import type { Locale } from '../../shared/i18n/index.ts';
 import { api, type ProfileQuery } from './api.ts';
 import { AchievementCardPanel } from './components/AchievementCardPanel.tsx';
 import { Header } from './components/Header.tsx';
+import { UpdateBanner } from './components/UpdateBanner.tsx';
 import { loadLocale, LocaleProvider, storeLocale, useT } from './i18n.tsx';
 import { DEFAULT_FILTER, type AchievementFilter } from './lib/filter.ts';
 import { Achievements } from './pages/Achievements.tsx';
@@ -15,6 +16,7 @@ import { useAdvisorChat, useAdvisorStatus } from './useAdvisor.ts';
 import { useHashAchievement, useHashTab } from './useHashTab.ts';
 import { useProgress } from './useProgress.ts';
 import { useRoutes } from './useRoutes.ts';
+import { useUpdate } from './useUpdate.ts';
 import { useKbStatus, useSettings, useWikiSync } from './useWiki.ts';
 
 type StopState = { kind: 'running' } | { kind: 'stopped' } | { kind: 'failed'; message: string };
@@ -37,6 +39,7 @@ export function App() {
   const settings = useSettings();
   const advisor = useAdvisorStatus(reloadKey);
   const chat = useAdvisorChat();
+  const update = useUpdate();
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
   // After a sync, the list is read again to pick up the ways to earn and the characters of the wiki.
   const [sync, startSync] = useWikiSync(reload);
@@ -133,12 +136,15 @@ export function App() {
           onStop={() => void requestStop()}
         />
         <main className="main">
+          <UpdateBanner update={update} />
           {stop.kind === 'failed' && (
             <p className="banner banner--error" role="alert">
               {t('app.stopFailed', { message: stop.message })}
             </p>
           )}
-          {tab === 'settings' && <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} />}
+          {tab === 'settings' && (
+            <Settings settings={settings} kb={kb} sync={sync} onSync={startSync} advisor={advisor} update={update} />
+          )}
           {tab === 'routes' && (
             <Routes
               state={routes}

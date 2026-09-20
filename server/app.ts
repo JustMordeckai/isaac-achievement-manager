@@ -4,6 +4,7 @@ import type {
   AchievementCard,
   AdvisorEvent,
   AdvisorSetupEvent,
+  UpdateEvent,
   ApiError,
   RoutesResponse,
   SettingsInfo,
@@ -15,6 +16,7 @@ import { OllamaError, type OllamaErrorKind, type OllamaMessage } from './advisor
 import { parseAdvisorRequest, parseModelName, parseOllamaSettings } from './advisor/request.ts';
 import type { AdvisorService } from './advisor/service.ts';
 import type { AdvisorSetupService } from './advisor/setup.ts';
+import type { UpdateService } from './update.ts';
 import { saveSettings } from './config.ts';
 import { HttpError } from './http-error.ts';
 import type { IconCache } from './icons.ts';
@@ -34,6 +36,7 @@ export interface AppDeps {
   kb: KbService;
   advisor: AdvisorService;
   setup: AdvisorSetupService;
+  update: UpdateService;
   settings: SettingsInfo;
   /** Called once the response to POST /api/shutdown has been sent. */
   onShutdown?: () => void;
@@ -219,6 +222,36 @@ export function createApp(deps: AppDeps): express.Express {
   api.post('/advisor/pull', requireAction('advisor-pull', deps.settings), jsonBody(deps.settings), async (req, res) => {
     const model = parseModelName(req.body, deps.settings.locale);
     await streamSetup(res, (send) => deps.setup.pull(model, send, deps.settings.locale));
+  });
+
+  // The update check reaches GitHub: an unreachable network is an answer like any other, so the
+  // interface can stay quiet about it rather than showing a broken screen.
+  api.get('/update', async (_req, res) => {
+    try {
+      res.json(await deps.update.check(deps.settings.locale));
+    } catch (error) {
+      throw new HttpError(502, error instanceof Error ? error.message : String(error));
+    }
+  });
+
+  api.post('/update/install', requireAction('update-install', deps.settings), async (_req, res) => {
+    res.status(200).setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.flushHeaders();
+    res.on('error', () => {});
+    const send = (event: UpdateEvent) => {
+      if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(event)}
+`);
+    };
+    await deps.update.install(send, deps.settings.locale).finally(() => {
+      if (!res.destroyed) res.end();
+    });
+  });
+
+  api.post('/update/restart', requireAction('update-restart', deps.settings), (_req, res) => {
+    if (!deps.update.isInstalled()) throw new HttpError(409, t(deps.settings.locale, 'update.noAsset'));
+    // The new executable is started once this answer is out, then this process stops.
+    res.on('finish', () => deps.update.restart());
+    res.json({ ok: true });
   });
 
   api.get('/advisor/status', async (_req, res) => {

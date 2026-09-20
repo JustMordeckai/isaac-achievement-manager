@@ -13,6 +13,7 @@ import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
 import { createProgressService } from './progress-service.ts';
 import { createSeaStatic, isStandalone, seaModule } from './sea.ts';
+import { createUpdateService, dropPrevious } from './update.ts';
 import { createProfileClient } from './sources/steam-profile.ts';
 import { createWikiKb } from './wiki/setup.ts';
 
@@ -66,6 +67,17 @@ const advisor = createAdvisorService({
   save: (ollama) => saveSettings(DATA_DIR, { ollama }, settings.locale),
 });
 const url = `http://127.0.0.1:${settings.port}/`;
+// Only the executable can replace itself; from the sources the update card just says so. The file
+// left behind by a previous update goes away here, once it is no longer the running program.
+const execPath = standalone ? process.execPath : null;
+void dropPrevious(execPath);
+const update = createUpdateService({
+  execPath,
+  onRestart: () => {
+    console.log('Update installed: starting the new version.');
+    process.exit(0);
+  },
+});
 
 const app = createApp({
   progress,
@@ -74,6 +86,7 @@ const app = createApp({
   kb: createWikiKb({ dataDir: DATA_DIR, steamDefs: () => progress.definitions() }),
   advisor,
   setup: createAdvisorSetup({ url: () => advisor.settings().url }),
+  update,
   settings: {
     port: settings.port,
     dataDir: DATA_DIR,

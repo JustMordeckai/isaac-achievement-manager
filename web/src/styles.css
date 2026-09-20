@@ -1398,3 +1398,34 @@ html {
     width: 100%;
   }
 }
+
+/* Update: one line above the pages, with the button that does the whole job. */
+.update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elev);
+}
+
+.update__text {
+  font-weight: 600;
+}
+
+.update__progress {
+  flex: 1 1 260px;
+  color: var(--text-muted);
+}
+
+.update__progress .progress {
+  display: block;
+  margin-top: 6px;
+}
+
+.update__link {
+  color: var(--accent);
+}

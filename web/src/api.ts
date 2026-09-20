@@ -14,6 +14,8 @@ import type {
   ResolvedProfile,
   RoutesResponse,
   SettingsInfo,
+  UpdateEvent,
+  UpdateState,
   WikiSyncEvent,
 } from '../../shared/types.ts';
 
@@ -88,7 +90,10 @@ async function syncWiki(locale: Locale, onEvent: (event: WikiSyncEvent) => void)
   return last;
 }
 
-/** Runs one setup job (install or download) and passes on every line of its NDJSON stream. */
+/**
+ * Runs one job that streams its progress (installing Ollama, downloading a model, updating the app)
+ * and passes on every line of its NDJSON stream. They all carry the same three steps.
+ */
 async function runSetup(
   url: string,
   action: string,
@@ -162,6 +167,12 @@ export const api = {
     }),
   askAdvisor,
   advisorSetup: (signal?: AbortSignal) => request<AdvisorSetupState>('/api/advisor/setup', { signal }),
+  update: (signal?: AbortSignal) => request<UpdateState>('/api/update', { signal }),
+  installUpdate: (locale: Locale, onEvent: (event: UpdateEvent) => void) =>
+    runSetup('/api/update/install', 'update-install', undefined, locale, onEvent) as Promise<UpdateEvent>,
+  restart: async (): Promise<void> => {
+    await request<{ ok: boolean }>('/api/update/restart', { method: 'POST', headers: { 'X-IAM-Action': 'update-restart' } });
+  },
   installOllama: (locale: Locale, onEvent: (event: AdvisorSetupEvent) => void) =>
     runSetup('/api/advisor/install', 'advisor-install', undefined, locale, onEvent),
   pullModel: (model: string, locale: Locale, onEvent: (event: AdvisorSetupEvent) => void) =>

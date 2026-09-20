@@ -6,10 +6,20 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../shared/i18n/index.ts';
-import type { AdvisorSetupEvent, AdvisorSetupState, AdvisorStatus, KbStatus, SettingsInfo, WikiSyncEvent } from '../../shared/types.ts';
+import type {
+  AdvisorSetupEvent,
+  AdvisorSetupState,
+  AdvisorStatus,
+  KbStatus,
+  SettingsInfo,
+  UpdateEvent,
+  UpdateState,
+  WikiSyncEvent,
+} from '../../shared/types.ts';
 import { type AdvisorService, createAdvisorService } from '../../server/advisor/service.ts';
 import type { AdvisorSetupService } from '../../server/advisor/setup.ts';
 import { createApp, type AppDeps } from '../../server/app.ts';
+import type { UpdateService } from '../../server/update.ts';
 import { HttpError } from '../../server/http-error.ts';
 import type { KbService } from '../../server/kb-service.ts';
 import { mergeProgress } from '../../server/sources/progress.ts';
@@ -70,6 +80,27 @@ function fakeSetup(overrides: Partial<AdvisorSetupService> = {}): AdvisorSetupSe
   };
 }
 
+const UPDATE_STATE: UpdateState = {
+  current: '0.1.0',
+  latest: '0.1.0',
+  newer: false,
+  standalone: true,
+  downloadable: true,
+  page: 'https://github.com/JustMordeckai/isaac-achievement-manager/releases/tag/v0.1.0',
+  installed: false,
+};
+
+function fakeUpdate(overrides: Partial<UpdateService> = {}): UpdateService {
+  return {
+    check: vi.fn(async () => UPDATE_STATE),
+    install: vi.fn(async (send) => send({ step: 'done', message: 'ready' })),
+    isInstalled: vi.fn(() => false),
+    isRunning: vi.fn(() => false),
+    restart: vi.fn(() => true),
+    ...overrides,
+  };
+}
+
 let server: Server | null = null;
 
 afterEach(async () => {
@@ -92,6 +123,7 @@ async function start(overrides: Partial<AppDeps> = {}): Promise<string> {
     kb: fakeKb(),
     advisor: fakeAdvisor(),
     setup: fakeSetup(),
+    update: fakeUpdate(),
     settings: SETTINGS,
     ...overrides,
   });
@@ -530,6 +562,52 @@ describe('API advisor', () => {
       { step: 'done', message: 'Ollama is installed.' },
     ]);
     expect(install).toHaveBeenCalled();
+  });
+
+  it('tells the interface where the app stands against the published release', async () => {
+    const base = await start();
+    expect(await (await fetch(`${base}/api/update`)).json()).toEqual(UPDATE_STATE);
+  });
+
+  it('passes on what stopped the check rather than a blank error', async () => {
+    const check = vi.fn(async () => {
+      throw new Error('GitHub refused the request (HTTP 403).');
+    });
+    const base = await start({ update: fakeUpdate({ check }) });
+    const res = await fetch(`${base}/api/update`);
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: 'GitHub refused the request (HTTP 403).' });
+  });
+
+  it('streams the install of an update and asks for its header', async () => {
+    const install = vi.fn(async (send: (event: UpdateEvent) => void) => {
+      send({ step: 'progress', message: 'Downloading', done: 1, total: 2 });
+      send({ step: 'done', message: 'Version 0.2.0 is ready.' });
+    });
+    const base = await start({ update: fakeUpdate({ install }) });
+
+    expect((await fetch(`${base}/api/update/install`, { method: 'POST' })).status).toBe(403);
+
+    const res = await fetch(`${base}/api/update/install`, { method: 'POST', headers: { 'X-IAM-Action': 'update-install' } });
+    expect(res.headers.get('Content-Type')).toMatch(/ndjson/);
+    expect(await lines(res)).toEqual([
+      { step: 'progress', message: 'Downloading', done: 1, total: 2 },
+      { step: 'done', message: 'Version 0.2.0 is ready.' },
+    ]);
+  });
+
+  it('restarts only once an update is in place', async () => {
+    const restart = vi.fn(() => true);
+    const base = await start({ update: fakeUpdate({ restart }) });
+    const call = () => fetch(`${base}/api/update/restart`, { method: 'POST', headers: { 'X-IAM-Action': 'update-restart' } });
+
+    expect((await call()).status).toBe(409);
+    expect(restart).not.toHaveBeenCalled();
+
+    const ready = await start({ update: fakeUpdate({ restart, isInstalled: () => true }) });
+    const res = await fetch(`${ready}/api/update/restart`, { method: 'POST', headers: { 'X-IAM-Action': 'update-restart' } });
+    expect(await res.json()).toEqual({ ok: true });
+    await vi.waitFor(() => expect(restart).toHaveBeenCalledTimes(1));
   });
 
   it('streams the download of a model and refuses an unusable name', async () => {

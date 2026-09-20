@@ -5,6 +5,7 @@ import { t } from '../../shared/i18n/index.ts';
 import type { KbStatus, WikiSyncReport } from '../../shared/types.ts';
 import { LocaleProvider } from '../../web/src/i18n.tsx';
 import { Settings, type SettingsProps } from '../../web/src/pages/Settings.tsx';
+import type { UpdateHook } from '../../web/src/useUpdate.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeAdvisorState, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
@@ -18,6 +19,18 @@ const REPORT: WikiSyncReport = {
   cachedPages: 0,
 };
 
+function makeUpdate(overrides: Partial<UpdateHook> = {}): UpdateHook {
+  return {
+    state: null,
+    job: { kind: 'idle' },
+    checking: false,
+    check: vi.fn(),
+    install: vi.fn(),
+    restart: vi.fn(),
+    ...overrides,
+  };
+}
+
 function renderSettings(overrides: Partial<SettingsProps> = {}) {
   const props: SettingsProps = {
     settings: { status: 'ready', info: SETTINGS },
@@ -25,6 +38,7 @@ function renderSettings(overrides: Partial<SettingsProps> = {}) {
     sync: { kind: 'idle' },
     onSync: vi.fn(),
     advisor: makeAdvisorState(),
+    update: makeUpdate(),
     ...overrides,
   };
   const view = render(<Settings {...props} />);
@@ -53,6 +67,7 @@ describe('Settings', () => {
           sync={{ kind: 'idle' }}
           onSync={vi.fn()}
           advisor={makeAdvisorState()}
+          update={makeUpdate()}
         />
       </LocaleProvider>,
     );
@@ -214,6 +229,55 @@ describe('Settings: advisor setup', () => {
       await Promise.resolve();
     });
     expect(screen.queryByRole('heading', { name: 'Set up the advisor' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Settings: updates', () => {
+  it('shows the running version and checks again on demand', async () => {
+    const user = userEvent.setup();
+    const update = makeUpdate({
+      state: {
+        current: '0.1.0',
+        latest: '0.1.0',
+        newer: false,
+        standalone: true,
+        downloadable: true,
+        page: 'https://github.com/JustMordeckai/isaac-achievement-manager/releases',
+        installed: false,
+      },
+    });
+    renderSettings({ update });
+    const section = within(screen.getByRole('region', { name: 'Updates' }));
+    expect(section.getByText('Version 0.1.0')).toBeInTheDocument();
+    expect(section.getByRole('status')).toHaveTextContent('This is the latest version.');
+    await user.click(section.getByRole('button', { name: 'Check for updates' }));
+    expect(update.check).toHaveBeenCalledTimes(1);
+  });
+
+  it('points at the banner when a new version is out', () => {
+    renderSettings({
+      update: makeUpdate({
+        state: {
+          current: '0.1.0',
+          latest: '0.2.0',
+          newer: true,
+          standalone: true,
+          downloadable: true,
+          page: 'https://github.com/JustMordeckai/isaac-achievement-manager/releases',
+          installed: false,
+        },
+      }),
+    });
+    const section = within(screen.getByRole('region', { name: 'Updates' }));
+    expect(section.getByRole('status')).toHaveTextContent('Version 0.2.0 is available.');
+    expect(section.getByText(/banner above the pages/)).toBeInTheDocument();
+  });
+
+  it('shows the version the executable carries while the check has not answered', () => {
+    renderSettings();
+    const section = within(screen.getByRole('region', { name: 'Updates' }));
+    expect(section.getByText(/^Version \d+\.\d+\.\d+$/)).toBeInTheDocument();
+    expect(section.queryByRole('status')).not.toBeInTheDocument();
   });
 });
 

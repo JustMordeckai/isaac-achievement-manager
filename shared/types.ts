@@ -376,3 +376,26 @@ export type AdvisorEvent =
   | { kind: 'delta'; text: string }
   | { kind: 'done' }
   | { kind: 'error'; message: string };
+
+/** Where the app stands against the latest published release. */
+export interface UpdateState {
+  /** Version running right now. */
+  current: string;
+  /** Version of the latest release on GitHub. */
+  latest: string;
+  newer: boolean;
+  /** The app runs as the executable, so it can replace its own file. */
+  standalone: boolean;
+  /** The release carries an executable and this copy can install it. */
+  downloadable: boolean;
+  /** Page of the release, for whoever would rather download it by hand. */
+  page: string;
+  /** The new executable is already in place: only the restart is left. */
+  installed: boolean;
+}
+
+/** One line of the update download, streamed as NDJSON. */
+export type UpdateEvent =
+  | { step: 'progress'; message: string; done?: number; total?: number }
+  | { step: 'done'; message: string }
+  | { step: 'error'; message: string };

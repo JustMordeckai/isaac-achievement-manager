@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../../../shared/types.ts';
+import { APP_VERSION } from '../../../shared/version.ts';
 import { api } from '../api.ts';
 import { AdvisorSetup } from '../components/AdvisorSetup.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
@@ -7,6 +8,7 @@ import { LanguagePicker, useLocale, useT } from '../i18n.tsx';
 import { formatDate, formatTime } from '../labels.ts';
 import type { AdvisorStatusState } from '../useAdvisor.ts';
 import { useAdvisorSetup } from '../useAdvisorSetup.ts';
+import type { UpdateHook } from '../useUpdate.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
 
 type Translate = ReturnType<typeof useT>;
@@ -17,6 +19,24 @@ export interface SettingsProps {
   sync: WikiSyncState;
   onSync(): void;
   advisor: AdvisorStatusState;
+  update: UpdateHook;
+}
+
+/** Version of the app, and where it stands against the latest release. */
+function UpdateSettings({ update }: { update: UpdateHook }) {
+  const t = useT();
+  const { state, job, checking } = update;
+  return (
+    <section className="card" aria-labelledby="update-title">
+      <h2 id="update-title">{t('update.title')}</h2>
+      <p>{t('update.current', { version: state?.current ?? APP_VERSION })}</p>
+      {state && <p role="status">{state.newer ? t('update.available', { version: state.latest }) : t('update.upToDate')}</p>}
+      <button type="button" className="btn" onClick={update.check} disabled={checking || job.kind === 'running'}>
+        {checking ? t('update.checking') : t('update.check')}
+      </button>
+      {state?.newer && <p className="hint">{state.downloadable ? t('settings.updateHint') : t('update.fromSources')}</p>}
+    </section>
+  );
 }
 
 function accountText(t: Translate, { account, forcedAccountId }: SettingsInfo): string {
@@ -244,7 +264,7 @@ function AdvisorSettings({ advisor }: { advisor: AdvisorStatusState }) {
   );
 }
 
-export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps) {
+export function Settings({ settings, kb, sync, onSync, advisor, update }: SettingsProps) {
   const t = useT();
   const running = sync.kind === 'running' || kb?.running === true;
   return (
@@ -289,6 +309,8 @@ export function Settings({ settings, kb, sync, onSync, advisor }: SettingsProps)
           </>
         )}
       </section>
+
+      <UpdateSettings update={update} />
 
       <section className="card" aria-labelledby="language-title">
         <h2 id="language-title">{t('app.language')}</h2>
