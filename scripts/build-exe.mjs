@@ -5,8 +5,9 @@
  *   node scripts/build-exe.mjs
  *
  * Steps: build the front into build/web, bundle the server into one CommonJS file, list the front
- * files as assets of the executable, let Node write the SEA blob, copy node.exe and inject the blob
- * with postject. The result is dist/Isaac Achievement Manager.exe, which needs nothing installed.
+ * files as assets of the executable, let Node write the SEA blob, copy node.exe, put the icon of
+ * the game on the copy and inject the blob with postject. The result is
+ * dist/Isaac Achievement Manager.exe, which needs nothing installed.
  */
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, cpSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -18,6 +19,8 @@ const BUILD = path.join(ROOT, 'build');
 const WEB = path.join(BUILD, 'web');
 const DIST = path.join(ROOT, 'dist');
 const EXE = path.join(DIST, 'Isaac Achievement Manager.exe');
+const ICON = path.join(ROOT, 'assets', 'icon.ico');
+const RCEDIT = path.join(ROOT, 'node_modules', 'rcedit', 'bin', 'rcedit-x64.exe');
 const FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
 
 /**
@@ -95,6 +98,18 @@ try {
   rmSync(target, { force: true });
 }
 copyFileSync(process.execPath, target);
+// The icon replaces the one of node.exe before the blob is injected: rewriting the resources of a
+// file that already holds the blob would move the section postject added. Windows sometimes keeps
+// the fresh copy open for a moment, which rcedit reports as a failure: it is worth another try.
+for (let attempt = 1; ; attempt++) {
+  try {
+    run(RCEDIT, [target, '--set-icon', ICON]);
+    break;
+  } catch (error) {
+    if (attempt === 3) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
 run('npx', ['postject', target, 'NODE_SEA_BLOB', 'build/sea-prep.blob', '--sentinel-fuse', FUSE]);
 
 // The executable reads and writes data/ next to itself: a fresh folder is enough to run it.
