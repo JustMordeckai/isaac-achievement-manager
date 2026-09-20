@@ -13,7 +13,7 @@ describe('CharacterGrid', () => {
     expect(headers[1].querySelector('abbr')).toHaveAttribute('title', "Mom's Heart");
     expect(headers[8]).toHaveTextContent('Greed');
     expect(screen.getAllByRole('row')).toHaveLength(35);
-    expect(screen.getByText(/Marques lues dans la sauvegarde\./)).toBeInTheDocument();
+    expect(screen.getByText(/Marks read from the save\./)).toBeInTheDocument();
   });
 
   it('décrit le niveau de chaque marque en texte', () => {
@@ -45,6 +45,6 @@ describe('CharacterGrid', () => {
     expect(cells[7]).toHaveTextContent('Greed / Greedier : Greedier');
     expect(cells[11]).toHaveTextContent('The Beast : inconnue');
     expect(cells[11]).toHaveClass('mark--unknown');
-    expect(screen.getByText(/Marques déduites des succès/)).toBeInTheDocument();
+    expect(screen.getByText(/Marks inferred from the achievements/)).toBeInTheDocument();
   });
 });

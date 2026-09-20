@@ -3,7 +3,8 @@ import { CHARACTERS, type CharacterId } from '../../../shared/characters.ts';
 import { DLC_ORDER } from '../../../shared/dlc.ts';
 import type { AchievementEntry, Dlc, HowKind } from '../../../shared/types.ts';
 import { AchievementIcon } from '../components/AchievementIcon.tsx';
-import { DLC_LABELS, formatDate, HOW_LABELS } from '../labels.ts';
+import { useLocale } from '../i18n.tsx';
+import { DLC_LABELS, formatDate, HOW_ORDER, howLabel } from '../labels.ts';
 import {
   filterAchievements,
   type AchievementFilter,
@@ -13,7 +14,6 @@ import {
 } from '../lib/filter.ts';
 
 const PAGE_SIZE = 100;
-const HOW_ORDER = Object.keys(HOW_LABELS) as HowKind[];
 
 export interface AchievementsProps {
   achievements: AchievementEntry[];
@@ -29,6 +29,7 @@ export interface AchievementsProps {
 }
 
 function AchievementRow({ achievement: a, selected, onOpen }: { achievement: AchievementEntry; selected: boolean; onOpen(): void }) {
+  const locale = useLocale();
   return (
     <li className={`ach ${a.unlocked ? 'ach--unlocked' : 'ach--locked'}${selected ? ' ach--selected' : ''}`}>
       <AchievementIcon file={a.icon} alt="" />
@@ -53,11 +54,11 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
       </div>
       <div className="ach__meta">
         <span className="tag tag--dlc">{DLC_LABELS[a.dlc]}</span>
-        {a.how && a.how !== 'misc' && <span className="tag">{HOW_LABELS[a.how]}</span>}
+        {a.how && a.how !== 'misc' && <span className="tag">{howLabel(locale, a.how)}</span>}
         {a.unlocked ? (
           a.unlockedAt ? (
             <span className="ach__state">
-              Débloqué le <time dateTime={a.unlockedAt}>{formatDate(a.unlockedAt)}</time>
+              Débloqué le <time dateTime={a.unlockedAt}>{formatDate(locale, a.unlockedAt)}</time>
             </span>
           ) : (
             <span className="ach__state">Débloqué</span>
@@ -73,6 +74,7 @@ function AchievementRow({ achievement: a, selected, onOpen }: { achievement: Ach
 }
 
 export function Achievements(props: AchievementsProps) {
+  const locale = useLocale();
   const { achievements, filter, onFilterChange, desyncIds, selectedId, onOpen, panel } = props;
   const visible = useMemo(() => filterAchievements(achievements, filter, desyncIds), [achievements, filter, desyncIds]);
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -134,7 +136,7 @@ export function Achievements(props: AchievementsProps) {
                   <option value="all">Toutes</option>
                   {HOW_ORDER.map((how) => (
                     <option key={how} value={how}>
-                      {HOW_LABELS[how]}
+                      {howLabel(locale, how)}
                     </option>
                   ))}
                 </select>

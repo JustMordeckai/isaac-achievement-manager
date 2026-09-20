@@ -82,7 +82,7 @@ export const ADVISOR_OFFLINE: AdvisorStatus = {
   url: 'http://127.0.0.1:11434',
   model: 'qwen3.5:9b',
   models: [],
-  message: 'Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)',
+  message: 'Ollama unreachable at http://127.0.0.1:11434 (ECONNREFUSED)',
 };
 
 /** État du conseiller tel que le donne useAdvisorStatus. */

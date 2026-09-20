@@ -15,7 +15,7 @@ describe('RunCard', () => {
     renderCard(makeRun(), onOpenAchievement);
     const card = screen.getByRole('article', { name: 'Magdalene' });
     expect(within(card).getByRole('heading', { level: 3 }).firstElementChild).toHaveAttribute('lang', 'en');
-    expect(within(card).getByText('Difficile')).toHaveClass('run__mode--strong');
+    expect(within(card).getByText('Hard')).toHaveClass('run__mode--strong');
     expect(within(card).getByText('environ 1 h 14')).toBeInTheDocument();
     expect(within(card).getByText(/^Battre/)).toHaveTextContent("Battre Boss Rush, Mom's Heart, Satan, The Lamb");
     expect(

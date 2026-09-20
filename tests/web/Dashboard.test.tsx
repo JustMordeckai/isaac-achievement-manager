@@ -29,7 +29,7 @@ describe('Dashboard', () => {
     renderDashboard();
     expect(screen.getByRole('heading', { name: 'Progression' })).toBeInTheDocument();
     expect(screen.getByText('125')).toBeInTheDocument();
-    expect(screen.getByText('19,5 %, 516 manquants')).toBeInTheDocument();
+    expect(screen.getByText('19.5 %, 516 manquants')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Progression globale' })).toHaveAttribute('aria-valuenow', '125');
   });
 
@@ -76,7 +76,7 @@ describe('Dashboard', () => {
   it('liste les écarts et ouvre le filtre correspondant', async () => {
     const user = userEvent.setup();
     const { props } = renderDashboard();
-    expect(screen.getByRole('heading', { name: 'Débloqués dans la sauvegarde, absents de Steam (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Unlocked in the save, missing from Steam (1)' })).toBeInTheDocument();
     expect(screen.getByText('#638 Play Online')).toBeInTheDocument();
     expect(screen.queryByText(/Alt\+F2/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Voir dans la liste' }));
@@ -100,13 +100,13 @@ describe('Dashboard', () => {
 
   it('affiche le singulier pour un seul manquant', () => {
     renderDashboard(makeSummary({ unlocked: 640, total: 641 }));
-    expect(screen.getByText('99,8 %, 1 manquant')).toBeInTheDocument();
+    expect(screen.getByText('99.8 %, 1 manquant')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Voir le succès manquant' })).toBeInTheDocument();
   });
 
   it('affiche le singulier et masque le bouton quand il n’y a aucun manquant', () => {
     renderDashboard(makeSummary({ unlocked: 641, total: 641 }));
-    expect(screen.getByText('100,0 %, 0 manquant')).toBeInTheDocument();
+    expect(screen.getByText('100.0 %, 0 manquant')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /succès manquant/ })).not.toBeInTheDocument();
   });
 
@@ -114,7 +114,7 @@ describe('Dashboard', () => {
     const desyncs: Desync[] = [{ id: 343, name: 'Flooded Caves', kind: 'profileAhead' }];
     renderDashboard(makeSummary({ desyncs }));
     expect(
-      screen.getByRole('heading', { name: 'Sur le profil en ligne, pas encore dans le cache local (1)' }),
+      screen.getByRole('heading', { name: 'On the online profile, not in the local cache yet (1)' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Voir dans la liste' })).not.toBeInTheDocument();
   });

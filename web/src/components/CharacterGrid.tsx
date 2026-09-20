@@ -1,7 +1,8 @@
 import { characterById } from '../../../shared/characters.ts';
 import { MARK_IDS, type MarkId, type MarkLevel } from '../../../shared/marks.ts';
 import type { CharacterProgress, MarksSource } from '../../../shared/types.ts';
-import { MARK_LABELS, MARKS_SOURCE_LABELS } from '../labels.ts';
+import { useLocale } from '../i18n.tsx';
+import { MARK_LABELS, marksSourceLabel } from '../labels.ts';
 
 export interface CharacterGridProps {
   characters: CharacterProgress[];
@@ -22,6 +23,7 @@ function levelClass(level: MarkLevel | null): string {
 
 /** Note de complétion des 34 personnages, une colonne par marque. */
 export function CharacterGrid({ characters, source }: CharacterGridProps) {
+  const locale = useLocale();
   return (
     <div className="character-grid">
       <div className="character-grid__scroll">
@@ -75,7 +77,7 @@ export function CharacterGrid({ characters, source }: CharacterGridProps) {
       </div>
       <p className="hint">
         Case pleine : difficile (Greedier pour Greed) ; contour : normal (Greed) ; vide : absente ; ? : inconnue.{' '}
-        {MARKS_SOURCE_LABELS[source]}
+        {marksSourceLabel(locale, source)}
       </p>
     </div>
   );

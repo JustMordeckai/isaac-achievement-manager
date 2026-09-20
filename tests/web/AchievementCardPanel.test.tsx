@@ -38,8 +38,8 @@ describe('AchievementCardPanel', () => {
     expect(within(panel).getByText('Manquant')).toBeInTheDocument();
     expect(within(panel).getByText('Unlocked a new item.')).toHaveAttribute('lang', 'en');
     expect(within(panel).getByText('Defeat Boss Rush as Azazel')).toBeInTheDocument();
-    expect(within(panel).getByText('Battre Boss Rush avec Azazel')).toBeInTheDocument();
-    expect(within(panel).getByRole('heading', { name: 'Débloque' }).nextElementSibling).toHaveTextContent('Objet : The Nail');
+    expect(within(panel).getByText('Beat Boss Rush with Azazel')).toBeInTheDocument();
+    expect(within(panel).getByRole('heading', { name: 'Débloque' }).nextElementSibling).toHaveTextContent('Item : The Nail');
     expect(within(panel).getByText('Grants a soul heart and more damage.')).toBeInTheDocument();
     expect(within(panel).getByText('Qualité 2')).toBeInTheDocument();
     expect(within(panel).getByText('The Nail is an active item.')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('AchievementCardPanel', () => {
       'href',
       'https://bindingofisaacrebirth.fandom.com/wiki/Boss_Rush',
     );
-    expect(within(panel).getByText(/licence CC BY-SA/)).toHaveTextContent(/synchro du 17 sept\. 2026/);
+    expect(within(panel).getByText(/licence CC BY-SA/)).toHaveTextContent(/synchro du 17 Sept 2026/);
   });
 
   it('place le focus sur le titre et se ferme avec Échap ou le bouton', async () => {
@@ -95,7 +95,7 @@ describe('AchievementCardPanel', () => {
     expect(items.map((li) => li.textContent)).toEqual([
       'Azazel : débloqué',
       'The Polaroid ou The Negative : à débloquer',
-      "Run Azazel (Difficile) : battre Boss Rush, Mom's Heart, environ 38 min",
+      "Run Azazel (Hard) : battre Boss Rush, Mom's Heart, environ 38 min",
     ]);
     expect([...items[1].querySelectorAll('span[lang="en"]')].map((s) => s.textContent)).toEqual([
       'The Polaroid',
@@ -119,9 +119,9 @@ describe('AchievementCardPanel', () => {
     renderPanel(makeCard({ plan }));
     const section = await screen.findByRole('region', { name: "Pour l'obtenir" });
     expect(within(section).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      "Run Azazel (Difficile) : battre Mother, environ 55 min, à débloquer d'abord",
-      'Run Azazel (Difficile) : battre The Beast, environ 1 h, run de préparation',
-      "Run Azazel (Difficile) : battre Boss Rush, Mother, environ 1 h 03, run de préparation, à débloquer d'abord",
+      "Run Azazel (Hard) : battre Mother, environ 55 min, à débloquer d'abord",
+      'Run Azazel (Hard) : battre The Beast, environ 1 h, run de préparation',
+      "Run Azazel (Hard) : battre Boss Rush, Mother, environ 1 h 03, run de préparation, à débloquer d'abord",
     ]);
     expect(within(section).getByRole('heading', { level: 4, name: 'Runs du plan' })).toBeInTheDocument();
   });

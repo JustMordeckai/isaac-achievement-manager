@@ -39,47 +39,47 @@ describe('Header', () => {
         },
       }),
     });
-    expect(screen.getByText('Cache Steam : obsolète')).toHaveAttribute('title', 'Le profil en ligne compte 1 succès de plus que le cache local');
-    expect(screen.getByText('Sauvegarde : erreur')).toHaveClass('badge--error');
-    expect(screen.getByText('Profil en ligne : OK')).toHaveClass('badge--ok');
+    expect(screen.getByText('Steam cache: stale')).toHaveAttribute('title', 'Le profil en ligne compte 1 succès de plus que le cache local');
+    expect(screen.getByText('Save file: error')).toHaveClass('badge--error');
+    expect(screen.getByText('Online profile: OK')).toHaveClass('badge--ok');
     // Les messages des sources en défaut sont visibles sans survol.
-    expect(screen.getByText('Cache Steam : Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
-    expect(screen.getByText('Sauvegarde : En-tête inconnu')).toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Messages des sources' })).getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.queryByText('Sauvegarde : Slot 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Steam cache: Le profil en ligne compte 1 succès de plus que le cache local')).toBeInTheDocument();
+    expect(screen.getByText('Save file: En-tête inconnu')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Source messages' })).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.queryByText('Save file: Slot 1')).not.toBeInTheDocument();
   });
 
   it('ajoute l’état de la base wiki', () => {
     renderHeader({ kb: KB_OK });
-    const wiki = screen.getByText('Wiki : OK');
+    const wiki = screen.getByText('Wiki: OK');
     expect(wiki).toHaveClass('badge--ok');
-    expect(wiki.getAttribute('title')).toMatch(/^Synchro du 17 sept\. 2026/);
-    expect(screen.queryByText(/^Wiki : Synchro/)).not.toBeInTheDocument();
+    expect(wiki.getAttribute('title')).toMatch(/^Synced on 17 Sept 2026/);
+    expect(screen.queryByText(/^Wiki: Synced/)).not.toBeInTheDocument();
   });
 
   it('affiche le dernier échec de synchro d’une base absente', () => {
     renderHeader({ kb: { ...KB_ABSENT, message: 'Dernière synchro échouée : wiki injoignable' } });
-    expect(screen.getByText('Wiki : absente')).toHaveClass('badge--absent');
-    expect(screen.getByText('Wiki : Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
+    expect(screen.getByText('Wiki: missing')).toHaveClass('badge--absent');
+    expect(screen.getByText('Wiki: Dernière synchro échouée : wiki injoignable')).toBeInTheDocument();
   });
 
   it('montre l’état du wiki même sans résumé de progression', () => {
     renderHeader({ summary: null, kb: KB_ABSENT });
-    expect(within(screen.getByRole('list', { name: 'État des sources' })).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(screen.getByRole('list', { name: 'Source states' })).getAllByRole('listitem')).toHaveLength(1);
   });
 
   it('ajoute l’état du conseiller', () => {
     renderHeader({ advisor: ADVISOR_OK });
-    const ollama = screen.getByText('Conseiller : OK');
+    const ollama = screen.getByText('Advisor: OK');
     expect(ollama).toHaveClass('badge--ok');
-    expect(ollama).toHaveAttribute('title', 'qwen3.5:9b sur http://127.0.0.1:11434');
+    expect(ollama).toHaveAttribute('title', 'qwen3.5:9b on http://127.0.0.1:11434');
   });
 
   it('affiche le message d’un serveur Ollama injoignable', () => {
     renderHeader({ advisor: ADVISOR_OFFLINE });
-    expect(screen.getByText('Conseiller : injoignable')).toHaveClass('badge--absent');
+    expect(screen.getByText('Advisor: unreachable')).toHaveClass('badge--absent');
     expect(
-      screen.getByText('Conseiller : Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)'),
+      screen.getByText('Advisor: Ollama unreachable at http://127.0.0.1:11434 (ECONNREFUSED)'),
     ).toBeInTheDocument();
   });
 
@@ -131,7 +131,7 @@ describe('Header', () => {
   it('désactive Actualiser pendant un chargement et sans résumé', () => {
     renderHeader({ summary: null, refreshing: true });
     expect(screen.getByRole('button', { name: 'Actualisation…' })).toBeDisabled();
-    expect(screen.queryByRole('list', { name: 'État des sources' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Source states' })).not.toBeInTheDocument();
   });
 
   it('offers the language picker without its explanatory hint', () => {

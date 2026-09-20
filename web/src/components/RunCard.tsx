@@ -1,7 +1,7 @@
 import type { PlannedRun } from '../../../shared/types.ts';
 import { runQuestion } from '../advisor-question.ts';
 import { useLocale } from '../i18n.tsx';
-import { characterName, endingList, formatMinutes, RUN_MODE_LABELS } from '../labels.ts';
+import { characterName, endingList, formatMinutes, runModeLabel } from '../labels.ts';
 import { RequirementNames } from './RequirementNames.tsx';
 
 export interface RunCardProps {
@@ -49,7 +49,7 @@ export function RunCard({ run, onOpenAchievement, onAsk }: RunCardProps) {
           <span lang="en">{characterName(run.character)}</span>
         </h3>
         <span className={`badge run__mode${run.mode === 'normal' ? '' : ' run__mode--strong'}`}>
-          {RUN_MODE_LABELS[run.mode]}
+          {runModeLabel(locale, run.mode)}
         </span>
         <span className="run__time">environ {formatMinutes(run.minutes)}</span>
       </header>

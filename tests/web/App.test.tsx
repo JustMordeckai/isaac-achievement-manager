@@ -240,7 +240,7 @@ describe('App', () => {
     stubProgress({ 'GET /api/wiki/status': () => KB_ABSENT });
     render(<App />);
     expect(await screen.findByText(/^Base wiki absente/)).toBeInTheDocument();
-    expect(screen.getByText('Wiki : absente')).toBeInTheDocument();
+    expect(screen.getByText('Wiki: missing')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Ouvrir les paramètres' }));
     expect(window.location.hash).toBe('#/parametres');
     expect(screen.getByRole('heading', { name: 'Base wiki' })).toBeInTheDocument();
@@ -335,7 +335,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Send' }));
     expect(await screen.findByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
     expect(bodies).toEqual([{ question: expect.stringMatching(/^How do I clear this run/), history: [], profile: 'me', slot: null }]);
-    expect(screen.getByText('Conseiller : OK')).toBeInTheDocument();
+    expect(screen.getByText('Advisor: OK')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tableau de bord' }));
     await user.click(screen.getByRole('button', { name: 'Conseiller' }));
     expect(screen.getByText('Fais Boss Rush avant 20 minutes.')).toBeInTheDocument();
@@ -367,13 +367,13 @@ describe('App', () => {
     });
     window.location.hash = '#/parametres';
     render(<App />);
-    expect(await screen.findByText('Conseiller : injoignable')).toBeInTheDocument();
+    expect(await screen.findByText('Advisor: unreachable')).toBeInTheDocument();
     const section = within(screen.getByRole('region', { name: 'Conseiller IA' }));
     const url = await section.findByDisplayValue('http://127.0.0.1:11434');
     await user.clear(url);
     await user.type(url, 'http://10.0.0.5:11434');
     await user.click(section.getByRole('button', { name: 'Enregistrer' }));
-    expect(await screen.findByText('Conseiller : OK')).toBeInTheDocument();
+    expect(await screen.findByText('Advisor: OK')).toBeInTheDocument();
     expect(section.getByText('Serveur joignable, modèle qwen3.5:9b installé.')).toBeInTheDocument();
   });
 

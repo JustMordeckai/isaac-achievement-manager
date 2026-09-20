@@ -47,6 +47,10 @@ const CLEAN = [
   'web/src/advisor-question.ts',
   'web/src/useAdvisor.ts',
   'web/src/pages/Advisor.tsx',
+  'web/src/labels.ts',
+  'web/src/components/SourceBadges.tsx',
+  'web/src/components/ProgressBar.tsx',
+  'web/src/components/AchievementIcon.tsx',
 ];
 
 const ACCENTED_LETTER = /[\u00C0-\u00FF]/;

@@ -101,21 +101,21 @@ describe('Achievements', () => {
       'Isaac',
       'Azazel',
     ]);
-    await user.selectOptions(screen.getByLabelText('Méthode'), 'Placard de Home');
+    await user.selectOptions(screen.getByLabelText('Méthode'), 'Home closet');
     expect(rows()).toHaveLength(1);
     expect(screen.getByText('Isaac Holds the Red Key')).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Méthode'), 'Toutes');
     await user.selectOptions(screen.getByLabelText('Personnage'), 'Azazel');
     expect(rows()).toHaveLength(1);
-    expect(within(rows()[0]).getByText('Marque de complétion')).toBeInTheDocument();
+    expect(within(rows()[0]).getByText('Completion mark')).toBeInTheDocument();
   });
 
   it('affiche la méthode dans la ligne, sauf « Autre condition »', () => {
     render(<Harness list={WIKI_LIST} />);
     const [nail, maggy, , descriptions] = rows();
-    expect(within(nail).getByText('Marque de complétion')).toBeInTheDocument();
-    expect(within(maggy).getByText('Défi')).toBeInTheDocument();
-    expect(within(descriptions).queryByText('Autre condition')).not.toBeInTheDocument();
+    expect(within(nail).getByText('Completion mark')).toBeInTheDocument();
+    expect(within(maggy).getByText('Challenge')).toBeInTheDocument();
+    expect(within(descriptions).queryByText('Other condition')).not.toBeInTheDocument();
   });
 
   it('ouvre la fiche d’un succès, la marque et rend le focus à la fermeture', async () => {

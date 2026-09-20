@@ -4,7 +4,8 @@ import { AchievementIcon } from '../components/AchievementIcon.tsx';
 import { CharacterGrid } from '../components/CharacterGrid.tsx';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { RunCard } from '../components/RunCard.tsx';
-import { DESYNC_LABELS, DLC_LABELS, formatDate, percent } from '../labels.ts';
+import { useLocale } from '../i18n.tsx';
+import { desyncLabel, DLC_LABELS, formatDate, percent } from '../labels.ts';
 import type { RoutesState } from '../useRoutes.ts';
 
 export interface FilterPatch {
@@ -82,6 +83,7 @@ const DESYNC_ORDER: DesyncKind[] = ['saveOnly', 'steamOnly', 'profileAhead', 'ca
 const SHOWN_PER_KIND = 10;
 
 function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
+  const locale = useLocale();
   return (
     <div className="desync-groups">
       {DESYNC_ORDER.map((kind) => {
@@ -90,7 +92,7 @@ function DesyncGroups({ desyncs }: { desyncs: Desync[] }) {
         return (
           <div key={kind} className="desync-group">
             <h3>
-              {DESYNC_LABELS[kind]} ({items.length})
+              {desyncLabel(locale, kind)} ({items.length})
             </h3>
             <ul className="chips">
               {items.slice(0, SHOWN_PER_KIND).map((d) => (
@@ -136,6 +138,7 @@ export function Dashboard({
   onOpenAchievement,
   onAsk,
 }: DashboardProps) {
+  const locale = useLocale();
   const missing = summary.total - summary.unlocked;
   const dlcs = DLC_ORDER.filter((dlc) => summary.byDlc[dlc].total > 0);
 
@@ -149,7 +152,7 @@ export function Dashboard({
         </p>
         <ProgressBar value={summary.unlocked} max={summary.total} label="Progression globale" />
         <p className="hero__meta">
-          {percent(summary.unlocked, summary.total)}, {missing} {missing <= 1 ? 'manquant' : 'manquants'}
+          {percent(locale, summary.unlocked, summary.total)}, {missing} {missing <= 1 ? 'manquant' : 'manquants'}
         </p>
         {missing > 0 && (
           <button
@@ -197,7 +200,7 @@ export function Dashboard({
               <li key={item.id}>
                 <AchievementIcon file={item.icon} alt="" />
                 <span className="recent-list__name">{item.name}</span>
-                <time dateTime={item.unlockedAt}>{formatDate(item.unlockedAt)}</time>
+                <time dateTime={item.unlockedAt}>{formatDate(locale, item.unlockedAt)}</time>
               </li>
             ))}
           </ol>

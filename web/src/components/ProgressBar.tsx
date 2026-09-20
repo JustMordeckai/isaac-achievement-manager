@@ -1,7 +1,7 @@
 export interface ProgressBarProps {
   value: number;
   max: number;
-  /** Nom accessible ; sans nom, la barre est décorative (texte équivalent affiché à côté). */
+  /** Accessible name; with no name the bar is decorative (an equivalent text sits next to it). */
   label?: string;
 }
 

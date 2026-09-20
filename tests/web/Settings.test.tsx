@@ -37,7 +37,7 @@ describe('Settings', () => {
     const user = userEvent.setup();
     const { props } = renderSettings();
     // L'heure dépend du fuseau de la machine : seule la date est figée.
-    expect(within(kbSection()).getByText(/^Base synchronisée le 17 sept\. 2026, \d{2}:\d{2}\.$/)).toBeInTheDocument();
+    expect(within(kbSection()).getByText(/^Base synchronisée le 17 Sept 2026, \d{2}:\d{2}\.$/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Synchroniser le wiki' }));
     expect(props.onSync).toHaveBeenCalledTimes(1);
   });
@@ -141,7 +141,7 @@ describe('Settings : conseiller', () => {
     const advisor = makeAdvisorState(ADVISOR_OFFLINE);
     const { rerender, props } = renderSettings({ advisor });
     const section = advisorSection();
-    expect(section.getByText('Ollama injoignable sur http://127.0.0.1:11434 (ECONNREFUSED)')).toHaveClass('banner--error');
+    expect(section.getByText('Ollama unreachable at http://127.0.0.1:11434 (ECONNREFUSED)')).toHaveClass('banner--error');
     expect(section.getByText(/^Modèles installés : inconnus\./)).toBeInTheDocument();
     await user.click(section.getByRole('button', { name: 'Vérifier la connexion' }));
     expect(advisor.recheck).toHaveBeenCalled();

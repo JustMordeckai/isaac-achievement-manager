@@ -10,8 +10,8 @@ import {
   endingList,
   formatDate,
   formatMinutes,
-  RUN_MODE_LABELS,
-  UNLOCK_LABELS,
+  runModeLabel,
+  unlockLabel,
 } from '../labels.ts';
 import { AchievementIcon } from './AchievementIcon.tsx';
 import { RequirementNames } from './RequirementNames.tsx';
@@ -39,6 +39,7 @@ interface PlanSectionProps {
 
 /** Prérequis et runs du planificateur pour un succès encore manquant, et accès au conseiller. */
 function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
+  const locale = useLocale();
   return (
     <section aria-labelledby="ach-card-plan">
       <h3 id="ach-card-plan">Pour l'obtenir</h3>
@@ -66,7 +67,7 @@ function PlanSection({ plan, onOpenRoutes, onAsk }: PlanSectionProps) {
           <ul className="plan-runs">
             {plan.runs.map((run) => (
               <li key={run.id}>
-                Run <span lang="en">{characterName(run.character)}</span> ({RUN_MODE_LABELS[run.mode]}) : battre{' '}
+                Run <span lang="en">{characterName(run.character)}</span> ({runModeLabel(locale, run.mode)}) : battre{' '}
                 <span lang="en">{endingList(run.endings)}</span>, environ {formatMinutes(run.minutes)}
                 {run.preparation && ', run de préparation'}
                 {run.blocked && ", à débloquer d'abord"}
@@ -98,7 +99,8 @@ interface WikiSectionProps {
 }
 
 function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionProps) {
-  const how = describeHow(wiki.how);
+  const locale = useLocale();
+  const how = describeHow(locale, wiki.how);
   const page = wiki.unlockPage;
   return (
     <>
@@ -113,7 +115,7 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
       <section aria-labelledby="ach-card-unlocks">
         <h3 id="ach-card-unlocks">Débloque</h3>
         <p>
-          {UNLOCK_LABELS[wiki.unlocks.kind]} : <span lang="en">{wiki.unlocks.name}</span>
+          {unlockLabel(locale, wiki.unlocks.kind)} : <span lang="en">{wiki.unlocks.name}</span>
         </p>
         {page && (
           <>
@@ -168,7 +170,7 @@ function WikiSection({ wiki, syncedAt, plan, onOpenRoutes, onAsk }: WikiSectionP
         <a href={wiki.sourceUrl} target="_blank" rel="noreferrer">
           wiki The Binding of Isaac: Rebirth
         </a>{' '}
-        (Fandom, licence CC BY-SA){syncedAt && `, synchro du ${formatDate(syncedAt)}`}.
+        (Fandom, licence CC BY-SA){syncedAt && `, synchro du ${formatDate(locale, syncedAt)}`}.
       </p>
     </>
   );
@@ -258,7 +260,7 @@ export function AchievementCardPanel({
                 {achievement.unlocked ? (
                   achievement.unlockedAt ? (
                     <>
-                      Débloqué le <time dateTime={achievement.unlockedAt}>{formatDate(achievement.unlockedAt)}</time>
+                      Débloqué le <time dateTime={achievement.unlockedAt}>{formatDate(locale, achievement.unlockedAt)}</time>
                     </>
                   ) : (
                     'Débloqué'

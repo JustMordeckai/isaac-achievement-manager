@@ -3,6 +3,7 @@ import type { AdvisorStatus, KbStatus, SettingsInfo, WikiSyncReport } from '../.
 import { api } from '../api.ts';
 import { ProgressBar } from '../components/ProgressBar.tsx';
 import { LanguagePicker, useT } from '../i18n.tsx';
+import { useLocale } from '../i18n.tsx';
 import { formatDate } from '../labels.ts';
 import type { AdvisorStatusState } from '../useAdvisor.ts';
 import type { SettingsState, WikiSyncState } from '../useWiki.ts';
@@ -26,11 +27,12 @@ function accountText({ account, forcedAccountId }: SettingsInfo): string {
 }
 
 function KbSummary({ kb }: { kb: KbStatus | null }) {
+  const locale = useLocale();
   if (!kb) return <p className="placeholder">Lecture de l'état de la base…</p>;
   if (kb.state === 'ok') {
     return (
       <>
-        <p>Base synchronisée le {kb.syncedAt ? formatDate(kb.syncedAt) : 'date inconnue'}.</p>
+        <p>Base synchronisée le {kb.syncedAt ? formatDate(locale, kb.syncedAt) : 'date inconnue'}.</p>
         {kb.message && <p className="banner banner--warn">{kb.message}</p>}
       </>
     );

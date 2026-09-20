@@ -1,61 +1,91 @@
 import { describe, expect, it } from 'vitest';
+import { t } from '../../shared/i18n/index.ts';
 import { MARK_IDS } from '../../shared/marks.ts';
 import type { HowKind, UnlockKind } from '../../shared/types.ts';
 import {
   describeHow,
   endingList,
+  formatDate,
   formatMinutes,
-  HOW_LABELS,
+  HOW_ORDER,
+  howLabel,
   MARK_LABELS,
-  RUN_MODE_LABELS,
-  UNLOCK_LABELS,
+  percent,
+  runModeLabel,
+  unlockLabel,
 } from '../../web/src/labels.ts';
 
 describe('describeHow', () => {
-  it('résume chaque méthode d’obtention en français, avec les noms du jeu', () => {
-    expect(describeHow({ kind: 'mark', character: 'azazel', ending: 'bossRush', hard: false })).toBe('Battre Boss Rush avec Azazel');
-    expect(describeHow({ kind: 'mark', character: 'isaac', ending: 'momsHeart', hard: true })).toBe(
-      "Battre Mom's Heart avec Isaac en mode difficile",
+  it('sums up each way of earning an achievement, with the names of the game', () => {
+    expect(describeHow('en', { kind: 'mark', character: 'azazel', ending: 'bossRush', hard: false })).toBe(
+      'Beat Boss Rush with Azazel',
+    );
+    expect(describeHow('en', { kind: 'mark', character: 'isaac', ending: 'momsHeart', hard: true })).toBe(
+      "Beat Mom's Heart with Isaac on hard mode",
     );
     expect(
-      describeHow({ kind: 'multi-mark', character: 'taintedIsaac', endings: ['isaac', 'blueBaby', 'satan', 'lamb'], hard: false }),
-    ).toBe('Battre Isaac, ???, Satan, The Lamb avec Tainted Isaac');
-    expect(describeHow({ kind: 'hard-all', character: 'theLost' })).toBe(
-      'Obtenir toutes les marques en mode difficile avec The Lost',
-    );
-    expect(describeHow({ kind: 'closet', character: 'blueBaby' })).toBe('Ouvrir le placard caché de Home avec ???');
-    expect(describeHow({ kind: 'challenge', number: 13 })).toBe('Réussir le défi n° 13');
-    expect(describeHow({ kind: 'boss', bosses: ['Satan'] })).toBe("Battre Satan, avec n'importe quel personnage");
-    expect(describeHow({ kind: 'counter', total: 30 })).toBe('Objectif cumulé sur plusieurs parties (30)');
-    expect(describeHow({ kind: 'misc' })).toBeNull();
+      describeHow('en', { kind: 'multi-mark', character: 'taintedIsaac', endings: ['isaac', 'blueBaby', 'satan', 'lamb'], hard: false }),
+    ).toBe('Beat Isaac, ???, Satan, The Lamb with Tainted Isaac');
+    expect(describeHow('en', { kind: 'hard-all', character: 'theLost' })).toBe('Get every mark on hard mode with The Lost');
+    expect(describeHow('en', { kind: 'closet', character: 'blueBaby' })).toBe('Open the hidden closet at Home with ???');
+    expect(describeHow('en', { kind: 'challenge', number: 13 })).toBe('Clear challenge no. 13');
+    expect(describeHow('en', { kind: 'boss', bosses: ['Satan'] })).toBe('Beat Satan, with any character');
+    expect(describeHow('en', { kind: 'counter', total: 30 })).toBe('Total to reach across several runs (30)');
+    expect(describeHow('en', { kind: 'misc' })).toBeNull();
   });
 
-  it('a un libellé pour chaque type de condition et de déblocage', () => {
+  it('sums it up in the locale it is given', () => {
+    expect(describeHow('fr', { kind: 'mark', character: 'isaac', ending: 'momsHeart', hard: true })).toBe(
+      t('fr', 'labels.describeHow.mark', {
+        ending: "Mom's Heart",
+        character: 'Isaac',
+        hard: t('fr', 'labels.describeHow.hardSuffix'),
+      }),
+    );
+  });
+
+  it('has a label for every kind of condition and of unlock', () => {
     const hows: HowKind[] = ['mark', 'multi-mark', 'hard-all', 'closet', 'challenge', 'boss', 'counter', 'misc'];
     const unlocks: UnlockKind[] = ['character', 'item', 'trinket', 'card', 'pill', 'baby', 'starting-item', 'floor', 'challenge', 'mode', 'other'];
-    expect(Object.keys(HOW_LABELS)).toEqual(hows);
-    expect(Object.keys(UNLOCK_LABELS)).toEqual(unlocks);
+    expect(HOW_ORDER).toEqual(hows);
+    for (const how of hows) expect(howLabel('fr', how)).not.toBe('');
+    for (const unlock of unlocks) expect(unlockLabel('fr', unlock)).not.toBe('');
   });
 });
 
-describe('libellés du planificateur', () => {
-  it('formate les durées en minutes puis en heures', () => {
+describe('planner labels', () => {
+  it('formats durations in minutes then in hours', () => {
     expect(formatMinutes(45)).toBe('45 min');
     expect(formatMinutes(60)).toBe('1 h');
     expect(formatMinutes(97)).toBe('1 h 37');
     expect(formatMinutes(125)).toBe('2 h 05');
   });
 
-  it('liste les fins avec les noms du jeu, Mom seule sinon', () => {
+  it('lists the endings with the names of the game, Mom alone otherwise', () => {
     expect(endingList(['bossRush', 'momsHeart', 'blueBaby'])).toBe("Boss Rush, Mom's Heart, ???");
     expect(endingList(['ultraGreedier'])).toBe('Ultra Greedier');
     expect(endingList([])).toBe('Mom');
   });
 
-  it('a un libellé pour chaque marque et chaque mode', () => {
+  it('has a label for every mark and every mode', () => {
     expect(Object.keys(MARK_LABELS)).toEqual([...MARK_IDS]);
-    // Aucun mot français dans un nom lu en anglais.
+    // No French word inside a name that is read as English.
     expect(MARK_LABELS.greed.name).toBe('Greed / Greedier');
-    expect(Object.keys(RUN_MODE_LABELS)).toEqual(['normal', 'hard', 'greed', 'greedier']);
+    expect(runModeLabel('en', 'hard')).toBe('Hard');
+    expect(runModeLabel('fr', 'hard')).toBe(t('fr', 'labels.runMode.hard'));
+  });
+});
+
+describe('numbers and dates', () => {
+  it('writes a percentage with the separator of the locale', () => {
+    expect(percent('en', 125, 641)).toBe('19.5 %');
+    expect(percent('fr', 125, 641)).toBe('19,5 %');
+    expect(percent('en', 0, 0)).toBe('0.0 %');
+  });
+
+  it('writes a date in the region of the locale, day before month', () => {
+    const iso = '2026-09-16T14:30:51.000Z';
+    expect(formatDate('en', iso)).toMatch(/^16 Sept 2026/);
+    expect(formatDate('fr', iso)).toMatch(/^16 sept\. 2026/);
   });
 });

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { iconUrl } from '../api.ts';
 
 export interface AchievementIconProps {
-  /** Nom de fichier de l'icône Steam. */
+  /** File name of the Steam icon. */
   file: string;
   alt: string;
 }

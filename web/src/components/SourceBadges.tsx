@@ -1,12 +1,13 @@
 import type { AdvisorStatus, KbStatus, ProgressSummary, SourceKey } from '../../../shared/types.ts';
-import { ADVISOR_STATE_LABELS, formatDate, KB_STATE_LABELS, SOURCE_LABELS, STATE_LABELS } from '../labels.ts';
+import { useLocale, useT } from '../i18n.tsx';
+import { advisorStateLabel, formatDate, kbStateLabel, sourceLabel, sourceStateLabel } from '../labels.ts';
 
 const ORDER: SourceKey[] = ['steamCache', 'saveFile', 'profile'];
 
 export interface SourceBadgesProps {
   sources: ProgressSummary['sources'] | null;
   wiki: KbStatus | null;
-  /** Serveur Ollama du conseiller (pastille « Conseiller », le message nomme Ollama). */
+  /** Ollama server of the advisor (the "Advisor" badge; the message names Ollama). */
   advisor: AdvisorStatus | null;
 }
 
@@ -19,44 +20,45 @@ interface Badge {
 }
 
 export function SourceBadges({ sources, wiki, advisor }: SourceBadgesProps) {
+  const locale = useLocale();
+  const t = useT();
   const badges: Badge[] = [];
   if (sources) {
     for (const key of ORDER) {
       const { state, message } = sources[key];
-      badges.push({ key, label: SOURCE_LABELS[key], state, text: STATE_LABELS[state], message });
+      badges.push({ key, label: sourceLabel(locale, key), state, text: sourceStateLabel(locale, state), message });
     }
   }
   if (wiki) {
-    const synced = wiki.state === 'ok' && wiki.syncedAt ? `Synchro du ${formatDate(wiki.syncedAt)}` : undefined;
-    badges.push({ key: 'wiki', label: 'Wiki', state: wiki.state, text: KB_STATE_LABELS[wiki.state], message: wiki.message ?? synced });
+    const synced =
+      wiki.state === 'ok' && wiki.syncedAt ? t('sources.syncedOn', { date: formatDate(locale, wiki.syncedAt) }) : undefined;
+    badges.push({ key: 'wiki', label: 'Wiki', state: wiki.state, text: kbStateLabel(locale, wiki.state), message: wiki.message ?? synced });
   }
   if (advisor) {
     badges.push({
       key: 'advisor',
-      label: 'Conseiller',
+      label: t('advisor.title'),
       state: advisor.state,
-      text: ADVISOR_STATE_LABELS[advisor.state],
-      message: advisor.message ?? `${advisor.model} sur ${advisor.url}`,
+      text: advisorStateLabel(locale, advisor.state),
+      message: advisor.message ?? t('sources.advisorModel', { model: advisor.model, url: advisor.url }),
     });
   }
   if (badges.length === 0) return null;
-  // Les messages des sources en défaut restent lisibles sans survol.
+  // The messages of the sources in trouble stay readable without hovering.
   const notes = badges.filter((b) => b.state !== 'ok' && b.message);
   return (
     <div className="sources">
-      <ul className="badges" aria-label="État des sources">
+      <ul className="badges" aria-label={t('sources.badgesLabel')}>
         {badges.map((b) => (
           <li key={b.key} className={`badge badge--${b.state}`} title={b.message}>
-            {`${b.label} : ${b.text}`}
+            {t('sources.badge', { label: b.label, state: b.text })}
           </li>
         ))}
       </ul>
       {notes.length > 0 && (
-        <ul className="source-notes" aria-label="Messages des sources">
+        <ul className="source-notes" aria-label={t('sources.notesLabel')}>
           {notes.map((b) => (
-            <li key={b.key}>
-              {`${b.label} : ${b.message}`}
-            </li>
+            <li key={b.key}>{t('sources.note', { label: b.label, message: b.message as string })}</li>
           ))}
         </ul>
       )}

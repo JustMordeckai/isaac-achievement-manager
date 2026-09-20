@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, percent } from '../../web/src/labels.ts';
 import { loadRecentProfiles, RECENT_PROFILES_KEY, rememberProfile } from '../../web/src/recent-profiles.ts';
 import { applyTheme, loadTheme, THEME_STORAGE_KEY } from '../../web/src/theme.ts';
 
@@ -28,16 +27,5 @@ describe('thème', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(loadTheme()).toBe('light');
-  });
-});
-
-describe('formats', () => {
-  it('formate un pourcentage à la française', () => {
-    expect(percent(125, 641)).toBe('19,5 %');
-    expect(percent(0, 0)).toBe('0,0 %');
-  });
-
-  it('formate une date lisible', () => {
-    expect(formatDate('2026-09-16T14:30:51.000Z')).toMatch(/2026/);
   });
 });
