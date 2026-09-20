@@ -44,9 +44,10 @@ To stop it: the power button in the header, or `npm run stop`.
 ### Standalone executable
 
 `npm run build:exe` packs Node, the server and the interface into one file,
-`dist/Isaac Achievement Manager.exe` (about 100 MB). It needs nothing installed: double click it and
-it serves the app, keeping its `data/` folder next to itself. `--with-kb` copies the wiki base along
-with it, so the first launch is already complete.
+`dist/Isaac Achievement Manager.exe` (about 100 MB). It needs nothing installed: double click it, it
+starts the server, opens your browser on the app and keeps its `data/` folder next to itself, so it
+works on its own in any folder it can write to. `--with-kb` copies the wiki base along with it, so
+the first launch is already complete.
 
 Windows shows a SmartScreen warning the first time, because the file is not signed.
 
@@ -184,7 +185,7 @@ The save slot shown by default is the most recently modified one; a picker chang
 
 ```
 npm run dev        # server plus Vite (hot reload) on http://127.0.0.1:5250/
-npm test           # 637 Vitest tests (server and front)
+npm test           # 641 Vitest tests (server and front)
 npm run typecheck  # TypeScript
 npm run sync-wiki  # wiki sync with no interface
 npm run build:exe  # dist/Isaac Achievement Manager.exe, Node included
@@ -201,7 +202,8 @@ pages) with the Steam identity replaced by a fictional account: id `123456789`, 
 ## Notes
 
 MIT, see [LICENSE](LICENSE). Unofficial fan tool, no affiliation with Nicalis or Edmund McMillen;
-*The Binding of Isaac* and the names of the game belong to them. The card contents come from the
+*The Binding of Isaac*, the names of the game and the icon of the app, taken from the game itself,
+belong to them. The card contents come from the
 [The Binding of Isaac: Rebirth wiki](https://bindingofisaacrebirth.fandom.com/) (Fandom) under
 CC BY-SA, and every card links to its source pages. [Ollama](https://ollama.com/) and the models you
 run on it keep their own licences.
