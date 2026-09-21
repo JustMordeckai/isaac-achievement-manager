@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ProfileQuery } from '../../web/src/api.ts';
-import { useRoutes } from '../../web/src/useRoutes.ts';
+import type { ProfileQuery } from '@/lib/api.ts';
+import { useRoutes } from '@/hooks/useRoutes.ts';
 import { KB_ABSENT, ROUTES_OK } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 

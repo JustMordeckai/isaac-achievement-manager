@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FILTER, filterAchievements, normalizeText, type AchievementFilter } from '../../web/src/lib/filter.ts';
+import { DEFAULT_FILTER, filterAchievements, normalizeText, type AchievementFilter } from '@/lib/filter.ts';
 import { makeAchievement } from './factories.ts';
 
 const LIST = [

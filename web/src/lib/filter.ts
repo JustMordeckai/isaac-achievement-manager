@@ -1,5 +1,5 @@
-import type { CharacterId } from '../../../shared/characters.ts';
-import type { AchievementEntry, Dlc, HowKind } from '../../../shared/types.ts';
+import type { CharacterId } from '@shared/characters.ts';
+import type { AchievementEntry, Dlc, HowKind } from '@shared/types.ts';
 
 export type StatusFilter = 'all' | 'unlocked' | 'missing';
 export type SecretFilter = 'all' | 'only' | 'exclude';
@@ -15,6 +15,9 @@ export interface AchievementFilter {
   onlyDesync: boolean;
   sort: SortOrder;
 }
+
+/** The part of the filter a shortcut from another screen sets before showing the list. */
+export type FilterPatch = Pick<Partial<AchievementFilter>, 'status' | 'dlc' | 'onlyDesync'>;
 
 export const DEFAULT_FILTER: AchievementFilter = {
   status: 'missing',

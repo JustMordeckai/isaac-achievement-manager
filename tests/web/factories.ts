@@ -1,4 +1,4 @@
-import { CHARACTERS } from '../../shared/characters.ts';
+import { CHARACTERS } from '@shared/characters.ts';
 import { vi } from 'vitest';
 import type {
   AchievementCard,
@@ -12,8 +12,8 @@ import type {
   RoutePlan,
   RoutesResponse,
   SettingsInfo,
-} from '../../shared/types.ts';
-import type { AdvisorStatusState } from '../../web/src/useAdvisor.ts';
+} from '@shared/types.ts';
+import type { AdvisorStatusState } from '@/hooks/useAdvisorStatus.ts';
 
 export function makeAchievement(id: number, overrides: Partial<AchievementEntry> = {}): AchievementEntry {
   return {

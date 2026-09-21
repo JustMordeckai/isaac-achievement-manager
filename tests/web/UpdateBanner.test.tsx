@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { UpdateState } from '../../shared/types.ts';
-import { UpdateBanner } from '../../web/src/components/UpdateBanner.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import type { UpdateHook, UpdateJob } from '../../web/src/useUpdate.ts';
+import { t } from '@shared/i18n/index.ts';
+import type { UpdateState } from '@shared/types.ts';
+import { UpdateBanner } from '@/components/layout/UpdateBanner/UpdateBanner.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
+import type { UpdateHook, UpdateJob } from '@/hooks/useUpdate.ts';
 
 const STATE: UpdateState = {
   current: '0.1.0',

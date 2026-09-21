@@ -8,9 +8,9 @@ import {
   toLocale,
   type Locale,
   type MessageKey,
-} from '../../shared/i18n/index.ts';
-import { FLAGS } from './components/icons.tsx';
-import { api } from './api.ts';
+} from '@shared/i18n/index.ts';
+import { FLAGS } from '@/components/common/Icons/Icons.tsx';
+import { api } from '@/lib/api.ts';
 
 interface LocaleContextValue {
   locale: Locale;

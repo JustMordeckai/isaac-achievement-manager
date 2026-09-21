@@ -2,10 +2,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { Advisor, type AdvisorProps } from '../../web/src/pages/Advisor.tsx';
-import type { AdvisorChat, Exchange } from '../../web/src/useAdvisor.ts';
+import { t } from '@shared/i18n/index.ts';
+import { LocaleProvider } from '@/i18n.tsx';
+import { Advisor, type AdvisorProps } from '@/pages/Advisor.tsx';
+import type { AdvisorChat, Exchange } from '@/hooks/useAdvisorChat.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK } from './factories.ts';
 
 function makeChat(exchanges: Exchange[] = [], busy = false): AdvisorChat {

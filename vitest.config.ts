@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { alias } from './vite.config.ts';
 
 export default defineConfig({
   test: {
@@ -13,6 +14,7 @@ export default defineConfig({
       },
       {
         plugins: [react()],
+        resolve: { alias },
         test: {
           name: 'web',
           include: ['tests/web/**/*.test.{ts,tsx}'],

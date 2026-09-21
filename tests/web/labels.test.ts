@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import { MARK_IDS } from '../../shared/marks.ts';
-import type { HowKind, UnlockKind } from '../../shared/types.ts';
+import { t } from '@shared/i18n/index.ts';
+import { MARK_IDS } from '@shared/marks.ts';
+import type { HowKind, UnlockKind } from '@shared/types.ts';
 import {
   describeHow,
   endingList,
@@ -13,7 +13,7 @@ import {
   percent,
   runModeLabel,
   unlockLabel,
-} from '../../web/src/labels.ts';
+} from '@/lib/labels.ts';
 
 describe('describeHow', () => {
   it('sums up each way of earning an achievement, with the names of the game', () => {

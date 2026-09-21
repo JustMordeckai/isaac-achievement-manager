@@ -1,11 +1,11 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
-import { ProfilePicker } from '../../web/src/components/ProfilePicker.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { rememberProfile, RECENT_PROFILES_KEY } from '../../web/src/recent-profiles.ts';
+import { t } from '@shared/i18n/index.ts';
+import { Header, type HeaderProps } from '@/components/layout/Header/Header.tsx';
+import { ProfilePicker } from '@/components/layout/ProfilePicker/ProfilePicker.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
+import { rememberProfile, RECENT_PROFILES_KEY } from '@/lib/recent-profiles.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeSummary } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 

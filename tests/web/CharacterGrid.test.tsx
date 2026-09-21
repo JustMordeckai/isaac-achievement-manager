@@ -1,8 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import { CharacterGrid } from '../../web/src/components/CharacterGrid.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
+import { t } from '@shared/i18n/index.ts';
+import { CharacterGrid } from '@/components/dashboard/CharacterGrid/CharacterGrid.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
 import { makeCharacters } from './factories.ts';
 
 const row = (name: string) => screen.getByRole('row', { name: new RegExp(`^${name}\\b`) });
