@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { loadRecentProfiles, RECENT_PROFILES_KEY, rememberProfile } from '../../web/src/recent-profiles.ts';
-import { applyTheme, loadTheme, THEME_STORAGE_KEY } from '../../web/src/theme.ts';
+import { loadRecentProfiles, RECENT_PROFILES_KEY, rememberProfile } from '@/lib/recent-profiles.ts';
+import { applyTheme, loadTheme, THEME_STORAGE_KEY } from '@/lib/theme.ts';
 
 describe('recent profiles', () => {
   it('remembers with no duplicate, the most recent first, 8 at most', () => {

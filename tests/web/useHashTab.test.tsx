@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { useHashAchievement, useHashTab } from '../../web/src/useHashTab.ts';
+import { useHashAchievement, useHashTab } from '@/hooks/useHashTab.ts';
 
 const navigate = (hash: string) =>
   act(() => {

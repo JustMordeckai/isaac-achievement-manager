@@ -1,10 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { RoutePlan } from '../../shared/types.ts';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { Routes, type RoutesProps } from '../../web/src/pages/Routes.tsx';
+import { t } from '@shared/i18n/index.ts';
+import type { RoutePlan } from '@shared/types.ts';
+import { LocaleProvider } from '@/i18n.tsx';
+import { Routes, type RoutesProps } from '@/pages/Routes.tsx';
 import { KB_ABSENT, KB_OK, makePlan, makeRun } from './factories.ts';
 
 function renderRoutes(plan: RoutePlan | null = makePlan(), overrides: Partial<RoutesProps> = {}) {

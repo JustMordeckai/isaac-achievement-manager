@@ -1,11 +1,11 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { KbStatus, WikiSyncReport } from '../../shared/types.ts';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { Settings, type SettingsProps } from '../../web/src/pages/Settings.tsx';
-import type { UpdateHook } from '../../web/src/useUpdate.ts';
+import { t } from '@shared/i18n/index.ts';
+import type { KbStatus, WikiSyncReport } from '@shared/types.ts';
+import { LocaleProvider } from '@/i18n.tsx';
+import { Settings, type SettingsProps } from '@/pages/Settings.tsx';
+import type { UpdateHook } from '@/hooks/useUpdate.ts';
 import { ADVISOR_OFFLINE, ADVISOR_OK, KB_ABSENT, KB_OK, makeAdvisorState, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 

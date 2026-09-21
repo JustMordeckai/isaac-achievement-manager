@@ -1,10 +1,10 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { App } from '../../web/src/App.tsx';
-import { t } from '../../shared/i18n/index.ts';
-import { LOCALE_STORAGE_KEY } from '../../web/src/i18n.tsx';
-import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
+import { App } from '@/App.tsx';
+import { t } from '@shared/i18n/index.ts';
+import { LOCALE_STORAGE_KEY } from '@/i18n.tsx';
+import type { AdvisorEvent, WikiSyncEvent } from '@shared/types.ts';
 import {
   ADVISOR_OFFLINE,
   ADVISOR_OK,

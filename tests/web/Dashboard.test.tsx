@@ -1,12 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { Desync, ProgressSummary } from '../../shared/types.ts';
-import { AchievementIcon } from '../../web/src/components/AchievementIcon.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { Dashboard, type DashboardProps } from '../../web/src/pages/Dashboard.tsx';
-import type { RoutesState } from '../../web/src/useRoutes.ts';
+import { t } from '@shared/i18n/index.ts';
+import type { Desync, ProgressSummary } from '@shared/types.ts';
+import { AchievementIcon } from '@/components/achievements/AchievementIcon/AchievementIcon.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
+import { Dashboard, type DashboardProps } from '@/pages/Dashboard.tsx';
+import type { RoutesState } from '@/hooks/useRoutes.ts';
 import { KB_ABSENT, KB_OK, makePlan, makeRun, makeSummary, ROUTES_OK } from './factories.ts';
 
 const ROUTES_READY: RoutesState = { status: 'ready', data: ROUTES_OK, refreshing: false };

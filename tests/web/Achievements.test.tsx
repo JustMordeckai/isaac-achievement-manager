@@ -2,11 +2,11 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { AchievementEntry } from '../../shared/types.ts';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
-import { DEFAULT_FILTER, type AchievementFilter } from '../../web/src/lib/filter.ts';
-import { Achievements } from '../../web/src/pages/Achievements.tsx';
+import { t } from '@shared/i18n/index.ts';
+import type { AchievementEntry } from '@shared/types.ts';
+import { LocaleProvider } from '@/i18n.tsx';
+import { DEFAULT_FILTER, type AchievementFilter } from '@/lib/filter.ts';
+import { Achievements } from '@/pages/Achievements.tsx';
 import { makeAchievement } from './factories.ts';
 
 const LIST = [

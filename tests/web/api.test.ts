@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AdvisorEvent, WikiSyncEvent } from '../../shared/types.ts';
-import { api, ApiRequestError, iconUrl } from '../../web/src/api.ts';
+import type { AdvisorEvent, WikiSyncEvent } from '@shared/types.ts';
+import { api, ApiRequestError, iconUrl } from '@/lib/api.ts';
 import { ADVISOR_OK, KB_OK, makeCard, makeSummary, ROUTES_OK, SETTINGS } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 

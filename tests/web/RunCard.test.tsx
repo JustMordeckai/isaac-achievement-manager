@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import { RunCard } from '../../web/src/components/RunCard.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
+import { t } from '@shared/i18n/index.ts';
+import { RunCard } from '@/components/routes/RunCard/RunCard.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
 import { makeRun } from './factories.ts';
 
 function renderCard(run = makeRun(), onOpenAchievement = vi.fn(), onAsk = vi.fn()) {

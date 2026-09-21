@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { type Locale, t } from '../../shared/i18n/index.ts';
-import { Header, type HeaderProps } from '../../web/src/components/Header.tsx';
-import { guessLocale, LocaleProvider, useT } from '../../web/src/i18n.tsx';
+import { type Locale, t } from '@shared/i18n/index.ts';
+import { Header, type HeaderProps } from '@/components/layout/Header/Header.tsx';
+import { guessLocale, LocaleProvider, useT } from '@/i18n.tsx';
 import { makeSummary } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 

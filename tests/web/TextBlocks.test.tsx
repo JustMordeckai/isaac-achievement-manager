@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { TextBlocks } from '../../web/src/components/TextBlocks.tsx';
+import { TextBlocks } from '@/components/common/TextBlocks/TextBlocks.tsx';
 
 describe('TextBlocks', () => {
   it('renders paragraphs, nested lists and subheadings, in English', () => {

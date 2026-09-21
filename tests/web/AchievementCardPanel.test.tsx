@@ -1,11 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { t } from '../../shared/i18n/index.ts';
-import type { AchievementCard, CardPlan } from '../../shared/types.ts';
-import type { ProfileQuery } from '../../web/src/api.ts';
-import { AchievementCardPanel } from '../../web/src/components/AchievementCardPanel.tsx';
-import { LocaleProvider } from '../../web/src/i18n.tsx';
+import { t } from '@shared/i18n/index.ts';
+import type { AchievementCard, CardPlan } from '@shared/types.ts';
+import type { ProfileQuery } from '@/lib/api.ts';
+import { AchievementCardPanel } from '@/components/achievements/AchievementCardPanel/AchievementCardPanel.tsx';
+import { LocaleProvider } from '@/i18n.tsx';
 import { KB_ABSENT, KB_OK, makeAchievement, makeCard } from './factories.ts';
 import { jsonResponse, stubFetch } from './fetch-stub.ts';
 
