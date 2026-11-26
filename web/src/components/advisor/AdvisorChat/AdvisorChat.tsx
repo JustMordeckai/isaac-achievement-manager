@@ -3,7 +3,7 @@ import { AdvisorComposer } from '@/components/advisor/AdvisorComposer/AdvisorCom
 import { AdvisorExchange } from '@/components/advisor/AdvisorExchange/AdvisorExchange.tsx';
 import { AdvisorSuggestions } from '@/components/advisor/AdvisorSuggestions/AdvisorSuggestions.tsx';
 import { useT } from '@/i18n.tsx';
-import type { AdvisorChat as AdvisorChatState } from '@/hooks/useAdvisorChat.ts';
+import type { AdvisorChatState } from '@/hooks/useAdvisorChat.ts';
 import { useAdvisorComposer } from './useAdvisorComposer.ts';
 
 export interface AdvisorChatProps {

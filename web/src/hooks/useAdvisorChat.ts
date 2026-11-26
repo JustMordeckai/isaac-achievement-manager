@@ -18,7 +18,7 @@ export interface Exchange {
   error: string | null;
 }
 
-export interface AdvisorChat {
+export interface AdvisorChatState {
   exchanges: Exchange[];
   /** An answer is pending or under way. */
   busy: boolean;
@@ -62,7 +62,7 @@ function historyOf(exchanges: Exchange[]): ChatMessage[] {
  * Conversation with the advisor. It lives at the application level so it survives a tab change;
  * it is never saved (reloading the page clears it).
  */
-export function useAdvisorChat(): AdvisorChat {
+export function useAdvisorChat(): AdvisorChatState {
   const locale = useLocale();
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const current = useRef(exchanges);
