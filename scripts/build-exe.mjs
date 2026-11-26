@@ -6,13 +6,15 @@
  *
  * Steps: build the front into build/web, bundle the server into one CommonJS file, list the front
  * files as assets of the executable, let Node write the SEA blob, copy node.exe, put the icon of
- * the game on the copy and inject the blob with postject. The result is
- * dist/Isaac Achievement Manager.exe, which needs nothing installed.
+ * the game on the copy, inject the blob with postject and mark the file as a GUI program, so it
+ * runs with no console window. The result is dist/Isaac Achievement Manager.exe, which needs
+ * nothing installed.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setSubsystem, SUBSYSTEM_GUI } from './pe-subsystem.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUILD = path.join(ROOT, 'build');
@@ -111,6 +113,11 @@ for (let attempt = 1; ; attempt++) {
   }
 }
 run('npx', ['postject', target, 'NODE_SEA_BLOB', 'build/sea-prep.blob', '--sentinel-fuse', FUSE]);
+// Last write to the file: a GUI program runs in the background instead of holding a console
+// window open (see scripts/pe-subsystem.ts). Only one header field changes, the blob stays put.
+const image = readFileSync(target);
+setSubsystem(image, SUBSYSTEM_GUI);
+writeFileSync(target, image);
 
 // The executable reads and writes data/ next to itself: a fresh folder is enough to run it.
 mkdirSync(path.join(DIST, 'data'), { recursive: true });

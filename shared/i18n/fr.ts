@@ -292,9 +292,13 @@ export const fr: Catalog = {
   'app.save': 'Sauvegarde',
   'app.slot': 'Slot {slot}',
   'app.stoppedTitle': 'Serveur arrêté',
-  'app.stoppedText': "Tu peux fermer cet onglet. Pour relancer l'application : « Isaac Manager.cmd » ou « npm start ».",
+  'app.stoppedText':
+    "Tu peux fermer cet onglet. Pour relancer l'application, ouvre-la comme avant : l'exécutable, \"Isaac Manager.cmd\" ou \"npm start\".",
   'app.confirmStop': 'Arrêter le serveur Isaac Achievement Manager ?',
   'app.stopFailed': 'Arrêt impossible : {message}',
+  'startup.portTaken':
+    'Le port {port} est déjà pris par une autre application. Change "port" dans {file}, puis relance Isaac Achievement Manager.',
+  'startup.fatal': "Isaac Achievement Manager s'est arrêté sur une erreur : {message}\n\nDétails dans {file}.",
   'app.loadingProgress': 'Chargement de la progression…',
   'app.progressFailed': 'Impossible de charger la progression',
   'app.retry': 'Réessayer',

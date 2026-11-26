@@ -4,11 +4,13 @@ import http from 'node:http';
 import path from 'node:path';
 import { format } from 'node:util';
 import express from 'express';
+import { DEFAULT_LOCALE, t, type Locale } from '../shared/i18n/index.ts';
 import { createAdvisorService } from './advisor/service.ts';
 import { createAdvisorSetup } from './advisor/setup.ts';
 import { APP_NAME, createApp } from './app.ts';
 import { shouldOpenBrowser } from './cli.ts';
 import { chooseAccount, detectSteamEnv, loadSettings, saveSettings } from './config.ts';
+import { showErrorBox } from './error-box.ts';
 import { createIconCache } from './icons.ts';
 import { DATA_DIR, ROOT, WEB_DIST } from './paths.ts';
 import { createProgressService } from './progress-service.ts';
@@ -21,14 +23,17 @@ const args = new Set(process.argv.slice(2));
 const standalone = isStandalone();
 const dev = args.has('--dev');
 const shouldOpen = shouldOpenBrowser(args, standalone);
+const logFile = path.join(DATA_DIR, 'server.log');
+/** Language of the error boxes; the settings replace it once they are read. */
+let boxLocale: Locale = DEFAULT_LOCALE;
 
-if (args.has('--log')) {
+// The executable has no window: what it prints goes nowhere, so it always keeps the log.
+if (args.has('--log') || standalone) {
   // Writes every line to data/server.log through one appendFileSync per call: unlike a shell
   // redirection (>>), no file descriptor stays open, so a second launch of the launcher while the
   // server is running can write to this file too (no sharing conflict on Windows). The line is
   // printed as well, so the window that started the server shows what the log records.
   mkdirSync(DATA_DIR, { recursive: true });
-  const logFile = path.join(DATA_DIR, 'server.log');
   const print = console.log.bind(console);
   const printError = console.error.bind(console);
   const append = (...parts: unknown[]): void => {
@@ -53,11 +58,16 @@ if (args.has('--log')) {
   // this handler, Node would write it its own way and it would never reach data/server.log.
   process.on('uncaughtException', (error) => {
     write('Fatal error:', error);
+    if (standalone) {
+      const message = error instanceof Error ? error.message : String(error);
+      showErrorBox(t(boxLocale, 'app.brand'), t(boxLocale, 'startup.fatal', { message, file: logFile }));
+    }
     process.exit(1);
   });
 }
 
 const settings = loadSettings(DATA_DIR);
+boxLocale = settings.locale;
 const env = detectSteamEnv({ extraAccountIds: settings.accountId !== null ? [settings.accountId] : [] });
 const account = chooseAccount(env, settings.accountId);
 const profiles = createProfileClient();
@@ -155,6 +165,10 @@ server.on('error', async (error: Error) => {
     process.exit(0);
   }
   console.error(`Port ${settings.port} is taken by another application: change "port" in data/settings.json.`);
+  if (standalone) {
+    const file = path.join(DATA_DIR, 'settings.json');
+    showErrorBox(t(settings.locale, 'app.brand'), t(settings.locale, 'startup.portTaken', { port: settings.port, file }));
+  }
   process.exit(1);
 });
 

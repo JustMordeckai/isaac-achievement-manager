@@ -290,9 +290,13 @@ export const en = {
   'app.save': 'Save file',
   'app.slot': 'Slot {slot}',
   'app.stoppedTitle': 'Server stopped',
-  'app.stoppedText': 'You can close this tab. To start the application again: "Isaac Manager.cmd" or "npm start".',
+  'app.stoppedText':
+    'You can close this tab. To start the application again, open it the same way as before: the executable, "Isaac Manager.cmd" or "npm start".',
   'app.confirmStop': 'Stop the Isaac Achievement Manager server?',
   'app.stopFailed': 'The server could not be stopped: {message}',
+  'startup.portTaken':
+    'Port {port} is used by another application. Change "port" in {file}, then start Isaac Achievement Manager again.',
+  'startup.fatal': 'Isaac Achievement Manager stopped on an error: {message}\n\nDetails in {file}.',
   'app.loadingProgress': 'Loading the progress…',
   'app.progressFailed': 'The progress could not be loaded',
   'app.retry': 'Try again',

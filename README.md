@@ -49,6 +49,11 @@ starts the server, opens your browser on the app and keeps its `data/` folder ne
 works on its own in any folder it can write to. `--with-kb` copies the wiki base along with it, so
 the first launch is already complete.
 
+It runs in the background, with no window. Closing the tab leaves it running: starting the
+executable again opens the page of the running copy, and the power button in the header stops it.
+What it prints goes to `data/server.log`; an error that stops it, such as a port already taken,
+also shows in a message box.
+
 Windows shows a SmartScreen warning the first time, because the file is not signed.
 
 ### Updates
