@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '@shared/i18n/index.ts';
 import type { AdvisorStatus } from '@shared/types.ts';
 import { useLocale } from '@/i18n.tsx';
@@ -20,6 +20,12 @@ export interface AdvisorStatusState {
 /** State of the Ollama server, read again on every change of `reloadKey` or on request. */
 export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
   const locale = useLocale();
+  // The language only words the error: a change of language reads the status again through
+  // `reloadKey`, once the server has taken it, so it must not start a check of its own.
+  const latestLocale = useRef(locale);
+  useEffect(() => {
+    latestLocale.current = locale;
+  }, [locale]);
   const [status, setStatus] = useState<AdvisorStatus | null>(null);
   const [checks, setChecks] = useState(0);
   const [checking, setChecking] = useState(true);
@@ -43,14 +49,14 @@ export function useAdvisorStatus(reloadKey: number): AdvisorStatusState {
           url: prev?.url ?? '',
           model: prev?.model ?? '',
           models: prev?.models ?? [],
-          message: t(locale, 'advisor.statusUnavailable', { message: messageOf(error) }),
+          message: t(latestLocale.current, 'advisor.statusUnavailable', { message: messageOf(error) }),
         }));
         setChecking(false);
         setCheckedAt(Date.now());
       },
     );
     return () => controller.abort();
-  }, [reloadKey, checks, locale]);
+  }, [reloadKey, checks]);
   const recheck = useCallback(() => setChecks((n) => n + 1), []);
   return { status, checking, checkedAt, recheck, replace: setStatus };
 }

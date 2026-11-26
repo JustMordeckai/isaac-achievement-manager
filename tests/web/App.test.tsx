@@ -412,7 +412,13 @@ describe('App', () => {
     const mock = stubProgress({ 'POST /api/settings': () => ({ ...SETTINGS, locale: 'fr' }) });
     render(<App />);
     await screen.findByRole('heading', { name: 'Progress' });
-    const before = { progress: progressCalls(mock), routes: callsTo(mock, '/api/routes') };
+    await vi.waitFor(() => expect(callsTo(mock, '/api/advisor/status')).toBe(1));
+    const before = {
+      progress: progressCalls(mock),
+      routes: callsTo(mock, '/api/routes'),
+      wiki: callsTo(mock, '/api/wiki/status'),
+      advisor: callsTo(mock, '/api/advisor/status'),
+    };
 
     await user.click(screen.getByRole('button', { name: 'Language: English' }));
     await user.click(await screen.findByRole('menuitemradio', { name: 'Fran\u00e7ais' }));
@@ -420,6 +426,25 @@ describe('App', () => {
     // The plan and the source messages come from the server: they are asked again in the new language.
     await vi.waitFor(() => expect(progressCalls(mock)).toBe(before.progress + 1));
     expect(callsTo(mock, '/api/routes')).toBe(before.routes + 1);
+    // Once, after the save: not a first time as soon as the language changes on screen.
+    expect(callsTo(mock, '/api/wiki/status')).toBe(before.wiki + 1);
+    expect(callsTo(mock, '/api/advisor/status')).toBe(before.advisor + 1);
+  });
+
+  it('asks to stop and says the server stopped in the language of the interface', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubProgress({
+      'GET /api/settings': () => ({ ...SETTINGS, locale: 'fr' }),
+      'POST /api/shutdown': () => ({ ok: true }),
+    });
+    render(<App />);
+    await screen.findByRole('heading', { name: t('fr', 'dashboard.progress') });
+    await user.click(screen.getByRole('button', { name: t('fr', 'app.stop') }));
+    expect(confirm).toHaveBeenCalledWith(t('fr', 'app.confirmStop'));
+    expect(await screen.findByRole('heading', { name: t('fr', 'app.stoppedTitle') })).toBeInTheDocument();
+    expect(screen.getByText(t('fr', 'app.stoppedText'))).toBeInTheDocument();
   });
 
   it('keeps a language picked while settings are still loading', async () => {
