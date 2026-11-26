@@ -10,8 +10,8 @@ describe('useSettings', () => {
     const ok = renderHook(() => useSettings());
     expect(ok.result.current).toEqual({ status: 'loading' });
     await vi.waitFor(() => expect(ok.result.current).toEqual({ status: 'ready', info: SETTINGS }));
-    stubFetch({ 'GET /api/settings': () => jsonResponse({ error: 'Erreur interne' }, 500) });
+    stubFetch({ 'GET /api/settings': () => jsonResponse({ error: 'Internal error' }, 500) });
     const failed = renderHook(() => useSettings());
-    await vi.waitFor(() => expect(failed.result.current).toEqual({ status: 'error', message: 'Erreur interne' }));
+    await vi.waitFor(() => expect(failed.result.current).toEqual({ status: 'error', message: 'Internal error' }));
   });
 });

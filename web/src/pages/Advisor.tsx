@@ -4,7 +4,7 @@ import { AdvisorChat } from '@/components/advisor/AdvisorChat/AdvisorChat.tsx';
 import { AdvisorServerState } from '@/components/advisor/AdvisorServerState/AdvisorServerState.tsx';
 import { SettingsBanner } from '@/components/common/SettingsBanner/SettingsBanner.tsx';
 import { useT } from '@/i18n.tsx';
-import type { AdvisorChat as AdvisorChatState } from '@/hooks/useAdvisorChat.ts';
+import type { AdvisorChatState } from '@/hooks/useAdvisorChat.ts';
 
 export interface AdvisorProps {
   chat: AdvisorChatState;
