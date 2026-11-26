@@ -2,7 +2,14 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_LOCALE, t, type Locale } from '../../shared/i18n/index.ts';
 
-export const SAVE_MAGIC = 'ISAACNGSAVE09R';
+/**
+ * Headers of the save versions this parser reads. 10R came with the game update of 2026-11-19: the
+ * 4 chunks read here kept the layout and the meaning of 09R (checked on real saves written on each
+ * side of the update), only data after them changed. Any other header is refused rather than read
+ * on a guess.
+ */
+export const SAVE_MAGICS: readonly string[] = ['ISAACNGSAVE09R', 'ISAACNGSAVE10R'];
+const MAGIC_LENGTH = 14;
 const FIRST_CHUNK_OFFSET = 20;
 const CHUNK_HEADER_SIZE = 12;
 /**
@@ -42,8 +49,8 @@ export interface SaveFileData {
 }
 
 export function parseSaveFile(buf: Uint8Array, locale: Locale = DEFAULT_LOCALE): SaveFileData {
-  const magic = String.fromCharCode(...buf.subarray(0, SAVE_MAGIC.length));
-  if (buf.length < FIRST_CHUNK_OFFSET || magic !== SAVE_MAGIC) {
+  const magic = String.fromCharCode(...buf.subarray(0, MAGIC_LENGTH));
+  if (buf.length < FIRST_CHUNK_OFFSET || !SAVE_MAGICS.includes(magic)) {
     throw new SaveFormatError(t(locale, 'errors.saveHeaderUnknown', { magic: magic.replace(/[^\x20-\x7e]/g, '?') }));
   }
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);

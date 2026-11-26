@@ -42,12 +42,31 @@ describe('parseSaveFile', () => {
     expect(empty.tailOffset).toBe(3591);
   });
 
+  it('reads a real empty slot written after the 10R update (4118 bytes)', () => {
+    const buf = fixture('save-10R/rep+persistentgamedata2.dat');
+    expect(buf.length).toBe(4118);
+    expect(String.fromCharCode(...buf.subarray(0, 14))).toBe('ISAACNGSAVE10R');
+    const empty = parseSaveFile(buf);
+    expect(empty.secrets.size).toBe(0);
+    expect(empty.chunks).toEqual(parseSaveFile(fixture('rep+persistentgamedata2.dat')).chunks);
+    expect(empty.tailOffset).toBe(3591);
+  });
+
+  it('reads the 4 chunks of a 10R save the same way as a 09R one', () => {
+    const buf = fixture(SLOT1);
+    buf.set([0x31, 0x30], 11); // "09" -> "10"
+    expect(parseSaveFile(buf)).toEqual(save);
+  });
+
   it('refuses an unknown header', () => {
     const bad = fixture(SLOT1);
     bad[0] = 0x58;
     expect(() => parseSaveFile(bad)).toThrow(SaveFormatError);
     expect(() => parseSaveFile(bad)).toThrow(/header/i);
     expect(() => parseSaveFile(Uint8Array.from([1, 2, 3]))).toThrow(/header/i);
+    const future = fixture(SLOT1);
+    future.set([0x31, 0x31], 11); // "11R": a version nobody has checked yet
+    expect(() => parseSaveFile(future)).toThrow(/ISAACNGSAVE11R/);
   });
 
   it('refuses a truncated or missing chunk', () => {
