@@ -4,7 +4,7 @@
  * in step.
  */
 
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.2.1';
 
 /** The repository the releases come from. */
 export const REPOSITORY = 'JustMordeckai/isaac-achievement-manager';
